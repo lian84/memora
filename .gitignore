@@ -1,0 +1,59 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+coverage/
+.DS_Store
+*.log
+
+# Directory dati runtime (MEMORA_DATA_DIR) — mai nel repo pubblico
+data/
+!data/.gitkeep
+
+# Sessioni Pi
+data/**/pi-sessions/
+data/**/sessions/
+*.jsonl
+
+# Database SQLite e derivati
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.db
+*.db-*
+
+# Backup e ripristino
+*.backup
+*.bak
+*.dump
+*.sql
+backups/
+
+# Segreti e credenziali
+*.secret
+*.key
+*.pem
+auth.json
+secrets/
+
+# Pi session/auth file specifici dell'utente
+.pi/
+**/.pi/
+**/auth.json
+**/session*
+
+# Log con potenziali dati personali
+logs/
+*.log
+
+# OS
+Thumbs.db
+.eleventy.js
+.vscode/
+.idea/
+
+# Report di valutazione locali (non baseline)
+evaluation/latest-report.json
+evaluation/reports/

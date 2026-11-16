@@ -1,0 +1,440 @@
+{
+  "version": 1,
+  "name": "memory-curator-v1",
+  "description": "Casi sintetici per NEW, UPDATE, DUPLICATE, CONFLICT e NONE. La modalità replay verifica la pipeline; --curator=live misura il modello.",
+  "cases": [
+    {
+      "id": "new-project-fact",
+      "description": "Nuovo fatto di progetto",
+      "memory": [],
+      "userText": "Per il progetto Vega useremo PostgreSQL come database.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.9,
+        "durability": 0.9,
+        "futureUtility": 0.9,
+        "novelty": 0.9,
+        "confidence": 0.95,
+        "memoryType": "project_fact",
+        "action": "new",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa PostgreSQL come database.",
+        "currentText": null,
+        "target": { "heading": "Database" },
+        "rationale": "Decisione tecnica stabile del progetto."
+      },
+      "expected": {
+        "action": "new",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    },
+    {
+      "id": "new-preference",
+      "description": "Nuova preferenza personale",
+      "memory": [],
+      "userText": "Preferisco ascoltare musica strumentale mentre lavoro.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.8,
+        "durability": 0.9,
+        "futureUtility": 0.8,
+        "novelty": 0.8,
+        "confidence": 0.9,
+        "memoryType": "preference",
+        "action": "new",
+        "entity": { "type": "user", "name": "" },
+        "proposedText": "Durante il lavoro preferisco ascoltare musica strumentale.",
+        "currentText": null,
+        "target": { "heading": "Musica" },
+        "rationale": "Preferenza ricorrente e stabile."
+      },
+      "expected": {
+        "action": "new",
+        "memoryType": "preference",
+        "targetPath": "memory/preferences.md"
+      }
+    },
+    {
+      "id": "duplicate-low-confidence",
+      "description": "Duplicato con confidenza sotto la soglia di scarto automatico",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Identità",
+          "content": "## Identità\n- Il progetto Vega usa il turchese."
+        }
+      ],
+      "userText": "Vega usa il turchese.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.9,
+        "durability": 0.9,
+        "futureUtility": 0.9,
+        "novelty": 0.2,
+        "confidence": 0.8,
+        "memoryType": "project_fact",
+        "action": "duplicate",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il turchese.",
+        "currentText": "Il progetto Vega usa il turchese.",
+        "target": { "heading": "Identità" },
+        "rationale": "Fatto già presente."
+      },
+      "expected": {
+        "action": "duplicate",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    },
+    {
+      "id": "duplicate-high-confidence-skipped",
+      "description": "Duplicato ad alta confidenza scartato senza proposta",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Identità",
+          "content": "## Identità\n- Il progetto Vega usa il turchese."
+        }
+      ],
+      "userText": "Il progetto Vega usa il turchese.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.6,
+        "durability": 0.9,
+        "futureUtility": 0.5,
+        "novelty": 0.05,
+        "confidence": 0.95,
+        "memoryType": "project_fact",
+        "action": "duplicate",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il turchese.",
+        "currentText": "Il progetto Vega usa il turchese.",
+        "target": { "heading": "Identità" },
+        "rationale": "Duplicato certo."
+      },
+      "expected": { "action": "none" }
+    },
+    {
+      "id": "update-augment",
+      "description": "Aggiunta compatibile con il fatto esistente",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Identità",
+          "content": "## Identità\n- Il progetto Vega usa il turchese."
+        }
+      ],
+      "userText": "Per Vega aggiungiamo il giallo come secondo colore.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.8,
+        "durability": 0.9,
+        "futureUtility": 0.8,
+        "novelty": 0.7,
+        "confidence": 0.9,
+        "memoryType": "project_fact",
+        "action": "update",
+        "updateIntent": "augment",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il turchese e il giallo.",
+        "currentText": "Il progetto Vega usa il turchese.",
+        "target": { "heading": "Identità" },
+        "rationale": "Il fatto precedente resta valido."
+      },
+      "expected": {
+        "action": "update",
+        "updateIntent": "augment",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    },
+    {
+      "id": "update-replace",
+      "description": "Sostituzione esplicita di un valore",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Identità",
+          "content": "## Identità\n- Il progetto Vega usa il turchese."
+        }
+      ],
+      "userText": "Per Vega sostituiamo il turchese con il rosso.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.8,
+        "durability": 0.9,
+        "futureUtility": 0.8,
+        "novelty": 0.8,
+        "confidence": 0.9,
+        "memoryType": "project_fact",
+        "action": "update",
+        "updateIntent": "replace",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il rosso.",
+        "currentText": "Il progetto Vega usa il turchese.",
+        "target": { "heading": "Identità" },
+        "rationale": "L'utente ha sostituito esplicitamente il colore."
+      },
+      "expected": {
+        "action": "update",
+        "updateIntent": "replace",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    },
+    {
+      "id": "update-remove",
+      "description": "Rimozione esplicita di una parte del fatto",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Funzionalità",
+          "content": "## Funzionalità\n- Il progetto Vega usa il turchese e supporta il tema scuro."
+        }
+      ],
+      "userText": "Per Vega rimuovi il supporto al tema scuro.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.7,
+        "durability": 0.9,
+        "futureUtility": 0.7,
+        "novelty": 0.5,
+        "confidence": 0.9,
+        "memoryType": "project_fact",
+        "action": "update",
+        "updateIntent": "remove",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il turchese.",
+        "currentText": "Il progetto Vega usa il turchese e supporta il tema scuro.",
+        "target": { "heading": "Funzionalità" },
+        "rationale": "Rimozione esplicitamente richiesta."
+      },
+      "expected": {
+        "action": "update",
+        "updateIntent": "remove",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    },
+    {
+      "id": "update-correct",
+      "description": "Correzione di un fatto errato",
+      "memory": [
+        {
+          "path": "projects/orione/memory.md",
+          "heading": "Database",
+          "content": "## Database\n- Orione usa MySQL."
+        }
+      ],
+      "userText": "Correzione: per Orione abbiamo scelto PostgreSQL.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.9,
+        "durability": 0.9,
+        "futureUtility": 0.9,
+        "novelty": 0.7,
+        "confidence": 0.95,
+        "memoryType": "project_fact",
+        "action": "update",
+        "updateIntent": "correct",
+        "entity": { "type": "project", "name": "Orione" },
+        "proposedText": "Orione usa PostgreSQL.",
+        "currentText": "Orione usa MySQL.",
+        "target": { "heading": "Database" },
+        "rationale": "Correzione esplicita dell'utente."
+      },
+      "expected": {
+        "action": "update",
+        "updateIntent": "correct",
+        "memoryType": "project_fact",
+        "targetPath": "projects/orione/memory.md"
+      }
+    },
+    {
+      "id": "ambiguous-update-conflict",
+      "description": "Update senza bullet esistente verificabile",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Identità",
+          "content": "## Identità\n- Il progetto Vega usa il turchese."
+        }
+      ],
+      "userText": "Aggiungiamo il giallo al progetto Vega.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.8,
+        "durability": 0.9,
+        "futureUtility": 0.8,
+        "novelty": 0.7,
+        "confidence": 0.9,
+        "memoryType": "project_fact",
+        "action": "update",
+        "updateIntent": "augment",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il turchese e il giallo.",
+        "currentText": "Fatto non presente nella memoria.",
+        "target": { "heading": "Identità" },
+        "rationale": "Il modello non ha identificato il bullet esatto."
+      },
+      "expected": { "action": "conflict" }
+    },
+    {
+      "id": "ephemeral-none",
+      "description": "Informazione effimera da non memorizzare",
+      "memory": [],
+      "userText": "Il PID del processo è 3812.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": false,
+        "ephemeral": true,
+        "importance": 0.1,
+        "durability": 0.1,
+        "futureUtility": 0.1,
+        "novelty": 0.1,
+        "confidence": 0.95
+      },
+      "expected": { "action": "none" }
+    },
+    {
+      "id": "below-threshold-none",
+      "description": "Fatto troppo incerto per superare le soglie",
+      "memory": [],
+      "userText": "Forse un giorno potrei provare un framework diverso.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.4,
+        "durability": 0.4,
+        "futureUtility": 0.4,
+        "novelty": 0.4,
+        "confidence": 0.4,
+        "memoryType": "preference",
+        "action": "new",
+        "entity": { "type": "user", "name": "" },
+        "proposedText": "Potrei provare un framework diverso in futuro.",
+        "currentText": null,
+        "target": { "heading": "Stack" },
+        "rationale": "Preferenza solo ipotetica."
+      },
+      "expected": { "action": "none" }
+    },
+    {
+      "id": "explicit-bypasses-threshold",
+      "description": "Richiesta esplicita accettata anche con punteggi bassi",
+      "memory": [],
+      "userText": "Ricorda che Vega usa il giallo.",
+      "explicit": true,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.1,
+        "durability": 0.1,
+        "futureUtility": 0.1,
+        "novelty": 0.1,
+        "confidence": 0.1,
+        "memoryType": "project_fact",
+        "action": "new",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il giallo.",
+        "currentText": null,
+        "target": { "heading": "Identità" },
+        "rationale": "Richiesta esplicita dell'utente."
+      },
+      "expected": {
+        "action": "new",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    },
+    {
+      "id": "secret-blocks-provider",
+      "description": "Un segreto blocca la chiamata al provider",
+      "memory": [],
+      "userText": "La password finta del server è abc123.",
+      "explicit": false,
+      "providerOutput": null,
+      "expected": { "action": "none" }
+    },
+    {
+      "id": "pii-output-rejected",
+      "description": "Output con PII rifiutato dalla validazione",
+      "memory": [],
+      "userText": "La mia email finta è finta@example.test.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.8,
+        "durability": 0.9,
+        "futureUtility": 0.8,
+        "novelty": 0.8,
+        "confidence": 0.9,
+        "memoryType": "profile_fact",
+        "action": "new",
+        "entity": { "type": "user", "name": "" },
+        "proposedText": "La mia email è finta@example.test.",
+        "currentText": null,
+        "target": { "heading": "Contatti" },
+        "rationale": "Dato di contatto."
+      },
+      "expected": { "action": "none" }
+    },
+    {
+      "id": "augment-drops-fact",
+      "description": "AUGMENT che perde un fatto esistente deve essere rifiutato",
+      "memory": [
+        {
+          "path": "projects/vega/memory.md",
+          "heading": "Funzionalità",
+          "content": "## Funzionalità\n- Il progetto Vega usa il turchese e supporta il tema scuro."
+        }
+      ],
+      "userText": "Per Vega aggiungiamo il giallo come colore.",
+      "explicit": false,
+      "providerOutput": {
+        "shouldRemember": true,
+        "ephemeral": false,
+        "importance": 0.8,
+        "durability": 0.9,
+        "futureUtility": 0.8,
+        "novelty": 0.7,
+        "confidence": 0.9,
+        "memoryType": "project_fact",
+        "action": "update",
+        "updateIntent": "augment",
+        "entity": { "type": "project", "name": "Vega" },
+        "proposedText": "Il progetto Vega usa il giallo.",
+        "currentText": "Il progetto Vega usa il turchese e supporta il tema scuro.",
+        "target": { "heading": "Funzionalità" },
+        "rationale": "Aggiunta senza preservare i fatti precedenti."
+      },
+      "expected": {
+        "action": "update",
+        "updateIntent": "augment",
+        "memoryType": "project_fact",
+        "targetPath": "projects/vega/memory.md"
+      }
+    }
+  ]
+}

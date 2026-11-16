@@ -1,0 +1,46 @@
+{
+  "name": "memora",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Memora — centro personale self-hosted costruito sopra Pi",
+  "packageManager": "pnpm@12.18.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @memora/server dev",
+    "build": "pnpm --filter @memora/server build && pnpm --filter @memora/web build",
+    "lint": "eslint apps/server/src packages/agent/src packages/shared/src packages/memory/src",
+    "format": "prettier --write .",
+    "typecheck": "tsc --build",
+    "test": "vitest run",
+    "smoke:dist": "node --input-type=module -e \"import('./packages/memory/dist/index.js').then(m => console.log('SMOKE: modules exported:', Object.keys(m).join(','))).catch(e => { console.error('SMOKE FAILED:', e.message); process.exit(1); });\"",
+    "start": "pnpm --filter @memora/server start",
+    "smoke:prod": "node scripts/smoke-production.mjs",
+    "embeddings:setup": "pnpm --filter @memora/memory build && node scripts/embeddings-setup.mjs",
+    "embeddings:benchmark": "pnpm --filter @memora/memory build && node scripts/benchmark-hybrid.mjs",
+    "eval:memory": "pnpm --filter @memora/memory build && node scripts/evaluate-memory.mjs",
+    "eval:memory:check": "pnpm --filter @memora/memory build && node scripts/evaluate-memory.mjs --check",
+    "memory:metadata:migrate": "pnpm --filter @memora/memory build && node scripts/migrate-memory-metadata.mjs",
+    "memory:history:prune": "pnpm --filter @memora/memory build && node scripts/prune-memory-history.mjs",
+    "memory:integrity": "pnpm --filter @memora/memory build && node scripts/memory-integrity.mjs",
+    "memory:consolidate": "pnpm --filter @memora/memory build && node scripts/memory-consolidate.mjs",
+    "memory:consolidate:llm": "pnpm --filter @memora/memory build && node scripts/consolidate-memory-llm.mjs",
+    "memory:feedback": "node scripts/memory-feedback.mjs",
+    "projects:migrate": "pnpm --filter @memora/server build && node scripts/projects-migrate.mjs",
+    "pdf:browser:setup": "node scripts/pdf-browser-setup.mjs",
+    "memora:set-password": "pnpm --filter @memora/server build && node scripts/set-password.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.15.0",
+    "prettier": "^3.3.0",
+    "typescript": "~5.6.0",
+    "typescript-eslint": "^8.x",
+    "vitest": "^2.1.0"
+  },
+  "dependencies": {}
+}

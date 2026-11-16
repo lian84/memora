@@ -1,0 +1,483 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Message } from './Message';
+import { Composer } from './Composer';
+import { ProjectFilesPanel } from './ProjectFilesPanel';
+import { SessionContextPanel } from './SessionContextPanel';
+import { SaveMemoryDialog } from './SaveMemoryDialog';
+import { useSSE } from '../hooks/useSSE';
+import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings } from '@memora/shared';
+import type { ChatMessage } from '../lib/api';
+import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, updateSessionContext, uploadChatAttachment } from '../lib/api';
+
+interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
+export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
+
+export function appendOptimisticTurn(messages: DisplayChatMessage[], text: string, assistantId: string, timestamp: number, attachments: ChatAttachment[] = []): DisplayChatMessage[] {
+  return [...messages, { id: `user-${assistantId}`, role: 'user', content: text, timestamp, ...(attachments.length > 0 ? { attachments } : {}) }, { id: assistantId, role: 'assistant', content: '', timestamp, streaming: true }];
+}
+
+export function updateStreamingPlaceholder(messages: DisplayChatMessage[], assistantId: string, content: string, streaming: boolean): DisplayChatMessage[] {
+  return messages.map((message) => message.id === assistantId ? { ...message, content, streaming } : message);
+}
+interface ChatProps {
+  sessionId: string | null;
+  messages: DisplayChatMessage[];
+  onStartTurn: (text: string, assistantId: string, timestamp: number, attachments?: ChatAttachment[]) => void;
+  onStreamingUpdate: (assistantId: string, content: string, streaming: boolean) => void;
+  /** Notifica la fine del turno per riallineare la lista sessioni persistite. */
+  onTurnComplete?: () => void;
+  onTruncateFromMessage?: (messageId: string) => void;
+  project?: ProjectRecord | null;
+  projects?: ProjectRecord[];
+  /** La sessione non esiste più (es. bozza persa al riavvio): ne crea una nuova. */
+  onSessionUnavailable?: () => Promise<string>;
+}
+
+function getTextDelta(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return '';
+  const assistantMessageEvent = (payload as { assistantMessageEvent?: unknown }).assistantMessageEvent;
+  if (!assistantMessageEvent || typeof assistantMessageEvent !== 'object') return '';
+  const event = assistantMessageEvent as { type?: unknown; delta?: unknown };
+  return event.type === 'text_delta' && typeof event.delta === 'string' ? normalizePiContent([{ type: 'text', text: event.delta }]) : '';
+}
+function getMemorySources(payload: unknown): MemorySource[] {
+  if (!Array.isArray(payload)) return [];
+  return payload.filter((source): source is MemorySource => {
+    if (!source || typeof source !== 'object') return false;
+    const value = source as Partial<MemorySource>;
+    return typeof value.relativePath === 'string' && typeof value.category === 'string' && (typeof value.heading === 'string' || value.heading === null) && typeof value.startLine === 'number' && typeof value.endLine === 'number';
+  });
+}
+function shouldFinalizeAssistantMessage(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  const value = payload as { message?: unknown; toolResults?: unknown };
+  if (!value.message || typeof value.message !== 'object') return false;
+  const message = value.message as { role?: unknown; stopReason?: unknown; content?: unknown };
+  if (message.role !== 'assistant' || message.stopReason === 'toolUse' || (Array.isArray(value.toolResults) && value.toolResults.length > 0)) return false;
+  return !(Array.isArray(message.content) && message.content.some((block) => block && typeof block === 'object' && (block as { type?: unknown }).type === 'toolCall'));
+}
+
+export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamingContentRef = useRef('');
+  const streamingAssistantIdRef = useRef<string | null>(null);
+  const finalizedRef = useRef(false);
+  const [memorySources, setMemorySources] = useState<MemorySource[]>([]);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [filesOpen, setFilesOpen] = useState(() => typeof window === 'undefined' || (Boolean(project) && window.innerWidth > 900));
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  const [projectFilesRevision, setProjectFilesRevision] = useState(0);
+  const [context, setContext] = useState<SessionContextSettings | null>(null);
+  const [contextSaving, setContextSaving] = useState(false);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [artifacts, setArtifacts] = useState<ChatArtifact[]>([]);
+  const [artifactsLoading, setArtifactsLoading] = useState(false);
+  const [artifactsError, setArtifactsError] = useState<string | null>(null);
+  const [pdfExportingId, setPdfExportingId] = useState<string | null>(null);
+  const [pdfNotice, setPdfNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [memoryNotice, setMemoryNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [memoryDialogMessage, setMemoryDialogMessage] = useState<DisplayChatMessage | null>(null);
+  const [composerFocus, setComposerFocus] = useState(0);
+  const { sendMessage, editMessage, abort, isStreaming } = useSSE(sessionId);
+
+  const refreshArtifacts = useCallback(async () => {
+    if (!sessionId) return;
+    setArtifactsLoading(true);
+    setArtifactsError(null);
+    try {
+      setArtifacts(await listSessionArtifacts(sessionId));
+    } catch (err) {
+      setArtifactsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setArtifactsLoading(false);
+    }
+  }, [sessionId]);
+
+  useEffect(() => { void refreshArtifacts(); }, [refreshArtifacts]);
+
+  useEffect(() => {
+    setAttachments([]);
+    setAttachmentError(null);
+    setFilesOpen(typeof window === 'undefined' || (Boolean(project) && window.innerWidth > 900));
+    setPanelExpanded(false);
+    setContext(null);
+    setContextError(null);
+    setArtifacts([]);
+    setArtifactsError(null);
+    if (!sessionId) return;
+    let cancelled = false;
+    void getSessionContext(sessionId)
+      .then(next => { if (!cancelled) setContext(next); })
+      .catch(err => { if (!cancelled) { setContextError(err instanceof Error ? err.message : String(err)); setContext(current => current ?? { ...DEFAULT_SESSION_CONTEXT }); } });
+    return () => { cancelled = true; };
+  }, [sessionId, project?.id]);
+
+  const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, []);
+  useEffect(() => { scrollToBottom(); }, [messages, isStreaming, scrollToBottom]);
+
+  const finalizeStreaming = useCallback(() => {
+    const assistantId = streamingAssistantIdRef.current;
+    if (!assistantId || finalizedRef.current) return;
+    finalizedRef.current = true;
+    onStreamingUpdate(assistantId, streamingContentRef.current, false);
+  }, [onStreamingUpdate]);
+
+  const addUploadedAttachment = useCallback((attachment: ChatAttachment) => {
+    setAttachments(current => current.some(item => item.id === attachment.id) ? current : [...current, attachment].slice(0, 8));
+    if (attachment.projectPath) setProjectFilesRevision(revision => revision + 1);
+  }, []);
+
+  const handleFilesSelected = useCallback(async (files: FileList) => {
+    if (!sessionId) return;
+    const selected = Array.from(files);
+    if (selected.length === 0) return;
+    if (attachments.length + selected.length > 8) {
+      setAttachmentError('Massimo 8 allegati per messaggio.');
+      return;
+    }
+    setAttachmentError(null);
+    setAttachmentBusy(true);
+    const uploadTo = async (targetSessionId: string) => {
+      for (const file of selected) {
+        const attachment = await uploadChatAttachment(targetSessionId, file);
+        addUploadedAttachment(attachment);
+      }
+    };
+    try {
+      await uploadTo(sessionId);
+    } catch (err) {
+      if (isSessionNotFoundError(err) && onSessionUnavailable) {
+        try {
+          const newSessionId = await onSessionUnavailable();
+          await uploadTo(newSessionId);
+          setAttachmentError('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato gli allegati.');
+        } catch (recoveryError) {
+          setAttachmentError(recoveryError instanceof Error ? recoveryError.message : String(recoveryError));
+        }
+      } else {
+        setAttachmentError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }, [sessionId, attachments.length, addUploadedAttachment, onSessionUnavailable]);
+
+  const handleAttachProjectFile = useCallback(async (file: ProjectFileInfo) => {
+    if (!sessionId || !project) return;
+    if (attachments.length >= 8) throw new Error('Massimo 8 allegati per messaggio.');
+    setAttachmentBusy(true);
+    setAttachmentError(null);
+    try {
+      const attachment = await attachProjectFileToSession(sessionId, project.id, file.path);
+      addUploadedAttachment(attachment);
+    } catch (err) {
+      if (isSessionNotFoundError(err) && onSessionUnavailable) {
+        const newSessionId = await onSessionUnavailable();
+        const attachment = await attachProjectFileToSession(newSessionId, project.id, file.path);
+        addUploadedAttachment(attachment);
+        setAttachmentError('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato l’allegato.');
+      } else {
+        const message = err instanceof Error ? err.message : String(err);
+        setAttachmentError(message);
+        throw err;
+      }
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }, [sessionId, project, attachments.length, addUploadedAttachment, onSessionUnavailable]);
+
+  const handleAttachArtifact = useCallback(async (artifact: ChatArtifact) => {
+    if (!sessionId) throw new Error('Nessuna chat attiva.');
+    if (attachments.length >= 8) throw new Error('Massimo 8 allegati per messaggio.');
+    setAttachmentBusy(true);
+    setAttachmentError(null);
+    const attachTo = async (targetSessionId: string) => {
+      const attachment = await attachArtifactToSession(targetSessionId, artifact.id);
+      addUploadedAttachment(attachment);
+    };
+    try {
+      await attachTo(sessionId);
+      setComposerFocus(value => value + 1);
+    } catch (err) {
+      if (isSessionNotFoundError(err) && onSessionUnavailable) {
+        const newSessionId = await onSessionUnavailable();
+        await attachTo(newSessionId);
+        setAttachmentError('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato l’allegato.');
+        setComposerFocus(value => value + 1);
+      } else {
+        const message = err instanceof Error ? err.message : String(err);
+        setAttachmentError(message);
+        throw err;
+      }
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }, [sessionId, attachments.length, addUploadedAttachment, onSessionUnavailable]);
+
+  const handleAddArtifactToProject = useCallback(async (artifact: ChatArtifact) => {
+    if (!project || !sessionId) throw new Error('Nessun progetto attivo per questa chat.');
+    const result = await importArtifactIntoProject(project.id, sessionId, artifact.id);
+    setProjectFilesRevision(revision => revision + 1);
+    return result;
+  }, [project, sessionId]);
+
+function extractHtmlFromMessage(content: string): string | null {
+  const fenced = content.match(/```(?:html|htm)?\s*\n([\s\S]*?)\n?```/i);
+  const candidate = fenced?.[1]?.trim() ?? content.trim();
+  return /<\s*(?:!doctype|html|body|style|div|h[1-6]|table|section)\b/i.test(candidate) ? candidate : null;
+}
+
+function messageTitle(content: string, html: string | null): string {
+  if (html) {
+    const heading = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, '').trim();
+    if (heading) return heading.slice(0, 120);
+    return 'Documento PDF';
+  }
+  const firstLine = content.split('\n').map(line => line.replace(/^#+\s*/, '').trim()).find(Boolean) ?? 'Risposta Memo';
+  return firstLine.slice(0, 120);
+}
+
+  const handleExportPdf = useCallback(async (message: DisplayChatMessage) => {
+    if (!sessionId || message.role !== 'assistant' || !message.content.trim()) return;
+    const html = extractHtmlFromMessage(message.content);
+    const title = messageTitle(message.content, html);
+    setPdfExportingId(message.id);
+    setPdfNotice(null);
+    try {
+      const artifact = await createSessionPdf(sessionId, html
+        ? { title, format: 'html', html, filename: 'risposta-pi.pdf' }
+        : { title, format: 'markdown', markdown: message.content, filename: 'risposta-pi.pdf' });
+      setPdfNotice({ text: `PDF creato: ${artifact.name}`, error: false });
+      await refreshArtifacts();
+    } catch (err) {
+      setPdfNotice({ text: err instanceof Error ? err.message : String(err), error: true });
+    } finally {
+      setPdfExportingId(null);
+    }
+  }, [sessionId, refreshArtifacts]);
+
+  const handleSaveMemory = useCallback((message: DisplayChatMessage) => {
+    if (!sessionId || message.role !== 'assistant' || !message.content.trim()) return;
+    setMemoryDialogMessage(message);
+    setMemoryNotice(null);
+  }, [sessionId]);
+
+  const handleContextChange = useCallback(async (patch: Partial<SessionContextSettings>) => {
+    if (!sessionId) return;
+    setContextSaving(true);
+    setContextError(null);
+    try {
+      setContext(await updateSessionContext(sessionId, patch));
+    } catch (err) {
+      setContextError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setContextSaving(false);
+    }
+  }, [sessionId]);
+
+  const handleRemoveAttachment = useCallback((id: string) => {
+    setAttachments(current => current.filter(attachment => attachment.id !== id));
+    if (sessionId) void deleteChatAttachment(sessionId, id).catch(() => undefined);
+  }, [sessionId]);
+
+  const handleSend = useCallback(async (text: string) => {
+    const timestamp = Date.now();
+    const assistantId = `stream-${timestamp}-${Math.random().toString(36).slice(2)}`;
+    streamingAssistantIdRef.current = assistantId;
+    streamingContentRef.current = '';
+    finalizedRef.current = false;
+    setMemorySources([]);
+    const pendingAttachments = attachments;
+    setAttachments([]);
+    setAttachmentError(null);
+    onStartTurn(text, assistantId, timestamp, pendingAttachments);
+    try {
+      await sendMessage(text, (event) => {
+        const delta = event.type === 'message_update' ? getTextDelta(event.payload) : '';
+        if (delta) {
+          streamingContentRef.current += delta;
+          onStreamingUpdate(assistantId, streamingContentRef.current, true);
+        }
+        if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+        if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
+        if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
+        if (event.type === 'agent_end' || event.type === 'agent_settled') finalizeStreaming();
+      }, pendingAttachments.map(attachment => attachment.id));
+    } catch (err) {
+      setAttachments(pendingAttachments);
+      setAttachmentError(err instanceof Error ? err.message : String(err));
+    } finally {
+      finalizeStreaming();
+      onTurnComplete?.();
+      setComposerFocus(value => value + 1);
+      void refreshArtifacts();
+    }
+  }, [attachments, finalizeStreaming, onStartTurn, onStreamingUpdate, sendMessage, onTurnComplete, refreshArtifacts]);
+
+  const handleEditMessage = useCallback(async (message: DisplayChatMessage, text: string) => {
+    if (!sessionId || !message.entryId || !text.trim()) return;
+    const timestamp = Date.now();
+    const assistantId = `stream-${timestamp}-${Math.random().toString(36).slice(2)}`;
+    streamingAssistantIdRef.current = assistantId;
+    streamingContentRef.current = '';
+    finalizedRef.current = false;
+    setMemorySources([]);
+    setAttachmentError(null);
+    onTruncateFromMessage?.(message.id);
+    onStartTurn(text.trim(), assistantId, timestamp);
+    try {
+      await editMessage(message.entryId, text.trim(), (event) => {
+        const delta = event.type === 'message_update' ? getTextDelta(event.payload) : '';
+        if (delta) {
+          streamingContentRef.current += delta;
+          onStreamingUpdate(assistantId, streamingContentRef.current, true);
+        }
+        if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+        if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
+        if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
+        if (event.type === 'agent_end' || event.type === 'agent_settled') finalizeStreaming();
+      });
+    } catch (err) {
+      setAttachmentError(err instanceof Error ? err.message : String(err));
+    } finally {
+      finalizeStreaming();
+      onTurnComplete?.();
+      setComposerFocus(value => value + 1);
+    }
+  }, [sessionId, editMessage, onTruncateFromMessage, onStartTurn, onStreamingUpdate, finalizeStreaming, onTurnComplete]);
+
+  const handleRegenerate = useCallback((message: DisplayChatMessage) => {
+    if (!sessionId || !message.content.trim()) return;
+    void handleSend('Riformula la risposta precedente in modo più chiaro, completo e ben organizzato, mantenendo lo stesso contenuto e gli stessi fatti.');
+  }, [sessionId, handleSend]);
+
+  const handleAbort = useCallback(() => { abort(); finalizeStreaming(); setComposerFocus(value => value + 1); }, [abort, finalizeStreaming]);
+
+  return (
+    <div className={`chat-layout${project || context ? ' has-side-panel' : ''}`}>
+      <div className="chat-area">
+      {(project || context) && !filesOpen && (
+        <button type="button" className="project-files-reopen" onClick={() => setFilesOpen(true)} title={project ? 'Apri file del progetto' : 'Apri contesto chat'}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></svg>
+          <span>{project ? 'File progetto' : 'Contesto'}</span>
+        </button>
+      )}
+      <div className="messages-container">
+        {messages.length === 0 && (
+          <div className="chat-empty">
+            <span className="chat-empty-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+                <path d="M8 9h8M8 13h5" />
+              </svg>
+            </span>
+            <h2>Inizia la conversazione</h2>
+            <p>Scrivi un messaggio qui sotto. Memo userà il contesto del Second Brain quando utile.</p>
+          </div>
+        )}
+
+        {messages.map((message) => (
+          <div className="message-row" key={message.id}>
+            <Message role={message.role} content={message.content} timestamp={message.timestamp} streaming={message.streaming} attachments={message.attachments} sessionId={sessionId} onExportPdf={message.role === 'assistant' && !isStreaming ? () => void handleExportPdf(message) : undefined} onSaveMemory={message.role === 'assistant' && !isStreaming ? () => void handleSaveMemory(message) : undefined} onRegenerate={message.role === 'assistant' && !isStreaming ? () => handleRegenerate(message) : undefined} onEditText={message.role === 'user' && message.entryId && !isStreaming ? (text: string) => handleEditMessage(message, text) : undefined} exportingPdf={pdfExportingId === message.id} hideHtmlCode={message.role === 'assistant' && artifacts.some(artifact => artifact.kind === 'pdf' || artifact.kind === 'html' || artifact.kind === 'pptx')} />
+          </div>
+        ))}
+
+        {memorySources.length > 0 && (
+          <aside className="memory-used">
+            <div className="memory-used-header">Memoria utilizzata ({memorySources.length})</div>
+            <div className="memory-used-list">
+              {memorySources.map((source, index) => (
+                <div className="memory-source" key={`${source.relativePath}-${index}`}>
+                  <span className="memory-source-path">{source.relativePath}</span>
+                  <span className="memory-source-meta">{source.category}</span>
+                  {source.heading && <span className="memory-source-meta">· {source.heading}</span>}
+                  <span className="memory-source-meta">L{source.startLine}-L{source.endLine}</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      {pdfNotice && <div className={`chat-notice${pdfNotice.error ? ' is-error' : ''}`} role="status">{pdfNotice.text}</div>}
+      {memoryNotice && <div className={`chat-notice${memoryNotice.error ? ' is-error' : ''}`} role="status">{memoryNotice.text}</div>}
+      <Composer
+        onSend={handleSend}
+        onAbort={handleAbort}
+        disabled={!sessionId}
+        isStreaming={isStreaming}
+        focusKey={`${sessionId}:${composerFocus}`}
+        attachments={attachments}
+        onFilesSelected={handleFilesSelected}
+        onRemoveAttachment={handleRemoveAttachment}
+        attachmentBusy={attachmentBusy}
+        attachmentError={attachmentError}
+      />
+      </div>
+      {project && filesOpen && (
+        <ProjectFilesPanel
+          project={project}
+          onClose={() => setFilesOpen(false)}
+          onAttach={handleAttachProjectFile}
+          context={context ?? DEFAULT_SESSION_CONTEXT}
+          contextSaving={contextSaving}
+          contextError={contextError}
+          onContextChange={handleContextChange}
+          refreshKey={projectFilesRevision}
+          expanded={panelExpanded}
+          onToggleExpanded={() => setPanelExpanded(value => !value)}
+          sessionId={sessionId}
+          artifacts={artifacts}
+          artifactsLoading={artifactsLoading}
+          artifactsError={artifactsError}
+          onRefreshArtifacts={() => void refreshArtifacts()}
+          onAttachArtifact={handleAttachArtifact}
+          onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
+        />
+      )}
+      {memoryDialogMessage && sessionId && (() => {
+        const index = messages.findIndex(item => item.id === memoryDialogMessage.id);
+        const question = index > 0 ? [...messages.slice(0, index)].reverse().find(item => item.role === 'user')?.content : undefined;
+        const context = messages.slice(Math.max(0, index - 5), index).map(item => `${item.role === 'user' ? 'Utente' : 'Memo'}: ${item.content.slice(0, 700)}`);
+        return (
+        <SaveMemoryDialog
+          sessionId={sessionId}
+          content={memoryDialogMessage.content}
+          question={question}
+          context={context}
+          sourceMessageId={memoryDialogMessage.entryId}
+          sourceTimestamp={memoryDialogMessage.timestamp}
+          projects={projects}
+          defaultProjectId={project?.id ?? null}
+          onClose={() => setMemoryDialogMessage(null)}
+          onSaved={(candidates) => {
+            setMemoryDialogMessage(null);
+            const first = candidates[0]?.proposedText ?? '';
+            setMemoryNotice({ text: `${candidates.length} candidat${candidates.length === 1 ? 'o' : 'i'} creat${candidates.length === 1 ? 'o' : 'i'}${first ? `: ${first.slice(0, 90)}${first.length > 90 ? '…' : ''}` : ''}`, error: false });
+          }}
+        />
+        );
+      })()}
+      {!project && filesOpen && (
+        <SessionContextPanel
+          context={context}
+          saving={contextSaving}
+          error={contextError}
+          onClose={() => setFilesOpen(false)}
+          expanded={panelExpanded}
+          onToggleExpanded={() => setPanelExpanded(value => !value)}
+          onChange={handleContextChange}
+          sessionId={sessionId}
+          artifacts={artifacts}
+          artifactsLoading={artifactsLoading}
+          artifactsError={artifactsError}
+          onRefreshArtifacts={() => void refreshArtifacts()}
+          onAttachArtifact={handleAttachArtifact}
+          onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
+        />
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,38 @@
+[Unit]
+Description=Memora — self-hosted personal assistant
+Documentation=file:///opt/memora/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=memora
+Group=memora
+WorkingDirectory=/opt/memora
+
+# systemd non espande "~": EnvironmentFile richiede un path assoluto.
+# Adatta User, Group, WorkingDirectory, EnvironmentFile e le variabili al
+# deployment reale. Nessun segreto deve essere scritto in questa unit.
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/memora/memora.env
+# ExecStart forza NODE_ENV=production anche se il file secrets contiene NODE_ENV.
+ExecStart=/usr/bin/env NODE_ENV=production node apps/server/dist/index.js
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# Logging: journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=memora
+
+# Hardening di base. Se si abilita ProtectSystem/ProtectHome, aggiungere
+# MEMORA_DATA_DIR (e l'eventuale EnvironmentFile) alle eccezioni con
+# ReadWritePaths=/percorso/assoluto/della/data-directory.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "dataset": "second-brain-retrieval-v1",
+  "generatedAt": "2026-11-15T00:17:43.959Z",
+  "config": {
+    "topK": 10,
+    "maxChars": 50000,
+    "embedding": {
+      "model": "Horizon-Labs/multilingual-embedding-small",
+      "dimensions": 1024
+    }
+  },
+  "retrieval": {
+    "lexical": {
+      "queries": 46,
+      "recallAt": {
+        "1": 0.7934782608695652,
+        "3": 0.9275362318840579,
+        "5": 0.9565217391304348,
+        "10": 0.9855072463768116
+      },
+      "precisionAt": {
+        "1": 0.8260869565217391,
+        "3": 0.3333333333333335,
+        "5": 0.2130434782608696,
+        "10": 0.11304347826086959
+      },
+      "ndcgAt": {
+        "1": 0.8260869565217391,
+        "3": 0.8900747783355222,
+        "5": 0.9027276172128755,
+        "10": 0.9137385804272166
+      },
+      "mrr": 0.8956521739130434,
+      "latencyMeanMs": 0.325574739130428,
+      "latencyP50Ms": 0.3214109999998982,
+      "latencyP95Ms": 0.4375340000005963,
+      "contextCharsMean": 534.7826086956521,
+      "estimatedTokensMean": 134.1086956521739
+    },
+    "semantic": {
+      "queries": 46,
+      "recallAt": {
+        "1": 0.9384057971014492,
+        "3": 0.9855072463768116,
+        "5": 0.9855072463768116,
+        "10": 0.9855072463768116
+      },
+      "precisionAt": {
+        "1": 0.9782608695652174,
+        "3": 0.3623188405797103,
+        "5": 0.21739130434782614,
+        "10": 0.10869565217391307
+      },
+      "ndcgAt": {
+        "1": 0.9782608695652174,
+        "3": 0.9868987933185089,
+        "5": 0.9822854418624116,
+        "10": 0.9809892855508812
+      },
+      "mrr": 0.9891304347826086,
+      "latencyMeanMs": 25.93007693478249,
+      "latencyP50Ms": 25.046927000000323,
+      "latencyP95Ms": 29.89590700000008,
+      "contextCharsMean": 501.54347826086956,
+      "estimatedTokensMean": 125.73913043478261
+    },
+    "hybrid": {
+      "queries": 46,
+      "recallAt": {
+        "1": 0.8623188405797101,
+        "3": 0.9782608695652174,
+        "5": 0.9855072463768116,
+        "10": 0.996376811594203
+      },
+      "precisionAt": {
+        "1": 0.9130434782608695,
+        "3": 0.36231884057971026,
+        "5": 0.22608695652173919,
+        "10": 0.11521739130434784
+      },
+      "ndcgAt": {
+        "1": 0.9130434782608695,
+        "3": 0.9586240728206199,
+        "5": 0.9586240728206199,
+        "10": 0.9594991119718898
+      },
+      "mrr": 0.9528985507246377,
+      "latencyMeanMs": 28.783636304347848,
+      "latencyP50Ms": 27.090849000000162,
+      "latencyP95Ms": 44.59630600000037,
+      "contextCharsMean": 550.2608695652174,
+      "estimatedTokensMean": 138
+    }
+  },
+  "curator": {
+    "mode": "replay",
+    "metrics": {
+      "total": 15,
+      "correct": 14,
+      "accuracy": 0.9333333333333333,
+      "rejected": 1,
+      "errored": 2,
+      "falsePositives": 0,
+      "falseNegatives": 1,
+      "macroF1": 0.9595959595959596,
+      "updateIntentAccuracy": 0.8,
+      "updateIntentSupport": 5,
+      "byClass": {
+        "new": {
+          "support": 3,
+          "predicted": 3,
+          "truePositives": 3,
+          "falsePositives": 0,
+          "falseNegatives": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1
+        },
+        "update": {
+          "support": 5,
+          "predicted": 4,
+          "truePositives": 4,
+          "falsePositives": 0,
+          "falseNegatives": 1,
+          "precision": 1,
+          "recall": 0.8,
+          "f1": 0.888888888888889
+        },
+        "duplicate": {
+          "support": 1,
+          "predicted": 1,
+          "truePositives": 1,
+          "falsePositives": 0,
+          "falseNegatives": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1
+        },
+        "conflict": {
+          "support": 1,
+          "predicted": 1,
+          "truePositives": 1,
+          "falsePositives": 0,
+          "falseNegatives": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1
+        },
+        "none": {
+          "support": 5,
+          "predicted": 6,
+          "truePositives": 5,
+          "falsePositives": 1,
+          "falseNegatives": 0,
+          "precision": 0.8333333333333334,
+          "recall": 1,
+          "f1": 0.9090909090909091
+        }
+      },
+      "confusion": {
+        "new": {
+          "new": 3,
+          "update": 0,
+          "duplicate": 0,
+          "conflict": 0,
+          "none": 0
+        },
+        "update": {
+          "new": 0,
+          "update": 4,
+          "duplicate": 0,
+          "conflict": 0,
+          "none": 1
+        },
+        "duplicate": {
+          "new": 0,
+          "update": 0,
+          "duplicate": 1,
+          "conflict": 0,
+          "none": 0
+        },
+        "conflict": {
+          "new": 0,
+          "update": 0,
+          "duplicate": 0,
+          "conflict": 1,
+          "none": 0
+        },
+        "none": {
+          "new": 0,
+          "update": 0,
+          "duplicate": 0,
+          "conflict": 0,
+          "none": 5
+        }
+      }
+    }
+  }
+}

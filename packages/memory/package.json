@@ -1,0 +1,22 @@
+{
+  "name": "@memora/memory",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Memora — Servizio Second Brain (Markdown scanner, SQLite FTS5, retrieval)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "typescript": "~5.6.0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.2",
+    "@memora/shared": "workspace:*",
+    "better-sqlite3": "^11.0.0",
+    "sqlite-vec": "0.1.9"
+  }
+}

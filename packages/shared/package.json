@@ -1,0 +1,16 @@
+{
+  "name": "@memora/shared",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tipi e costanti condivisi tra app e package",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.0"
+  },
+  "dependencies": {}
+}

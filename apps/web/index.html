@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Memora</title>
+    <script>
+      (() => {
+        try {
+          const stored = JSON.parse(localStorage.getItem('memora-appearance') || 'null') || {};
+          const theme = stored.theme === 'light' || stored.theme === 'dark'
+            ? stored.theme
+            : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          const root = document.documentElement;
+          root.dataset.theme = theme;
+          root.dataset.themeMode = stored.theme || 'system';
+          root.dataset.fontSize = stored.fontSize || 'normal';
+          root.dataset.density = stored.density || 'comfortable';
+          root.dataset.chatWidth = stored.wideChat ? 'wide' : 'standard';
+          root.dataset.reducedMotion = stored.reducedMotion ? 'true' : 'false';
+        } catch {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

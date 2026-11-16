@@ -1,0 +1,544 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Sidebar } from './components/Sidebar';
+import { Chat, appendOptimisticTurn, updateStreamingPlaceholder, type DisplayChatMessage } from './components/Chat';
+import { ModelSelector } from './components/ModelSelector';
+import { ReasoningSelector } from './components/ReasoningSelector';
+import { SecondBrainPage } from './components/SecondBrainPage';
+import { ChatMemoryPanel } from './components/ChatMemoryPanel';
+import { AdminSettings } from './components/AdminSettings';
+import { ProjectSettings } from './components/ProjectSettings';
+import { NewProjectDialog } from './components/NewProjectDialog';
+import { ProjectDeleteDialog } from './components/ProjectDeleteDialog';
+import { useAuth } from './components/AuthGate';
+import { useSessions } from './hooks/useSessions';
+import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
+import { selectedSessionAfterDelete } from './lib/selectionState';
+import { getAdminStatus, listProjects, setSessionReasoningLevel } from './lib/api';
+import { initAppearance, updateAppearance, useAppearance } from './lib/appearance';
+import type { ChatAttachment, ProjectRecord, ProviderId, ReasoningLevel } from '@memora/shared';
+
+const SESSION_STORAGE_KEY = 'memora-selected-session';
+const PROJECT_STORAGE_KEY = 'memora-selected-project';
+
+function getSessionFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('session') || null;
+}
+
+function setSessionInUrl(sessionId: string | null): void {
+  if (typeof window === 'undefined' || !window.history) return;
+  const params = new URLSearchParams(window.location.search);
+  if (sessionId) {
+    params.set('session', sessionId);
+  } else {
+    params.delete('session');
+  }
+  window.history.replaceState(
+    {},
+    '',
+    `${window.location.pathname}?${params.toString()}${window.location.hash}`,
+  );
+}
+
+export default function App() {
+  const {
+    sessions,
+    loading,
+    error,
+    load,
+    create,
+    getMessages,
+    resume,
+    rename,
+    archive,
+    remove,
+  } = useSessions();
+  const storedSelection = readStoredModelSelection();
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderId>(storedSelection?.provider ?? 'openrouter');
+  const [selectedModelId, setSelectedModelId] = useState<string>(storedSelection?.modelId ?? '');
+  const [selectedReasoningLevel, setSelectedReasoningLevel] = useState<ReasoningLevel>(storedSelection?.reasoningLevel ?? 'medium');
+  const [messages, setMessages] = useState<DisplayChatMessage[]>([]);
+  const [archivedView, setArchivedView] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [memoryRevision, setMemoryRevision] = useState(0);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [secondBrainOpen, setSecondBrainOpen] = useState(false);
+  const [secondBrainScope, setSecondBrainScope] = useState('all');
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => typeof window === 'undefined' ? null : localStorage.getItem(PROJECT_STORAGE_KEY));
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [projectDeleteTarget, setProjectDeleteTarget] = useState<ProjectRecord | null>(null);
+  const explicitModelSelection = useRef(false);
+  const appearance = useAppearance();
+  const { logout } = useAuth();
+
+  useEffect(() => { initAppearance(); }, []);
+
+  useEffect(() => {
+    void getAdminStatus()
+      .then((status) => {
+        setSelectedProvider(status.chat.provider);
+        if (explicitModelSelection.current) return;
+        const stored = readStoredModelSelection();
+        if (stored && stored.provider === status.chat.provider) {
+          setSelectedModelId(stored.modelId);
+          setSelectedReasoningLevel(stored.reasoningLevel);
+        } else {
+          clearStoredModelSelection();
+          setSelectedModelId(status.chat.model);
+          setSelectedReasoningLevel(status.chat.reasoningLevel);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const loadProjects = useCallback(async () => {
+    try {
+      const next = await listProjects();
+      setProjects(next);
+      setSelectedProjectId(current => {
+        if (current && !next.some(project => project.id === current)) {
+          localStorage.removeItem(PROJECT_STORAGE_KEY);
+          return null;
+        }
+        return current;
+      });
+    } catch {
+      setProjects([]);
+    }
+  }, []);
+
+  useEffect(() => { void loadProjects(); }, [loadProjects]);
+
+  useEffect(() => {
+    const onDefaultChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ model: string; provider: ProviderId; reasoningLevel: ReasoningLevel }>).detail;
+      if (!detail?.model || !detail.provider) return;
+      clearStoredModelSelection();
+      explicitModelSelection.current = true;
+      setSelectedProvider(detail.provider);
+      setSelectedModelId(detail.model);
+      setSelectedReasoningLevel(detail.reasoningLevel ?? 'medium');
+    };
+    window.addEventListener('memora-chat-default-changed', onDefaultChanged);
+    return () => window.removeEventListener('memora-chat-default-changed', onDefaultChanged);
+  }, []);
+
+  const selectedProject = projects.find(project => project.id === selectedProjectId) ?? null;
+  const visibleSessions = selectedProjectId ? sessions.filter(session => session.projectId === selectedProjectId) : sessions;
+  const selectedSession = sessions.find((session) => session.sessionId === selectedSessionId);
+  const chatProject = selectedProject
+    ?? (selectedSession?.projectId ? projects.find(project => project.id === selectedSession.projectId) ?? null : null);
+  const selectedSessionTitle = adminOpen
+    ? 'Amministrazione'
+    : secondBrainOpen
+      ? 'Second Brain'
+      : projectOpen && selectedProject
+      ? selectedProject.name
+      : selectedSession
+        ? selectedSession.draft
+          ? 'Nuova chat'
+          : selectedSession.name ?? selectedSession.firstMessage ?? '(nessun messaggio)'
+        : selectedProject ? selectedProject.name : 'Memora';
+
+  const loadMessages = useCallback(
+    async (sessionId: string) => {
+      const msgs = await getMessages(sessionId);
+      setMessages(msgs.map((message, index) => ({ ...message, id: `history-${message.timestamp}-${index}` })));
+    },
+    [getMessages],
+  );
+
+  // Ripristina solo un ID realmente presente nella lista. In particolare, non
+  // provare mai a fare resume/get messages di un valore stale in URL/storage.
+  useEffect(() => {
+    if (selectedSessionId || loading) return;
+    const urlSession = getSessionFromUrl();
+    const stored = localStorage.getItem(SESSION_STORAGE_KEY);
+    const initial = urlSession || stored || null;
+    if (!initial) return;
+    if (!sessions.some((session) => session.sessionId === initial)) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      setSessionInUrl(null);
+      setMessages([]);
+      return;
+    }
+    setSelectedSessionId(initial);
+    void loadMessages(initial);
+  }, [loading, selectedSessionId, sessions, loadMessages]);
+
+  const handleSelectProject = useCallback((projectId: string | null) => {
+    setSelectedProjectId(projectId);
+    setProjectOpen(false);
+    setAdminOpen(false);
+    setSecondBrainOpen(false);
+    if (projectId) localStorage.setItem(PROJECT_STORAGE_KEY, projectId);
+    else localStorage.removeItem(PROJECT_STORAGE_KEY);
+    if (projectId && selectedSession && selectedSession.projectId !== projectId) {
+      setSelectedSessionId(null);
+      setMessages([]);
+      setSessionInUrl(null);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  }, [selectedSession]);
+
+  const handleOpenSecondBrain = useCallback((scope = 'all') => {
+    setSecondBrainScope(scope);
+    setSecondBrainOpen(true);
+    setAdminOpen(false);
+    setProjectOpen(false);
+    setSidebarOpen(false);
+  }, []);
+
+  const handleToggleSidebar = useCallback(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches) {
+      setSidebarOpen(open => !open);
+      return;
+    }
+    updateAppearance({ sidebarCollapsed: !appearance.sidebarCollapsed });
+  }, [appearance.sidebarCollapsed]);
+
+  useEffect(() => {
+    const onShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault();
+        handleToggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
+  }, [handleToggleSidebar]);
+
+  const handleProjectSaved = useCallback((project: ProjectRecord) => {
+    setProjects(current => current.map(item => item.id === project.id ? project : item));
+    setMemoryRevision(revision => revision + 1);
+  }, []);
+
+  const handleProjectCreated = useCallback((project: ProjectRecord) => {
+    setProjects(current => [...current, project].sort((a, b) => a.name.localeCompare(b.name, 'it')));
+    setSelectedProjectId(project.id);
+    localStorage.setItem(PROJECT_STORAGE_KEY, project.id);
+    setSelectedSessionId(null);
+    setMessages([]);
+    setSessionInUrl(null);
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    setNewProjectOpen(false);
+    setProjectOpen(true);
+    setAdminOpen(false);
+    setSecondBrainOpen(false);
+  }, []);
+
+  const handleEditProject = useCallback((projectId: string) => {
+    setSelectedProjectId(projectId);
+    localStorage.setItem(PROJECT_STORAGE_KEY, projectId);
+    if (selectedSession && selectedSession.projectId !== projectId) {
+      setSelectedSessionId(null);
+      setMessages([]);
+      setSessionInUrl(null);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+    setProjectOpen(true);
+    setAdminOpen(false);
+    setSecondBrainOpen(false);
+    setSidebarOpen(false);
+  }, [selectedSession]);
+
+  const handleProjectDeleted = useCallback((projectId: string) => {
+    setProjects(current => current.filter(project => project.id !== projectId));
+    setProjectDeleteTarget(null);
+    const sessionBelongsToProject = selectedSession?.projectId === projectId;
+    if (selectedProjectId === projectId) {
+      setSelectedProjectId(null);
+      localStorage.removeItem(PROJECT_STORAGE_KEY);
+      setProjectOpen(false);
+    }
+    if (selectedProjectId === projectId || sessionBelongsToProject) {
+      setSelectedSessionId(null);
+      setMessages([]);
+      setSessionInUrl(null);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+    setMemoryRevision(revision => revision + 1);
+    void load(archivedView);
+  }, [archivedView, load, selectedProjectId, selectedSession?.projectId]);
+
+  const handleToggleArchivedView = useCallback(() => {
+    setArchivedView((prev) => {
+      const next = !prev;
+      // Il toggle è anche il cambio del filtro backend: non riusare la lista
+      // della vista precedente e non affidarsi a uno snapshot React stale.
+      void load(next);
+      return next;
+    });
+  }, [load]);
+
+  const handleSelectSession = useCallback(
+    async (sessionId: string) => {
+      setAdminOpen(false);
+      setSecondBrainOpen(false);
+      setSelectedSessionId(sessionId);
+      setSessionInUrl(sessionId);
+      localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+      setSidebarOpen(false);
+      const result = await resume(sessionId);
+      // Sincronizza il selettore con il modello persistito nella sessione,
+      // senza sovrascrivere la preferenza di default in localStorage.
+      if (result?.modelId) {
+        explicitModelSelection.current = true;
+        setSelectedModelId(result.modelId);
+        if (result.reasoningLevel) setSelectedReasoningLevel(result.reasoningLevel);
+      }
+      await loadMessages(sessionId);
+    },
+    [resume, loadMessages],
+  );
+
+  const handleNewSession = useCallback(async (): Promise<string> => {
+    const result = await create(selectedModelId || undefined, selectedProvider, selectedReasoningLevel, selectedProjectId ?? undefined);
+    const id = result.sessionId;
+    explicitModelSelection.current = true;
+    if (result.modelId) setSelectedModelId(result.modelId);
+    if (result.reasoningLevel) setSelectedReasoningLevel(result.reasoningLevel);
+    setAdminOpen(false);
+    setProjectOpen(false);
+    setSecondBrainOpen(false);
+    setSelectedSessionId(id);
+    setSessionInUrl(id);
+    localStorage.setItem(SESSION_STORAGE_KEY, id);
+    setMessages([]);
+    // Una nuova chat appartiene sempre alla vista attive, anche se l'utente
+    // stava guardando l'archivio quando ha premuto “Nuova chat”.
+    setArchivedView(false);
+    setSidebarOpen(false);
+    await load(false);
+    return id;
+  }, [create, load, selectedModelId, selectedProvider, selectedReasoningLevel, selectedProjectId]);
+
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    await remove(sessionId);
+    const nextSelectedSessionId = selectedSessionAfterDelete(selectedSessionId, sessionId);
+    if (nextSelectedSessionId !== selectedSessionId) {
+      setSelectedSessionId(nextSelectedSessionId);
+      setMessages([]);
+      setSessionInUrl(null);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      return;
+    }
+
+    // Difesa aggiuntiva contro un riferimento stale rimasto solo in URL o
+    // localStorage, anche quando la chat aperta corrente è un'altra.
+    if (getSessionFromUrl() === sessionId) setSessionInUrl(null);
+    if (localStorage.getItem(SESSION_STORAGE_KEY) === sessionId) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  }, [remove, selectedSessionId]);
+
+  const handleRecoverSession = useCallback(async (): Promise<string> => {
+    return handleNewSession();
+  }, [handleNewSession]);
+
+  const handleStartTurn = useCallback((text: string, assistantId: string, timestamp: number, attachments: ChatAttachment[] = []) => {
+    // User e placeholder assistant entrano nello stesso aggiornamento atomico e
+    // conservano l'ordine conversazionale, non quello del timestamp.
+    setMessages((previous) => appendOptimisticTurn(previous, text, assistantId, timestamp, attachments));
+  }, []);
+
+  const handleStreamingUpdate = useCallback((assistantId: string, content: string, streaming: boolean) => {
+    setMessages((previous) => updateStreamingPlaceholder(previous, assistantId, content, streaming));
+  }, []);
+
+  const handleTurnComplete = useCallback(() => {
+    // Al primo turno Pi materializza il JSONL della nuova chat: ricarica la
+    // lista per sostituire la bozza in memoria con la sessione persistita.
+    void load(archivedView);
+    if (selectedSessionId) void loadMessages(selectedSessionId);
+    setMemoryRevision((revision) => revision + 1);
+  }, [load, archivedView, selectedSessionId, loadMessages]);
+
+  const handleTruncateFromMessage = useCallback((messageId: string) => {
+    setMessages(current => {
+      const index = current.findIndex(message => message.id === messageId);
+      return index >= 0 ? current.slice(0, index) : current;
+    });
+  }, []);
+
+  return (
+    <div className={`app${appearance.sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+      <div
+        className={`sidebar-scrim${sidebarOpen ? ' is-visible' : ''}`}
+        role="presentation"
+        aria-hidden="true"
+        onClick={() => setSidebarOpen(false)}
+      />
+      <Sidebar
+        sessions={visibleSessions}
+        onSelect={handleSelectSession}
+        onCreate={handleNewSession}
+        onRename={rename}
+        onArchive={archive}
+        onDelete={handleDeleteSession}
+        selectedSessionId={selectedSessionId}
+        loading={loading}
+        error={error}
+        archivedView={archivedView}
+        onToggleArchivedView={handleToggleArchivedView}
+        mobileOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        settingsActive={adminOpen}
+        onOpenSettings={() => {
+          setAdminOpen(true);
+          setProjectOpen(false);
+          setSecondBrainOpen(false);
+          setSidebarOpen(false);
+        }}
+        onOpenSecondBrain={() => handleOpenSecondBrain()}
+        secondBrainActive={secondBrainOpen}
+        onLogout={() => void logout()}
+        projects={projects}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={handleSelectProject}
+        onEditProject={handleEditProject}
+        onDeleteProject={project => setProjectDeleteTarget(project)}
+        onNewProject={() => setNewProjectOpen(true)}
+        projectSettingsActive={projectOpen}
+        collapsed={appearance.sidebarCollapsed}
+      />
+
+      <main className="main-panel">
+        <header className="topbar">
+          <button
+            type="button"
+            className="sidebar-toggle"
+            aria-label={appearance.sidebarCollapsed ? 'Apri la barra chat' : 'Comprimi la barra chat'}
+            aria-expanded={sidebarOpen || !appearance.sidebarCollapsed}
+            title={`${appearance.sidebarCollapsed ? 'Apri' : 'Comprimi'} barra chat (Ctrl+B)`}
+            onClick={handleToggleSidebar}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <div className="topbar-heading">
+            <span className="topbar-eyebrow">{adminOpen ? 'Configurazione runtime' : secondBrainOpen ? 'Memoria personale' : projectOpen ? 'Progetto' : archivedView ? 'Archivio sessioni' : 'Conversazione'}</span>
+            <h1 title={selectedSessionTitle}>{selectedSessionTitle}</h1>
+          </div>
+
+          <div className="topbar-actions">
+            {!adminOpen && !projectOpen && !secondBrainOpen && (
+              <>
+              <ModelSelector
+                sessionId={selectedSessionId}
+                currentModelId={selectedModelId}
+                provider={selectedProvider}
+                onModelChange={(modelId) => {
+                  explicitModelSelection.current = true;
+                  setSelectedModelId(modelId);
+                  saveStoredModelSelection({ modelId, provider: selectedProvider, reasoningLevel: selectedReasoningLevel });
+                }}
+              />
+              <ReasoningSelector
+                value={selectedReasoningLevel}
+                onChange={(level) => {
+                  setSelectedReasoningLevel(level);
+                  if (selectedSessionId) void setSessionReasoningLevel(selectedSessionId, level);
+                  if (selectedModelId) saveStoredModelSelection({ modelId: selectedModelId, provider: selectedProvider, reasoningLevel: level });
+                }}
+              />
+              </>
+            )}
+          </div>
+        </header>
+
+        <div className="workspace">
+          {adminOpen && <AdminSettings onClose={() => setAdminOpen(false)} />}
+
+          {!adminOpen && secondBrainOpen && (
+            <SecondBrainPage
+              projects={projects}
+              refreshKey={memoryRevision}
+              initialScope={secondBrainScope}
+              onClose={() => setSecondBrainOpen(false)}
+            />
+          )}
+
+          {!adminOpen && !secondBrainOpen && projectOpen && selectedProject && (
+            <ProjectSettings
+              project={selectedProject}
+              onClose={() => setProjectOpen(false)}
+              onSaved={handleProjectSaved}
+              onSourcesChanged={() => setMemoryRevision(revision => revision + 1)}
+              onRequestDelete={project => setProjectDeleteTarget(project)}
+            />
+          )}
+
+          {!adminOpen && !secondBrainOpen && !projectOpen && !selectedSessionId && (
+            <section className="empty-state">
+              <span className="empty-state-icon" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
+                  <path d="M8 9h8M8 13h5" />
+                </svg>
+              </span>
+              <h2>
+                {archivedView
+                  ? sessions.length === 0 ? 'Nessuna chat archiviata' : 'Seleziona una chat archiviata'
+                  : sessions.length === 0 ? (selectedProject ? `Nessuna chat per ${selectedProject.name}` : 'Benvenuto in Memora') : 'Seleziona una chat'}
+              </h2>
+              <p>
+                {archivedView
+                  ? 'Le conversazioni archiviate restano disponibili qui.'
+                  : sessions.length === 0
+                    ? 'Crea una nuova conversazione per iniziare a usare Memora.'
+                    : 'Scegli una conversazione dalla sidebar oppure iniziane una nuova.'}
+              </p>
+              {archivedView ? (
+                <button type="button" className="empty-state-action" onClick={handleToggleArchivedView}>
+                  Torna alle chat attive
+                </button>
+              ) : (
+                <button type="button" className="empty-state-action" onClick={() => void handleNewSession()} disabled={loading}>
+                  Nuova chat
+                </button>
+              )}
+            </section>
+          )}
+
+          {!adminOpen && !secondBrainOpen && !projectOpen && selectedSessionId && (
+            <Chat
+              sessionId={selectedSessionId}
+              messages={messages}
+              onStartTurn={handleStartTurn}
+              onStreamingUpdate={handleStreamingUpdate}
+              onTurnComplete={handleTurnComplete}
+              onTruncateFromMessage={handleTruncateFromMessage}
+              project={chatProject}
+              projects={projects}
+              onSessionUnavailable={handleRecoverSession}
+            />
+          )}
+        </div>
+
+        {!adminOpen && !secondBrainOpen && !projectOpen && (
+          <ChatMemoryPanel
+            refreshKey={memoryRevision}
+            projectId={chatProject?.id ?? selectedProjectId}
+            projectName={chatProject?.name}
+            onOpenSecondBrain={handleOpenSecondBrain}
+          />
+        )}
+      </main>
+      {newProjectOpen && <NewProjectDialog onClose={() => setNewProjectOpen(false)} onCreated={handleProjectCreated} />}
+      {projectDeleteTarget && (
+        <ProjectDeleteDialog
+          project={projectDeleteTarget}
+          onClose={() => setProjectDeleteTarget(null)}
+          onDeleted={handleProjectDeleted}
+        />
+      )}
+    </div>
+  );
+}

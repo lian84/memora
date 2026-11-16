@@ -1,0 +1,405 @@
+{
+  "version": 1,
+  "name": "second-brain-retrieval-v1",
+  "description": "Dataset sintetico in italiano. Nessun dato personale reale.",
+  "documents": [
+    {
+      "path": "projects/vega.md",
+      "content": "# Progetto Vega\n\n## Identità\n\n- Il progetto Vega usa il turchese come colore identificativo.\n- Il nome utente del progetto è vega-team.\n\n## Stack\n\n- Vega usa PostgreSQL 16 come database principale.\n- Il runtime di Vega è Node.js 24.\n\n## Deploy\n\n- Vega viene distribuito con Docker Compose su Debian.\n"
+    },
+    {
+      "path": "projects/vega-legacy.md",
+      "content": "# Vega legacy\n\n## Storico\n\n- Prima della migrazione, il colore di Vega era blu.\n- La migrazione legacy è stata completata nel 2024.\n\n## Note\n\n- Il vecchio deployment usava un singolo server.\n"
+    },
+    {
+      "path": "projects/orione.md",
+      "content": "# Progetto Orione\n\n## Database\n\n- Per Orione abbiamo scelto PostgreSQL.\n\n## API\n\n- L'API di Orione richiede un token Bearer per autenticare le richieste.\n\n## Scadenze\n\n- La prima release di Orione è prevista per marzo 2027.\n"
+    },
+    {
+      "path": "projects/luna.md",
+      "content": "# Progetto Luna\n\n- Luna usa MySQL 8 come database.\n- Il colore identificativo di Luna è il blu.\n- Luna espone una dashboard per i report settimanali.\n"
+    },
+    {
+      "path": "projects/sole.md",
+      "content": "# Progetto Sole\n\n## Cache\n\n- Sole usa Redis per la cache delle sessioni.\n\n## Identità\n\n- Il colore identificativo di Sole è il rosso.\n"
+    },
+    {
+      "path": "projects/atlas.md",
+      "content": "# Progetto Atlas\n\n## Identificativi\n\n- Il codice interno di Atlas è AB-9827.\n\n## Team\n\n- Il referente di Atlas è il team Design.\n"
+    },
+    {
+      "path": "projects/selene.md",
+      "content": "# Progetto Selene\n\n## Runtime\n\n- Selene usa Python 3.12 per le elaborazioni.\n\n## Pipeline\n\n- La pipeline di Selene elabora i file ogni notte.\n- Il risultato viene salvato in formato Parquet.\n\n## Dipendenze\n\n- Selene usa pandas e PyArrow.\n"
+    },
+    {
+      "path": "projects/mercurio.md",
+      "content": "# Progetto Mercurio\n\n## API\n\n- L'API di Mercurio richiede un token Bearer.\n- Il limite è di 100 richieste al minuto.\n\n## Note\n\n- Gli errori vengono restituiti in JSON.\n"
+    },
+    {
+      "path": "projects/aurora.md",
+      "content": "# Progetto Aurora\n\n## Identità\n\n- Il colore identificativo di Aurora è il viola.\n"
+    },
+    {
+      "path": "projects/aurora-notes.md",
+      "content": "# Note su Aurora\n\n## Design\n\n- Per Aurora abbiamo scelto una tinta viola per il marchio.\n"
+    },
+    {
+      "path": "projects/andromeda.md",
+      "content": "# Progetto Andromeda\n\n## Colore\n\n- Andromeda usa l'arancio come colore identificativo.\n\n## Stack\n\n- Andromeda usa Node.js 24 e TypeScript.\n"
+    },
+    {
+      "path": "projects/archivio.md",
+      "content": "# Progetto Archivio\n\n## Introduzione\n\n- Archivio raccoglie i documenti storici dell'organizzazione.\n\n## Codici\n\n- Il codice interno dell'archivio è AR-4400.\n\n## Retention\n\n- I documenti dell'archivio vengono conservati per 90 giorni.\n\n## Procedura\n\n- Il caricamento dei documenti avviene ogni venerdì.\n- La verifica di integrità viene eseguita dopo il caricamento.\n\n## Accesso\n\n- L'accesso all'archivio richiede autenticazione a due fattori.\n"
+    },
+    {
+      "path": "projects/pekit.md",
+      "content": "# Progetto PEKIT\n\n## Stack\n\n- PEKIT usa CodeIgniter 4.7.5 come framework.\n- Il database di PEKIT è MySQL.\n"
+    },
+    {
+      "path": "projects/icaro.md",
+      "content": "# Progetto Icaro\n\n## Cache\n\n- Icaro usa Redis per la cache.\n- Le chiavi di Icaro scadono dopo 15 minuti.\n"
+    },
+    {
+      "path": "projects/nettuno.md",
+      "content": "# Progetto Nettuno\n\n## Infrastruttura\n\n- Nettuno usa Kubernetes su tre nodi.\n- I nodi di Nettuno eseguono Debian.\n"
+    },
+    {
+      "path": "projects/artemide.md",
+      "content": "# Progetto Artemide\n\n## Pagamenti\n\n- Artemide usa Stripe per i pagamenti.\n\n## Note\n\n- Le ricevute vengono inviate via email transazionale.\n"
+    },
+    {
+      "path": "projects/dedalo.md",
+      "content": "# Progetto Dedalo\n\n## Archiviazione\n\n- Dedalo conserva i file su MinIO.\n- I file di Dedalo sono cifrati a riposo.\n"
+    },
+    {
+      "path": "projects/berenice.md",
+      "content": "# Progetto Berenice\n\n## Ricerca\n\n- Berenice usa SQLite FTS5 come indice full-text.\n\n## Note\n\n- L'indice di Berenice è ricostruibile.\n"
+    },
+    {
+      "path": "memory/preferences.md",
+      "content": "# Preferenze\n\n## Rete\n\n- Preferisco Tailscale per i servizi domestici e non voglio esporre porte pubblicamente su Internet.\n\n## Musica\n\n- Durante il lavoro ascolto musica strumentale senza parole.\n\n## Caffè\n\n- Al mattino preferisco il caffè senza zucchero.\n\n## Viaggi\n\n- Per andare a Milano preferisco il treno anziché guidare.\n"
+    },
+    {
+      "path": "memory/workflows.md",
+      "content": "# Flussi di lavoro\n\n## Backup\n\n- I backup del database vengono eseguiti ogni notte e conservati per trenta giorni.\n\n## Monitoraggio\n\n- Prometheus raccoglie le metriche e Grafana mostra i dashboard.\n\n## Report\n\n- I report settimanali sono scritti in italiano.\n"
+    },
+    {
+      "path": "memory/profile.md",
+      "content": "# Profilo operativo\n\n## Dispositivi\n\n- Il server di sviluppo si chiama Castore e usa Debian.\n- Il server di produzione si chiama Polluce e usa Ubuntu.\n\n## Sicurezza\n\n- Per gli account importanti uso l'autenticazione a due fattori.\n"
+    },
+    {
+      "path": "memory/goals.md",
+      "content": "# Obiettivi\n\n## Trimestre\n\n- L'obiettivo del trimestre è completare il progetto Aurora.\n\n## Formazione\n\n- Voglio partecipare a una conferenza sulla sicurezza applicativa.\n"
+    },
+    {
+      "path": "memory/decisions.md",
+      "content": "# Decisioni\n\n## Database\n\n- Abbiamo deciso di non usare MongoDB per i nuovi progetti.\n\n## Documentazione\n\n- Le decisioni importanti vengono registrate in Markdown.\n"
+    },
+    {
+      "path": "memory/team.md",
+      "content": "# Team\n\n## Riunioni\n\n- La riunione del team è fissata il martedì alle dieci.\n\n## Comunicazione\n\n- Le comunicazioni ordinarie avvengono in chat.\n"
+    },
+    {
+      "path": "memory/garden.md",
+      "content": "# Casa\n\n## Piante\n\n- Le piante del terrazzo vanno annaffiate ogni sabato.\n"
+    },
+    {
+      "path": "memory/storage.md",
+      "content": "# Archiviazione personale\n\n## Documenti\n\n- I documenti di archivio sono salvati su un disco esterno cifrato.\n"
+    }
+  ],
+  "queries": [
+    {
+      "id": "vega-color",
+      "query": "Qual è il colore identificativo di Vega?",
+      "relevant": [{ "id": "vega-color", "path": "projects/vega.md", "heading": "Identità", "terms": ["turchese"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "vega-db",
+      "query": "Quale database usa Vega?",
+      "relevant": [{ "id": "vega-db", "path": "projects/vega.md", "heading": "Stack", "terms": ["postgresql"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "vega-deploy",
+      "query": "Come viene distribuito il progetto Vega?",
+      "relevant": [{ "id": "vega-deploy", "path": "projects/vega.md", "heading": "Deploy", "terms": ["docker compose"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "vega-legacy-color",
+      "query": "Qual era il vecchio colore di Vega prima della migrazione?",
+      "relevant": [{ "id": "vega-legacy-color", "path": "projects/vega-legacy.md", "heading": "Storico", "terms": ["blu"], "weight": 2 }],
+      "tags": ["temporal"]
+    },
+    {
+      "id": "orione-db",
+      "query": "Quale database abbiamo scelto per Orione?",
+      "relevant": [{ "id": "orione-db", "path": "projects/orione.md", "heading": "Database", "terms": ["postgresql"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "orione-auth",
+      "query": "Come si autentica l'API di Orione?",
+      "relevant": [{ "id": "orione-auth", "path": "projects/orione.md", "heading": "API", "terms": ["bearer"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "orione-release",
+      "query": "Quando è prevista la prima release di Orione?",
+      "relevant": [{ "id": "orione-release", "path": "projects/orione.md", "heading": "Scadenze", "terms": ["marzo 2027"], "weight": 2 }],
+      "tags": ["temporal"]
+    },
+    {
+      "id": "luna-db",
+      "query": "Quale database usa Luna?",
+      "relevant": [{ "id": "luna-db", "path": "projects/luna.md", "terms": ["mysql"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "luna-color",
+      "query": "Di che colore è il progetto Luna?",
+      "relevant": [{ "id": "luna-color", "path": "projects/luna.md", "terms": ["blu"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "sole-cache",
+      "query": "Cosa usa Sole per la cache?",
+      "relevant": [{ "id": "sole-cache", "path": "projects/sole.md", "heading": "Cache", "terms": ["redis"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "sole-color",
+      "query": "Qual è la tinta identificativa di Sole?",
+      "relevant": [{ "id": "sole-color", "path": "projects/sole.md", "heading": "Identità", "terms": ["rosso"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "atlas-code",
+      "query": "Qual è il codice interno di Atlas?",
+      "relevant": [{ "id": "atlas-code", "path": "projects/atlas.md", "heading": "Identificativi", "terms": ["ab-9827"], "weight": 3 }],
+      "tags": ["identifier"]
+    },
+    {
+      "id": "atlas-code-exact",
+      "query": "AB-9827",
+      "relevant": [{ "id": "atlas-code-exact", "path": "projects/atlas.md", "terms": ["ab-9827"], "weight": 3 }],
+      "tags": ["identifier"]
+    },
+    {
+      "id": "selene-python",
+      "query": "Quale versione di Python usa Selene?",
+      "relevant": [{ "id": "selene-python", "path": "projects/selene.md", "heading": "Runtime", "terms": ["python 3.12"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "selene-output",
+      "query": "In quale formato salva i risultati la pipeline di Selene?",
+      "relevant": [{ "id": "selene-output", "path": "projects/selene.md", "heading": "Pipeline", "terms": ["parquet"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "mercurio-auth",
+      "query": "Come autenticare le chiamate API di Mercurio?",
+      "relevant": [{ "id": "mercurio-auth", "path": "projects/mercurio.md", "heading": "API", "terms": ["bearer"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "mercurio-rate",
+      "query": "Qual è il limite di richieste dell'API di Mercurio?",
+      "relevant": [{ "id": "mercurio-rate", "path": "projects/mercurio.md", "heading": "API", "terms": ["100 richieste"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "aurora-color",
+      "query": "Qual è il colore di Aurora?",
+      "relevant": [
+        { "id": "aurora-color-main", "path": "projects/aurora.md", "heading": "Identità", "terms": ["viola"], "weight": 3 },
+        { "id": "aurora-color-notes", "path": "projects/aurora-notes.md", "heading": "Design", "terms": ["viola"], "weight": 2 }
+      ],
+      "tags": ["duplicate"]
+    },
+    {
+      "id": "andromeda-color",
+      "query": "Qual è il colore identificativo di Andromeda?",
+      "relevant": [{ "id": "andromeda-color", "path": "projects/andromeda.md", "heading": "Colore", "terms": ["arancio"], "weight": 3 }],
+      "tags": ["related-not-equivalent"]
+    },
+    {
+      "id": "andromeda-node",
+      "query": "Quale versione di Node usa Andromeda?",
+      "relevant": [{ "id": "andromeda-node", "path": "projects/andromeda.md", "heading": "Stack", "terms": ["node.js 24"], "weight": 2 }],
+      "tags": ["related-not-equivalent"]
+    },
+    {
+      "id": "archivio-code",
+      "query": "Qual è il codice interno dell'archivio?",
+      "relevant": [{ "id": "archivio-code", "path": "projects/archivio.md", "heading": "Codici", "terms": ["ar-4400"], "weight": 3 }],
+      "tags": ["long-document"]
+    },
+    {
+      "id": "archivio-retention",
+      "query": "Per quanto tempo vengono conservati i documenti dell'archivio?",
+      "relevant": [{ "id": "archivio-retention", "path": "projects/archivio.md", "heading": "Retention", "terms": ["90 giorni"], "weight": 2 }],
+      "tags": ["long-document"]
+    },
+    {
+      "id": "pekit-framework",
+      "query": "Quale framework usa PEKIT?",
+      "relevant": [{ "id": "pekit-framework", "path": "projects/pekit.md", "heading": "Stack", "terms": ["codeigniter 4.7.5"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "icaro-cache",
+      "query": "Quanto durano le chiavi di cache di Icaro?",
+      "relevant": [{ "id": "icaro-cache", "path": "projects/icaro.md", "heading": "Cache", "terms": ["15 minuti"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "nettuno-nodes",
+      "query": "Su quanti nodi gira Nettuno?",
+      "relevant": [{ "id": "nettuno-nodes", "path": "projects/nettuno.md", "heading": "Infrastruttura", "terms": ["tre nodi"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "artemide-payments",
+      "query": "Quale servizio usa Artemide per i pagamenti?",
+      "relevant": [{ "id": "artemide-payments", "path": "projects/artemide.md", "heading": "Pagamenti", "terms": ["stripe"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "dedalo-storage",
+      "query": "Dove conserva i file Dedalo?",
+      "relevant": [{ "id": "dedalo-storage", "path": "projects/dedalo.md", "heading": "Archiviazione", "terms": ["minio"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "berenice-search",
+      "query": "Quale motore di ricerca full-text usa Berenice?",
+      "relevant": [{ "id": "berenice-search", "path": "projects/berenice.md", "heading": "Ricerca", "terms": ["fts5"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "tailscale",
+      "query": "Come voglio raggiungere i miei server quando sono fuori casa?",
+      "relevant": [{ "id": "tailscale", "path": "memory/preferences.md", "heading": "Rete", "terms": ["tailscale"], "weight": 3 }],
+      "tags": ["preference"]
+    },
+    {
+      "id": "music",
+      "query": "Che musica ascolto mentre lavoro?",
+      "relevant": [{ "id": "music", "path": "memory/preferences.md", "heading": "Musica", "terms": ["strumentale"], "weight": 2 }],
+      "tags": ["preference"]
+    },
+    {
+      "id": "coffee",
+      "query": "Come prendo il caffè al mattino?",
+      "relevant": [{ "id": "coffee", "path": "memory/preferences.md", "heading": "Caffè", "terms": ["senza zucchero"], "weight": 2 }],
+      "tags": ["preference"]
+    },
+    {
+      "id": "milan-train",
+      "query": "Come preferisco andare a Milano?",
+      "relevant": [{ "id": "milan-train", "path": "memory/preferences.md", "heading": "Viaggi", "terms": ["treno"], "weight": 2 }],
+      "tags": ["preference"]
+    },
+    {
+      "id": "backup-retention",
+      "query": "Quanto tempo manteniamo le copie di sicurezza del database?",
+      "relevant": [{ "id": "backup-retention", "path": "memory/workflows.md", "heading": "Backup", "terms": ["trenta giorni"], "weight": 3 }],
+      "tags": ["temporal"]
+    },
+    {
+      "id": "monitoring",
+      "query": "Con cosa visualizziamo i grafici delle metriche?",
+      "relevant": [{ "id": "monitoring", "path": "memory/workflows.md", "heading": "Monitoraggio", "terms": ["grafana"], "weight": 3 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "reports",
+      "query": "In quale lingua sono scritti i report settimanali?",
+      "relevant": [{ "id": "reports", "path": "memory/workflows.md", "heading": "Report", "terms": ["italiano"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "prod-server",
+      "query": "Come si chiama il server di produzione e quale sistema operativo usa?",
+      "relevant": [{ "id": "prod-server", "path": "memory/profile.md", "heading": "Dispositivi", "terms": ["polluce", "ubuntu"], "weight": 3 }],
+      "tags": ["multi-fact"]
+    },
+    {
+      "id": "dev-server",
+      "query": "Qual è il nome del server di sviluppo?",
+      "relevant": [{ "id": "dev-server", "path": "memory/profile.md", "heading": "Dispositivi", "terms": ["castore"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "two-factor",
+      "query": "Come proteggo gli account più importanti?",
+      "relevant": [{ "id": "two-factor", "path": "memory/profile.md", "heading": "Sicurezza", "terms": ["due fattori"], "weight": 2 }],
+      "tags": ["preference"]
+    },
+    {
+      "id": "quarterly-goal",
+      "query": "Qual è l'obiettivo del trimestre?",
+      "relevant": [{ "id": "quarterly-goal", "path": "memory/goals.md", "heading": "Trimestre", "terms": ["aurora"], "weight": 2 }],
+      "tags": ["goal"]
+    },
+    {
+      "id": "mongodb-decision",
+      "query": "Quale database abbiamo deciso di non usare?",
+      "relevant": [{ "id": "mongodb-decision", "path": "memory/decisions.md", "heading": "Database", "terms": ["mongodb"], "weight": 2 }],
+      "tags": ["decision"]
+    },
+    {
+      "id": "team-meeting",
+      "query": "Quando si incontra il team?",
+      "relevant": [{ "id": "team-meeting", "path": "memory/team.md", "heading": "Riunioni", "terms": ["martedì", "dieci"], "weight": 2 }],
+      "tags": ["temporal"]
+    },
+    {
+      "id": "garden-water",
+      "query": "Quando devo annaffiare le piante del terrazzo?",
+      "relevant": [{ "id": "garden-water", "path": "memory/garden.md", "heading": "Piante", "terms": ["sabato"], "weight": 2 }],
+      "tags": ["recurring"]
+    },
+    {
+      "id": "archive-storage",
+      "query": "Dove sono salvati i documenti di archivio?",
+      "relevant": [{ "id": "archive-storage", "path": "memory/storage.md", "heading": "Documenti", "terms": ["disco esterno", "cifrato"], "weight": 2 }],
+      "tags": ["stable-fact"]
+    },
+    {
+      "id": "projects-postgresql",
+      "query": "Quali progetti usano PostgreSQL?",
+      "relevant": [
+        { "id": "projects-postgresql-vega", "path": "projects/vega.md", "terms": ["postgresql"], "weight": 2 },
+        { "id": "projects-postgresql-orione", "path": "projects/orione.md", "terms": ["postgresql"], "weight": 2 }
+      ],
+      "tags": ["multi-hop"]
+    },
+    {
+      "id": "projects-redis",
+      "query": "Quali progetti usano Redis?",
+      "relevant": [
+        { "id": "projects-redis-sole", "path": "projects/sole.md", "terms": ["redis"], "weight": 2 },
+        { "id": "projects-redis-icaro", "path": "projects/icaro.md", "terms": ["redis"], "weight": 2 }
+      ],
+      "tags": ["multi-hop"]
+    },
+    {
+      "id": "ambiguous-color",
+      "query": "Qual è il colore del progetto?",
+      "relevant": [
+        { "id": "ambiguous-vega", "path": "projects/vega.md", "terms": ["turchese"], "weight": 1 },
+        { "id": "ambiguous-luna", "path": "projects/luna.md", "terms": ["blu"], "weight": 1 },
+        { "id": "ambiguous-sole", "path": "projects/sole.md", "terms": ["rosso"], "weight": 1 },
+        { "id": "ambiguous-aurora", "path": "projects/aurora.md", "terms": ["viola"], "weight": 1 },
+        { "id": "ambiguous-aurora-notes", "path": "projects/aurora-notes.md", "terms": ["viola"], "weight": 1 },
+        { "id": "ambiguous-andromeda", "path": "projects/andromeda.md", "terms": ["arancio"], "weight": 1 }
+      ],
+      "tags": ["ambiguous"]
+    }
+  ]
+}
