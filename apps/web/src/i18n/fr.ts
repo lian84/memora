@@ -310,4 +310,9 @@ export const fr: Record<string, string> = {
   '{count} modelli': '{count} modèles',
 
   'Curator': 'Curator',
+
+  'Modello': 'Modèle',
+  'Reasoning': 'Raisonnement',
+  'router gratuito': 'routeur gratuit',
+  'gratuito': 'gratuit',
 };

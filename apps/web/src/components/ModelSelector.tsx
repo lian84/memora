@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import type { ProviderId } from '@memora/shared';
 import { useModels } from '../hooks/useModels';
 import { setSessionModel } from '../lib/api';
+import { useI18n } from '../i18n';
 
 interface ModelSelectorProps {
   sessionId: string | null;
@@ -18,6 +19,7 @@ export function ModelSelector({
   onModelChange,
   disabled = false,
 }: ModelSelectorProps) {
+  const { t } = useI18n();
   const { models, loading, error } = useModels(provider);
   const [selected, setSelected] = useState<string>(currentModelId);
   const [changing, setChanging] = useState(false);
@@ -50,8 +52,9 @@ export function ModelSelector({
 
   if (loading || models.length === 0) {
     return (
-      <div className="model-selector is-loading">
-        <span>Modello in caricamento…</span>
+      <div className="admin-label chat-model-field is-loading">
+        <span>{t('Modello')}</span>
+        <span className="model-status">{t('Caricamento…')}</span>
       </div>
     );
   }
@@ -60,19 +63,18 @@ export function ModelSelector({
   const paidModels = models.filter((m) => !m.isFree);
 
   return (
-    <div className="model-selector">
-      <label className="model-label" htmlFor="model-select">Modello</label>
-      <div className="model-select-wrap">
-        <select
-          id="model-select"
-          className="model-select"
-          value={selected}
-          onChange={handleChange}
-          disabled={disabled || changing}
-        >
+    <label className="admin-label chat-model-field" htmlFor="model-select">
+      <span>{t('Modello')}</span>
+      <select
+        id="model-select"
+        className="model-select"
+        value={selected}
+        onChange={handleChange}
+        disabled={disabled || changing}
+      >
           {freeModels.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.name} ({m.provider}) — {m.isRouter ? 'router gratuito' : 'gratuito'}
+              {m.name} ({m.provider}) — {t(m.isRouter ? 'router gratuito' : 'gratuito')}
             </option>
           ))}
           {paidModels.map((m) => (
@@ -80,10 +82,9 @@ export function ModelSelector({
               {m.name} ({m.provider})
             </option>
           ))}
-        </select>
-      </div>
-      {changing && <span className="model-status">Aggiorno…</span>}
-      {error && <span className="model-error">{error}</span>}
-    </div>
+      </select>
+      {changing && <small className="model-status">{t('Aggiorno…')}</small>}
+      {error && <small className="model-error">{error}</small>}
+    </label>
   );
 }

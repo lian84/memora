@@ -10,7 +10,7 @@ import { ProjectSettings } from './components/ProjectSettings';
 import { NewProjectDialog } from './components/NewProjectDialog';
 import { ProjectDeleteDialog } from './components/ProjectDeleteDialog';
 import { useAuth } from './components/AuthGate';
-import { LanguageSelector, useI18n } from './i18n';
+import { useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
@@ -430,27 +430,28 @@ export default function App() {
           </div>
 
           <div className="topbar-actions">
-            <LanguageSelector compact />
             {!adminOpen && !projectOpen && !secondBrainOpen && (
               <>
-              <ModelSelector
-                sessionId={selectedSessionId}
-                currentModelId={selectedModelId}
-                provider={selectedProvider}
-                onModelChange={(modelId) => {
-                  explicitModelSelection.current = true;
-                  setSelectedModelId(modelId);
-                  saveStoredModelSelection({ modelId, provider: selectedProvider, reasoningLevel: selectedReasoningLevel });
-                }}
-              />
-              <ReasoningSelector
-                value={selectedReasoningLevel}
-                onChange={(level) => {
-                  setSelectedReasoningLevel(level);
-                  if (selectedSessionId) void setSessionReasoningLevel(selectedSessionId, level);
-                  if (selectedModelId) saveStoredModelSelection({ modelId: selectedModelId, provider: selectedProvider, reasoningLevel: level });
-                }}
-              />
+              <div className="chat-model-fields">
+                <ModelSelector
+                  sessionId={selectedSessionId}
+                  currentModelId={selectedModelId}
+                  provider={selectedProvider}
+                  onModelChange={(modelId) => {
+                    explicitModelSelection.current = true;
+                    setSelectedModelId(modelId);
+                    saveStoredModelSelection({ modelId, provider: selectedProvider, reasoningLevel: selectedReasoningLevel });
+                  }}
+                />
+                <ReasoningSelector
+                  value={selectedReasoningLevel}
+                  onChange={(level) => {
+                    setSelectedReasoningLevel(level);
+                    if (selectedSessionId) void setSessionReasoningLevel(selectedSessionId, level);
+                    if (selectedModelId) saveStoredModelSelection({ modelId: selectedModelId, provider: selectedProvider, reasoningLevel: level });
+                  }}
+                />
+              </div>
               </>
             )}
           </div>

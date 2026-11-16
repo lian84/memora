@@ -1386,3 +1386,10 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
 .auth-language { display: flex; justify-content: flex-end; margin-bottom: -6px; }
 .language-select { height: 30px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 11px; }
 .language-select.is-compact { width: 58px; height: 27px; padding: 0 4px; font-size: 10px; }
+
+.chat-model-fields { display: grid; grid-template-columns: minmax(180px, 300px) minmax(110px, 150px); gap: 8px; align-items: start; }
+.chat-model-field .model-select { width: 100%; }
+.chat-model-field .model-status, .chat-model-field .model-error { font-size: 9px; }
+@media (max-width: 620px) {
+  .chat-model-fields { grid-template-columns: minmax(0, 1fr) minmax(90px, 110px); gap: 5px; }
+}
