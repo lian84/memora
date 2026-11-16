@@ -6,6 +6,7 @@ import {
   updateMemoryCandidate,
 } from '../lib/api';
 import { PROVIDER_LABELS, type MemoryCandidate } from '@memora/shared';
+import { useI18n } from '../i18n';
 
 interface MemoryInboxProps {
   refreshKey?: number;
@@ -28,31 +29,33 @@ function shortReference(value: string): string {
   return value.length > 18 ? `${value.slice(0, 15)}…` : value;
 }
 
-function formatTimestamp(value: number | undefined): string | null {
+function formatTimestamp(value: number | undefined, language: string): string | null {
   if (value === undefined || !Number.isFinite(value)) return null;
-  return new Date(value).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+  return new Date(value).toLocaleString(language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 export function MemoryCandidateProvenance({ candidate }: { candidate: MemoryCandidate }) {
-  const createdAt = formatTimestamp(candidate.createdAt);
-  const sourceAt = formatTimestamp(candidate.sourceTimestamp);
+  const { t, language } = useI18n();
+  const createdAt = formatTimestamp(candidate.createdAt, language);
+  const sourceAt = formatTimestamp(candidate.sourceTimestamp, language);
   return (
     <div className="memory-candidate-provenance">
-      <span>Stato: <strong>{candidate.status}</strong></span>
-      <span>Origine: <strong>{candidate.sourceKind === 'assistant' ? 'risposta assistente' : 'utente'}</strong></span>
-      {candidate.sourceQuestion && <span>Domanda: {candidate.sourceQuestion.slice(0, 120)}</span>}
-      <span>Creazione candidato: {createdAt ?? '—'}</span>
-      {sourceAt && <span>Messaggio originale: {sourceAt}</span>}
-      <span title={candidate.sessionId}>Sessione: <code>{shortReference(candidate.sessionId)}</code></span>
-      {candidate.sourceMessageId && <span title={candidate.sourceMessageId}>Messaggio: <code>{shortReference(candidate.sourceMessageId)}</code></span>}
+      <span>{t('Stato:')} <strong>{candidate.status}</strong></span>
+      <span>{t('Origine:')} <strong>{t(candidate.sourceKind === 'assistant' ? 'risposta assistente' : 'utente')}</strong></span>
+      {candidate.sourceQuestion && <span>{t('Domanda:')} {candidate.sourceQuestion.slice(0, 120)}</span>}
+      <span>{t('Creazione candidato:')} {createdAt ?? '—'}</span>
+      {sourceAt && <span>{t('Messaggio originale:')} {sourceAt}</span>}
+      <span title={candidate.sessionId}>{t('Sessione:')} <code>{shortReference(candidate.sessionId)}</code></span>
+      {candidate.sourceMessageId && <span title={candidate.sourceMessageId}>{t('Messaggio:')} <code>{shortReference(candidate.sourceMessageId)}</code></span>}
       {candidate.curatorModel && (
-        <span>Curator: {candidate.curatorProvider ? `${PROVIDER_LABELS[candidate.curatorProvider as keyof typeof PROVIDER_LABELS] ?? candidate.curatorProvider} / ` : ''}{candidate.curatorModel}</span>
+        <span>{t('Curator:')} {candidate.curatorProvider ? `${PROVIDER_LABELS[candidate.curatorProvider as keyof typeof PROVIDER_LABELS] ?? candidate.curatorProvider} / ` : ''}{candidate.curatorModel}</span>
       )}
     </div>
   );
 }
 
 export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCountChange }: MemoryInboxProps) {
+  const { t } = useI18n();
   const [candidates, setCandidates] = useState<MemoryCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,14 +161,14 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
   };
 
   return (
-    <section className="memory-inbox" aria-label="Memory Inbox">
+    <section className="memory-inbox" aria-label={t('Memory Inbox')}>
       <div className="memory-inbox-header">
         <div>
           <h3>Memory Inbox ({candidates.length})</h3>
-          <p>Candidati da rivedere. Nulla viene scritto nel Second Brain senza approvazione.</p>
+          <p>{t('Candidati da rivedere. Nulla viene scritto nel Second Brain senza approvazione.')}</p>
         </div>
         <button type="button" className="memory-inbox-refresh" onClick={() => void load()} disabled={loading}>
-          {loading ? 'Aggiorno…' : 'Aggiorna'}
+          {loading ? t('Aggiorno…') : t('Aggiorna')}
         </button>
       </div>
 
@@ -173,7 +176,7 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
       {notice && <div className="memory-inbox-notice">{notice}</div>}
 
       {!loading && candidates.length === 0 && (
-        <div className="memory-inbox-empty">Nessun candidato in attesa.</div>
+        <div className="memory-inbox-empty">{t('Nessun candidato in attesa.')}</div>
       )}
 
       <div className="memory-inbox-list">
@@ -188,12 +191,12 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
                 <span className="memory-candidate-category">{categoryLabels[candidate.category] ?? candidate.category}</span>
                 {candidate.project && <span className="memory-candidate-project">{candidate.project}</span>}
                 <span className={`memory-candidate-status is-${candidate.status}`}>
-                  {candidate.status === 'conflict' ? 'Conflitto' : 'Da rivedere'}
+                  {t(candidate.status === 'conflict' ? 'Conflitto' : 'Da rivedere')}
                 </span>
-                {candidate.priority === 'high' && <span className="memory-candidate-priority">priorità alta</span>}
+                {candidate.priority === 'high' && <span className="memory-candidate-priority">{t('priorità alta')}</span>}
               </div>
 
-              {candidate.currentText && <div className="memory-candidate-match"><strong>Attuale</strong><div>{candidate.currentText}</div></div>}
+              {candidate.currentText && <div className="memory-candidate-match"><strong>{t('Attuale')}</strong><div>{candidate.currentText}</div></div>}
               {isEditing ? (
                 <div className="memory-candidate-edit">
                   <label>
@@ -206,13 +209,13 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
                   </label>
                 </div>
               ) : (
-                <p className="memory-candidate-text"><strong>Proposto:</strong> {candidate.proposedText}</p>
+                <p className="memory-candidate-text"><strong>{t('Proposto:')}</strong> {candidate.proposedText}</p>
               )}
 
               <div className="memory-candidate-meta">
-                <span>Destinazione: <code>{isEditing ? editTarget : candidate.targetPath}</code></span>
-                {candidate.heading && <span>Sezione: <code>## {candidate.heading}</code></span>}
-                <span>Origine: {candidate.origin === 'explicit' ? 'richiesta esplicita' : 'estrazione automatica'}</span>
+                <span>{t('Destinazione:')} <code>{isEditing ? editTarget : candidate.targetPath}</code></span>
+                {candidate.heading && <span>{t('Sezione:')} <code>## {candidate.heading}</code></span>}
+                <span>Origine: {t(candidate.origin === 'explicit' ? 'richiesta esplicita' : 'estrazione automatica')}</span>
                 {candidate.updateIntent && <span>Tipo aggiornamento: {{ augment: 'aggiunta', replace: 'sostituzione', remove: 'rimozione', correct: 'correzione' }[candidate.updateIntent]}</span>}
                 {candidate.salienceScore !== undefined && <span>Rilevanza: {candidate.salienceScore >= 0.8 ? 'alta' : candidate.salienceScore >= 0.5 ? 'media' : 'bassa'}</span>}
                 {candidate.confidenceScore !== undefined && <span>Confidenza: {Math.round(candidate.confidenceScore * 100)}%</span>}
@@ -224,13 +227,13 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
 
               {candidate.duplicateOf && (
                 <div className="memory-candidate-match">
-                  <strong>Possibile duplicato</strong> in <code>{candidate.duplicateOf.relativePath}</code>
+                  <strong>{t('Possibile duplicato')}</strong> in <code>{candidate.duplicateOf.relativePath}</code>
                   <div>{candidate.duplicateOf.content}</div>
                 </div>
               )}
               {candidate.conflictsWith && (
                 <div className="memory-candidate-match is-conflict">
-                  <strong>Possibile informazione esistente da confrontare</strong> in <code>{candidate.conflictsWith.relativePath}</code>
+                  <strong>{t('Possibile informazione esistente da confrontare')}</strong> in <code>{candidate.conflictsWith.relativePath}</code>
                   <div>{candidate.conflictsWith.content}</div>
                   <small>L’approvazione aggiunge il nuovo contenuto; il vecchio non viene cancellato automaticamente.</small>
                 </div>
@@ -240,17 +243,17 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
                 {isEditing ? (
                   <>
                     <button type="button" className="memory-action-primary" onClick={() => void saveEdit(candidate)} disabled={isWorking || !editText.trim()}>
-                      {isWorking ? 'Salvo…' : 'Salva modifica'}
+                      {isWorking ? t('Salvo…') : t('Salva modifica')}
                     </button>
-                    <button type="button" onClick={cancelEdit} disabled={isWorking}>Annulla</button>
+                    <button type="button" onClick={cancelEdit} disabled={isWorking}>{t('Annulla')}</button>
                   </>
                 ) : (
                   <>
                     <button type="button" className="memory-action-primary" onClick={() => void approve(candidate)} disabled={isWorking}>
-                      {isWorking ? 'Elaboro…' : 'Approva'}
+                      {isWorking ? t('Elaboro…') : t('Approva')}
                     </button>
-                    <button type="button" onClick={() => startEdit(candidate)} disabled={isWorking}>Modifica</button>
-                    <button type="button" className="memory-action-danger" onClick={() => void reject(candidate)} disabled={isWorking}>Rifiuta</button>
+                    <button type="button" onClick={() => startEdit(candidate)} disabled={isWorking}>{t('Modifica')}</button>
+                    <button type="button" className="memory-action-danger" onClick={() => void reject(candidate)} disabled={isWorking}>{t('Rifiuta')}</button>
                   </>
                 )}
               </div>

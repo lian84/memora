@@ -3,6 +3,7 @@ import type { ProjectRecord } from '@memora/shared';
 import { getMemorySource, getMemorySourceHistory, listSources } from '../lib/api';
 import type { MemoryHistoryRecord, MemorySource, MemorySourceDetail } from '../lib/api';
 import { MemorySourceDetail as MemorySourceDetailView } from './MemorySourceDetail';
+import { useI18n } from '../i18n';
 
 interface SecondBrainPageProps {
   projects: ProjectRecord[];
@@ -12,6 +13,7 @@ interface SecondBrainPageProps {
 }
 
 export function SecondBrainPage({ projects, refreshKey = 0, initialScope = 'all', onClose }: SecondBrainPageProps) {
+  const { t, language } = useI18n();
   const [sources, setSources] = useState<MemorySource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function SecondBrainPage({ projects, refreshKey = 0, initialScope = 'all'
   useEffect(() => { void loadSources(); }, [loadSources, refreshKey]);
 
   const visibleSources = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase('it-IT');
+    const normalized = query.trim().toLocaleLowerCase(language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB');
     return sources
       .filter(source => {
         if (scope === 'global') return !source.projectId;
@@ -85,24 +87,24 @@ export function SecondBrainPage({ projects, refreshKey = 0, initialScope = 'all'
     await loadSources();
   }, [closeSource, loadSources]);
 
-  const scopeLabel = (source: MemorySource) => source.projectId ? projectNames.get(source.projectId) ?? source.projectId : 'Globale';
+  const scopeLabel = (source: MemorySource) => source.projectId ? projectNames.get(source.projectId) ?? source.projectId : t('Globale');
 
   return (
-    <section className="second-brain-page" aria-label="Second Brain">
+    <section className="second-brain-page" aria-label={t('Second Brain')}>
       <header className="second-brain-page-header">
         <div>
-          <span className="admin-eyebrow">Memoria personale</span>
-          <h2>Second Brain</h2>
-          <p>Tutte le memorie e le fonti indicizzate, globali e di progetto. Puoi modificare il Markdown direttamente da qui.</p>
+          <span className="admin-eyebrow">{t('Memoria personale')}</span>
+          <h2>{t('Second Brain')}</h2>
+          <p>{t('Tutte le memorie e le fonti indicizzate, globali e di progetto. Puoi modificare il Markdown direttamente da qui.')}</p>
         </div>
-        {onClose && <button type="button" className="admin-close" onClick={onClose}>Torna alla chat</button>}
+        {onClose && <button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button>}
       </header>
 
       {error && <div className="admin-alert is-error" role="alert">{error}</div>}
 
       {selectedSource ? (
         <div className="second-brain-page-detail">
-          {sourceLoading && <div className="project-files-empty">Caricamento fonte…</div>}
+          {sourceLoading && <div className="project-files-empty">{t('Caricamento fonte…')}</div>}
           {sourceError && <div className="memory-inbox-error" role="alert">{sourceError}</div>}
           <MemorySourceDetailView
             source={selectedSource}
@@ -122,17 +124,17 @@ export function SecondBrainPage({ projects, refreshKey = 0, initialScope = 'all'
               placeholder="Cerca per file, titolo o categoria…"
               aria-label="Cerca nella memoria"
             />
-            <select value={scope} onChange={event => setScope(event.target.value)} aria-label="Filtro memoria">
-              <option value="all">Tutte le memorie</option>
-              <option value="global">Solo globale</option>
-              {projects.map(project => <option key={project.id} value={project.id}>Progetto: {project.name}</option>)}
+            <select value={scope} onChange={event => setScope(event.target.value)} aria-label={t('Filtro memoria')}>
+              <option value="all">{t('Tutte le memorie')}</option>
+              <option value="global">{t('Solo globale')}</option>
+              {projects.map(project => <option key={project.id} value={project.id}>{t('Progetto: {name}', { name: project.name })}</option>)}
             </select>
-            <button type="button" onClick={() => void loadSources()} disabled={loading}>{loading ? 'Aggiorno…' : 'Aggiorna'}</button>
+            <button type="button" onClick={() => void loadSources()} disabled={loading}>{loading ? t('Aggiorno…') : t('Aggiorna')}</button>
           </div>
 
           <div className="second-brain-page-list">
-            {loading && sources.length === 0 && <div className="second-brain-empty">Caricamento memorie…</div>}
-            {!loading && visibleSources.length === 0 && <div className="second-brain-empty">Nessuna memoria corrispondente.</div>}
+            {loading && sources.length === 0 && <div className="second-brain-empty">{t('Caricamento memorie…')}</div>}
+            {!loading && visibleSources.length === 0 && <div className="second-brain-empty">{t('Nessuna memoria corrispondente.')}</div>}
             {visibleSources.map(source => (
               <button type="button" className="second-brain-page-source" key={source.id} onClick={() => void openSource(source)}>
                 <span className={`project-file-badge is-${source.category === 'projects' ? 'markdown' : 'text'}`}>{source.category === 'projects' ? 'PR' : 'MD'}</span>
@@ -140,7 +142,7 @@ export function SecondBrainPage({ projects, refreshKey = 0, initialScope = 'all'
                   <strong>{source.title ?? source.relativePath}</strong>
                   <small>{scopeLabel(source)} · {source.relativePath}</small>
                 </span>
-                <span className="second-brain-page-source-meta">{source.chunkCount} chunk · {new Date(source.modifiedAt).toLocaleDateString('it-IT')}</span>
+                <span className="second-brain-page-source-meta">{source.chunkCount} chunk · {new Date(source.modifiedAt).toLocaleDateString(language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB')}</span>
               </button>
             ))}
           </div>

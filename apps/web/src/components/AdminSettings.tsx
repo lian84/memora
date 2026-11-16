@@ -13,6 +13,7 @@ import type {
   SettingField,
 } from '@memora/shared';
 import { PROVIDER_LABELS, REASONING_LEVELS } from '@memora/shared';
+import { useI18n } from '../i18n';
 import {
   getAdminSettings,
   getAdminStatus,
@@ -205,13 +206,14 @@ export function isSemanticUnavailable(settings: AdminSettingsData, status: Admin
 }
 
 function FieldLock({ field }: { field: SettingField<unknown> }) {
-  if (field.source !== 'environment') return field.requiresRestart ? <span className="admin-field-note">Richiede riavvio</span> : null;
-  return <span className="admin-field-note is-locked">Gestito dall’ambiente</span>;
+  const { t } = useI18n();
+  if (field.source !== 'environment') return field.requiresRestart ? <span className="admin-field-note">{t('Richiede riavvio')}</span> : null;
+  return <span className="admin-field-note is-locked">{t('Gestito dall’ambiente')}</span>;
 }
 
-function credentialLabel(status?: ProviderSecretStatus): string {
-  if (!status?.configured) return 'non configurata';
-  return status.source === 'environment' ? 'configurata dall’ambiente' : 'configurata nel secret store';
+function credentialLabel(status: ProviderSecretStatus | undefined, t: (source: string) => string): string {
+  if (!status?.configured) return t('non configurata');
+  return t(status.source === 'environment' ? 'configurata dall’ambiente' : 'configurata nel secret store');
 }
 
 interface ProviderCredentialProps {
@@ -225,33 +227,34 @@ interface ProviderCredentialProps {
 }
 
 function ProviderCredential({ provider, status, state, showInput, onKeyDraft, onSaveKey, onTestKey }: ProviderCredentialProps) {
+  const { t } = useI18n();
   const message = state.keyMessages[provider];
   const busy = state.keySaving === provider || state.keyTesting === provider;
   return (
     <div className="provider-credential">
       <div className="provider-credential-status">
         <span>API key {PROVIDER_LABELS[provider]}</span>
-        <strong className={status?.configured ? 'is-configured' : 'is-missing'}>{credentialLabel(status)}</strong>
-        {status?.source === 'environment' && <span className="admin-field-note is-locked">Gestito dall’ambiente</span>}
+        <strong className={status?.configured ? 'is-configured' : 'is-missing'}>{credentialLabel(status, t)}</strong>
+        {status?.source === 'environment' && <span className="admin-field-note is-locked">{t('Gestito dall’ambiente')}</span>}
       </div>
       {showInput && status?.editable !== false && (
         <div className="provider-key-row">
           <input
             type="password"
             autoComplete="new-password"
-            placeholder={status?.configured ? 'Inserisci una nuova chiave per sostituirla' : 'Inserisci API key'}
+            placeholder={status?.configured ? t('Inserisci una nuova chiave per sostituirla') : t('Inserisci API key')}
             value={state.keyDrafts[provider]}
             onChange={(event) => onKeyDraft(provider, event.target.value)}
           />
           <button type="button" onClick={() => onSaveKey(provider)} disabled={busy || !state.keyDrafts[provider].trim()}>
-            {state.keySaving === provider ? 'Salvo…' : 'Salva/Cambia'}
+            {state.keySaving === provider ? t('Salvo…') : t('Salva/Cambia')}
           </button>
           <button type="button" onClick={() => onTestKey(provider)} disabled={busy || (!state.keyDrafts[provider].trim() && !status?.configured)}>
-            {state.keyTesting === provider ? 'Verifico…' : 'Test connessione'}
+            {state.keyTesting === provider ? t('Verifico…') : t('Test connessione')}
           </button>
         </div>
       )}
-      {!showInput && <p className="admin-card-description">Usa la stessa chiave già associata a {PROVIDER_LABELS[provider]}.</p>}
+      {!showInput && <p className="admin-card-description">{t('Usa la stessa chiave già associata a {provider}.', { provider: PROVIDER_LABELS[provider] })}</p>}
       {message && <div className={`provider-key-message ${message.ok ? 'is-ok' : 'is-error'}`} role="status">{message.ok ? '✓' : '✗'} {message.text}</div>}
     </div>
   );
@@ -271,6 +274,7 @@ interface ModelFieldProps {
 }
 
 function ModelField({ role, provider, value, reasoningLevel, state, settings, onProviderChange, onModelChange, onReasoningChange, onRefreshCatalog }: ModelFieldProps) {
+  const { t } = useI18n();
   const category = role === 'chat' ? 'chat' : 'curator';
   const providerMeta = fieldMetadata(settings, category, 'provider');
   const modelMeta = fieldMetadata(settings, category, role === 'chat' ? 'defaultModel' : 'model');
@@ -288,7 +292,7 @@ function ModelField({ role, provider, value, reasoningLevel, state, settings, on
   return (
     <div className="model-field">
       <div className="admin-grid-2">
-        <label className="admin-label">Provider
+        <label className="admin-label">{t('Provider')}
           <select
             value={provider}
             disabled={!providerMeta.editable}
@@ -299,9 +303,9 @@ function ModelField({ role, provider, value, reasoningLevel, state, settings, on
           </select>
           <FieldLock field={providerMeta} />
         </label>
-        <div className="admin-label">Stato catalogo
+        <div className="admin-label">{t('Stato catalogo')}
           <span className="model-catalog-status">
-            {loading ? 'Caricamento…' : catalog ? `${usableModels.length} modelli` : 'Non caricato'}
+            {loading ? t('Caricamento…') : catalog ? t('{count} modelli', { count: usableModels.length }) : t('Non caricato')}
             {catalog?.stale && <small>cache/fallback</small>}
           </span>
         </div>
@@ -313,7 +317,7 @@ function ModelField({ role, provider, value, reasoningLevel, state, settings, on
         </div>
       )}
       {catalog?.warning && <div className="admin-inline-warning">{catalog.warning}</div>}
-      <label className="admin-label">{role === 'chat' ? 'Modello chat predefinito' : 'Modello Curator'}
+      <label className="admin-label">{role === 'chat' ? t('Modello chat predefinito') : t('Modello Curator')}
         <ModelCombobox
           models={usableModels}
           provider={provider}
@@ -325,7 +329,7 @@ function ModelField({ role, provider, value, reasoningLevel, state, settings, on
         />
         <FieldLock field={modelMeta} />
       </label>
-      <label className="admin-label">Livello reasoning
+      <label className="admin-label">{t('Livello reasoning')}
         <select value={reasoningLevel} disabled={!reasoningMeta.editable} onChange={(event) => onReasoningChange(role, event.target.value as ReasoningLevel)}>
           {reasoningChoices.map(level => <option key={level} value={level}>{level}</option>)}
         </select>
@@ -363,6 +367,7 @@ export function AdminSettingsView({
   onReindex,
   onClose,
 }: AdminSettingsViewProps) {
+  const { t } = useI18n();
   const semanticUnavailable = isSemanticUnavailable(settings, status);
   const field = (category: Category, name: string) => fieldMetadata(settings, category, name);
   const disabled = (category: Category, name: string) => !field(category, name).editable || saving;
@@ -381,10 +386,10 @@ export function AdminSettingsView({
     <section className="admin-settings" aria-label="Impostazioni amministrazione">
       <div className="admin-settings-header">
         <div>
-          <h2>Impostazioni</h2>
-          <p>Configurazione runtime persistente. Le API key sono nel secret store locale e non vengono mai restituite.</p>
+          <h2>{t('Impostazioni')}</h2>
+          <p>{t('Configurazione runtime persistente. Le API key sono nel secret store locale e non vengono mai restituite.')}</p>
         </div>
-        <button type="button" className="admin-close" onClick={onClose}>Torna alla chat</button>
+        <button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button>
       </div>
 
       {error && <div role="alert" className="admin-alert is-error">{error}</div>}
@@ -395,7 +400,7 @@ export function AdminSettingsView({
         </div>
       )}
 
-      <nav id="admin-pages-nav" className="admin-page-nav" role="tablist" aria-label="Pagine impostazioni">
+      <nav id="admin-pages-nav" className="admin-page-nav" role="tablist" aria-label={t('Pagine impostazioni')}>
         {pages.map(([id, label]) => (
           <button
             key={id}
@@ -421,17 +426,17 @@ export function AdminSettingsView({
 
       <div id="admin-page-general" role="tabpanel" aria-labelledby="admin-tab-general" className="admin-page" hidden={activePage !== 'general'}>
       <section id="admin-section-general" className="admin-card">
-        <h3>Generale</h3>
-        <p className="admin-card-description">Nessun preset viene applicato senza anteprima e conferma.</p>
+        <h3>{t('Generale')}</h3>
+        <p className="admin-card-description">{t('Nessun preset viene applicato senza anteprima e conferma.')}</p>
         <div className="admin-presets">
           <button type="button" className={preset === 'lite' ? 'is-active' : ''} onClick={() => onSelectPreset('lite')}>
-            <strong>Lite</strong><span>Consigliato per VPS piccole / 1–2 GB RAM.</span>
+            <strong>{t('Lite')}</strong><span>{t('Consigliato per VPS piccole / 1–2 GB RAM.')}</span>
           </button>
           <button type="button" className={preset === 'standard' ? 'is-active' : ''} onClick={() => onSelectPreset('standard')}>
-            <strong>Standard</strong><span>Consigliato da 4 GB RAM.</span>
+            <strong>{t('Standard')}</strong><span>{t('Consigliato da 4 GB RAM.')}</span>
           </button>
           <button type="button" className={preset === 'custom' ? 'is-active' : ''} onClick={() => onSelectPreset('custom')}>
-            <strong>Custom</strong><span>Configurazione manuale.</span>
+            <strong>{t('Custom')}</strong><span>{t('Configurazione manuale.')}</span>
           </button>
         </div>
         {preset && preset !== 'custom' && (
@@ -443,8 +448,8 @@ export function AdminSettingsView({
               ))}
             </ul>
             <div className="admin-actions">
-              <button type="button" className="admin-primary" onClick={onApplyPreset} disabled={saving}>Applica preset</button>
-              <button type="button" onClick={onCancelPreset} disabled={saving}>Annulla</button>
+              <button type="button" className="admin-primary" onClick={onApplyPreset} disabled={saving}>{t('Applica preset')}</button>
+              <button type="button" onClick={onCancelPreset} disabled={saving}>{t('Annulla')}</button>
             </div>
           </div>
         )}
@@ -453,7 +458,7 @@ export function AdminSettingsView({
 
       <div id="admin-page-chat" role="tabpanel" aria-labelledby="admin-tab-chat" className="admin-page" hidden={activePage !== 'chat'}>
       <section id="admin-section-chat" className="admin-card">
-        <h3>Chat</h3>
+        <h3>{t('Chat')}</h3>
         <ModelField
           role="chat"
           provider={draft.chat.provider}
@@ -481,7 +486,7 @@ export function AdminSettingsView({
 
       <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>
       <section id="admin-section-memory" className="admin-card">
-        <h3>Memoria</h3>
+        <h3>{t('Memoria')}</h3>
         <div className="admin-mode-grid" role="radiogroup" aria-label="Retrieval mode">
           {(['lexical', 'semantic', 'hybrid'] as const).map((mode) => (
             <label key={mode} className={`admin-mode${draft.memory.searchMode === mode ? ' is-selected' : ''}${mode !== 'lexical' && semanticUnavailable ? ' is-unavailable' : ''}`}>
@@ -523,7 +528,7 @@ export function AdminSettingsView({
       </section>
 
       <section id="admin-section-embeddings" className="admin-card">
-        <h3>Embeddings</h3>
+        <h3>{t('Embeddings')}</h3>
         <label className="admin-toggle">
           <input type="checkbox" checked={draft.embeddings.enabled} disabled={disabled('embeddings', 'enabled')} onChange={(event) => onDraftChange('embeddings', 'enabled', event.target.checked)} />
           <span>Enable semantic embeddings</span>
@@ -546,7 +551,7 @@ export function AdminSettingsView({
 
       <div id="admin-page-curator" role="tabpanel" aria-labelledby="admin-tab-curator" className="admin-page" hidden={activePage !== 'curator'}>
       <section id="admin-section-curator" className="admin-card">
-        <h3>Memory Curator</h3>
+        <h3>{t('Memory Curator')}</h3>
         <label className="admin-toggle">
           <input type="checkbox" checked={draft.curator.enabled} disabled={disabled('curator', 'enabled')} onChange={(event) => onDraftChange('curator', 'enabled', event.target.checked)} />
           <span>Automatic Memory Curator</span>
@@ -594,7 +599,7 @@ export function AdminSettingsView({
 
       <div id="admin-page-system" role="tabpanel" aria-labelledby="admin-tab-system" className="admin-page" hidden={activePage !== 'system'}>
       <section id="admin-section-egress" className="admin-card">
-        <h3>Dati e provider esterni</h3>
+        <h3>{t('Dati e provider esterni')}</h3>
         <div className="admin-egress-grid">
           <div>
             <span>Chat</span>
@@ -623,7 +628,7 @@ export function AdminSettingsView({
       </section>
 
       <section className="admin-card">
-        <h3>Osservabilità</h3>
+        <h3>{t('Osservabilità')}</h3>
         {status && status.metrics.alerts.length > 0 && (
           <div className="admin-inline-warning" role="status">
             {status.metrics.alerts.join(' · ')}
@@ -642,7 +647,7 @@ export function AdminSettingsView({
       </section>
 
       <section id="admin-section-system" className="admin-card">
-        <h3>Sistema</h3>
+        <h3>{t('Sistema')}</h3>
         <div className="admin-system-grid">
           <div><span>Memora</span><strong>{status?.memoraVersion ?? '—'}</strong></div>
           <div><span>Node</span><strong>{status?.nodeVersion ?? '—'}</strong></div>
@@ -663,10 +668,10 @@ export function AdminSettingsView({
       </div>
 
       <div className="admin-savebar">
-        <span>{activePage === 'appearance' ? 'Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.' : `${hasChanges ? 'Modifiche non salvate' : 'Nessuna modifica non salvata'} · I valori gestiti dall’ambiente non vengono inviati.`}</span>
+        <span>{activePage === 'appearance' ? t('Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.') : `${hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · ${t('I valori gestiti dall’ambiente non vengono inviati.')}`}</span>
         <div className="admin-savebar-actions">
-          <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>Annulla</button>
-          <button type="button" className="admin-primary" onClick={onSave} disabled={saving}>{saving ? 'Salvo…' : 'Salva impostazioni'}</button>
+          <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>{t('Annulla')}</button>
+          <button type="button" className="admin-primary" onClick={onSave} disabled={saving}>{saving ? t('Salvo…') : t('Salva impostazioni')}</button>
         </div>
       </div>
     </section>
@@ -676,6 +681,7 @@ export function AdminSettingsView({
 const emptyKeys: Record<ProviderId, string> = { openrouter: '', 'opencode-go': '' };
 
 export function AdminSettings({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<AdminSettingsData | null>(null);
   const [status, setStatus] = useState<AdminStatus | null>(null);
   const [draft, setDraft] = useState<RuntimeSettings | null>(null);
@@ -897,7 +903,7 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
   if (!settings || !draft) {
     return (
       <section className="admin-settings">
-        <div className="admin-settings-header"><div><h2>Impostazioni</h2><p>Caricamento configurazione…</p></div><button type="button" className="admin-close" onClick={onClose}>Torna alla chat</button></div>
+        <div className="admin-settings-header"><div><h2>{t('Impostazioni')}</h2><p>Caricamento configurazione…</p></div><button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button></div>
         {error && <div role="alert" className="admin-alert is-error">{error}</div>}
       </section>
     );

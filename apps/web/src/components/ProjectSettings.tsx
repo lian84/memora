@@ -12,6 +12,7 @@ import {
 } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 import { ConfirmDialog } from './ConfirmDialog';
+import { useI18n } from '../i18n';
 
 interface ProjectSettingsProps {
   project: ProjectRecord;
@@ -22,6 +23,7 @@ interface ProjectSettingsProps {
 }
 
 export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, onRequestDelete }: ProjectSettingsProps) {
+  const { t } = useI18n();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [prompt, setPrompt] = useState(project.prompt);
@@ -193,18 +195,18 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   };
 
   return (
-    <section className="project-settings" aria-label={`Progetto ${project.name}`}>
+    <section className="project-settings" aria-label={`${t('Progetto')} ${project.name}`}>
       <div className="project-settings-header">
         <div>
-          <span className="admin-eyebrow">Progetto</span>
+          <span className="admin-eyebrow">{t('Progetto')}</span>
           <h2>{project.name}</h2>
           <p><code>{project.id}</code> · {project.status} · {project.source === 'legacy' ? 'legacy' : 'project.json'}</p>
         </div>
         <div className="project-header-actions">
-          <span className={`project-status is-${project.status}`}>{project.status === 'active' ? 'attivo' : 'archiviato'}</span>
-          <button type="button" onClick={() => void downloadExport()} disabled={exporting}>{exporting ? 'Esporto…' : 'Esporta JSON'}</button>
-          <button type="button" onClick={() => void toggleArchive()} disabled={saving}>{project.status === 'active' ? 'Archivia' : 'Riattiva'}</button>
-          <button type="button" className="admin-close" onClick={onClose}>Torna alla chat</button>
+          <span className={`project-status is-${project.status}`}>{t(project.status === 'active' ? 'attivo' : 'archiviato')}</span>
+          <button type="button" onClick={() => void downloadExport()} disabled={exporting}>{exporting ? t('Esporto…') : t('Esporta JSON')}</button>
+          <button type="button" onClick={() => void toggleArchive()} disabled={saving}>{t(project.status === 'active' ? 'Archivia' : 'Riattiva')}</button>
+          <button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button>
         </div>
       </div>
 
@@ -212,31 +214,31 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
       {message && <div className="admin-alert is-success">{message}</div>}
 
       <section className="admin-card">
-        <h3>Profilo e prompt</h3>
-        <label className="admin-label">Nome
+        <h3>{t('Profilo e prompt')}</h3>
+        <label className="admin-label">{t('Nome')}
           <input value={name} onChange={event => setName(event.target.value)} />
         </label>
-        <label className="admin-label">Descrizione
+        <label className="admin-label">{t('Descrizione')}
           <textarea rows={2} value={description} onChange={event => setDescription(event.target.value)} />
         </label>
-        <label className="admin-label">Prompt di progetto
+        <label className="admin-label">{t('Prompt di progetto')}
           <textarea rows={6} value={prompt} onChange={event => setPrompt(event.target.value)} />
-          <small>Integra il comportamento del progetto ma non può modificare policy, permessi o strumenti.</small>
+          <small>{t('Integra il comportamento del progetto ma non può modificare policy, permessi o strumenti.')}</small>
         </label>
         <label className="admin-toggle">
           <input type="checkbox" checked={includeGlobal} onChange={event => setIncludeGlobal(event.target.checked)} />
-          <span>Includi la memoria globale nelle chat del progetto</span>
+          <span>{t('Includi la memoria globale nelle chat del progetto')}</span>
         </label>
         <div className="admin-actions">
-          <button type="button" className="admin-primary" onClick={() => void saveProject()} disabled={saving}>{saving ? 'Salvo…' : 'Salva progetto'}</button>
+          <button type="button" className="admin-primary" onClick={() => void saveProject()} disabled={saving}>{saving ? t('Salvo…') : t('Salva progetto')}</button>
         </div>
       </section>
 
       <section className="admin-card">
-        <h3>Fonti del progetto</h3>
+        <h3>{t('Fonti del progetto')}</h3>
         <div className="project-sources-layout">
           <div className="project-source-list">
-            {sources.length === 0 && <div className="second-brain-empty">Nessuna fonte.</div>}
+            {sources.length === 0 && <div className="second-brain-empty">{t('Nessuna fonte.')}</div>}
             {sources.map(item => (
               <button type="button" key={item.id} className={`project-source-item${source?.id === item.id ? ' is-selected' : ''}`} onClick={() => void openSource(item)}>
                 <strong>{item.relativePath}</strong>
@@ -249,32 +251,32 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
               <>
                 <div className="project-source-editor-title">
                   <strong>{source.relativePath}</strong>
-                  <button type="button" className="memory-action-danger" onClick={() => { setSourceDeleteError(null); setSourceDeleteOpen(true); }} disabled={sourceSaving}>Elimina</button>
+                  <button type="button" className="memory-action-danger" onClick={() => { setSourceDeleteError(null); setSourceDeleteOpen(true); }} disabled={sourceSaving}>{t('Elimina')}</button>
                 </div>
                 <textarea rows={12} value={sourceContent} onChange={event => setSourceContent(event.target.value)} spellCheck={false} />
                 <div className="admin-actions">
-                  <button type="button" className="admin-primary" onClick={() => void saveSource()} disabled={sourceSaving}>{sourceSaving ? 'Salvo…' : 'Salva fonte'}</button>
-                  <button type="button" onClick={() => { setSource(null); setSourceContent(''); }} disabled={sourceSaving}>Chiudi</button>
+                  <button type="button" className="admin-primary" onClick={() => void saveSource()} disabled={sourceSaving}>{sourceSaving ? t('Salvo…') : t('Salva fonte')}</button>
+                  <button type="button" onClick={() => { setSource(null); setSourceContent(''); }} disabled={sourceSaving}>{t('Chiudi')}</button>
                 </div>
                 <details className="project-source-preview">
-                  <summary>Anteprima</summary>
+                  <summary>{t('Anteprima')}</summary>
                   <div className="source-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(sourceContent) }} />
                 </details>
               </>
             ) : (
               <>
-                <label className="admin-label">Percorso nuova fonte
+                <label className="admin-label">{t('Percorso nuova fonte')}
                   <input value={newPath} onChange={event => setNewPath(event.target.value)} />
                 </label>
                 <label className="project-file-upload">
-                  <span>{fileLoading ? 'Leggo il file…' : 'Carica file .md o .txt'}</span>
+                  <span>{fileLoading ? t('Leggo il file…') : t('Carica file .md o .txt')}</span>
                   <input type="file" accept=".md,.txt,text/markdown,text/plain" onChange={event => void loadFile(event)} disabled={fileLoading || sourceSaving} />
                 </label>
-                <label className="admin-label">Contenuto Markdown
+                <label className="admin-label">{t('Contenuto Markdown')}
                   <textarea rows={8} value={newContent} onChange={event => setNewContent(event.target.value)} spellCheck={false} />
                 </label>
                 <div className="admin-actions">
-                  <button type="button" className="admin-primary" onClick={() => void createSource()} disabled={sourceSaving || !newPath.trim()}>{sourceSaving ? 'Creo…' : 'Crea fonte'}</button>
+                  <button type="button" className="admin-primary" onClick={() => void createSource()} disabled={sourceSaving || !newPath.trim()}>{sourceSaving ? t('Creo…') : t('Crea fonte')}</button>
                 </div>
               </>
             )}
@@ -284,22 +286,22 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
 
       {onRequestDelete && (
         <section className="admin-card project-danger-zone">
-          <h3>Zona pericolosa</h3>
-          <p>Il progetto, le sue fonti e i file verranno spostati nel cestino di Memora. Le chat esistenti non vengono cancellate.</p>
-          <button type="button" className="memory-action-danger" onClick={() => onRequestDelete(project)}>Elimina progetto</button>
+          <h3>{t('Zona pericolosa')}</h3>
+          <p>{t('Il progetto, le sue fonti e i file verranno spostati nel cestino di Memora. Le chat esistenti non vengono cancellate.')}</p>
+          <button type="button" className="memory-action-danger" onClick={() => onRequestDelete(project)}>{t('Elimina progetto')}</button>
         </section>
       )}
 
       {sourceDeleteOpen && source && (
         <ConfirmDialog
           title={`Eliminare “${source.relativePath}”?`}
-          confirmLabel="Elimina fonte"
+          confirmLabel={t('Elimina fonte')}
           busy={sourceSaving}
           error={sourceDeleteError}
           onClose={() => { setSourceDeleteOpen(false); setSourceDeleteError(null); }}
           onConfirm={() => void removeSource()}
         >
-          <p>La fonte verrà rimossa dal progetto e dall’indice di retrieval.</p>
+          <p>{t('La fonte verrà rimossa dal progetto e dall’indice di retrieval.')}</p>
         </ConfirmDialog>
       )}
     </section>
