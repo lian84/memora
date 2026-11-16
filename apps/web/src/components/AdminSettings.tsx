@@ -415,7 +415,7 @@ export function AdminSettingsView({
               document.getElementById('admin-pages-nav')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </nav>

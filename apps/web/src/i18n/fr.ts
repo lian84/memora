@@ -308,4 +308,6 @@ export const fr: Record<string, string> = {
   'Usa la stessa chiave già associata a {provider}.': 'Utilise la même clé déjà associée à {provider}.',
   'non configurata': 'non configurée',
   '{count} modelli': '{count} modèles',
+
+  'Curator': 'Curator',
 };
