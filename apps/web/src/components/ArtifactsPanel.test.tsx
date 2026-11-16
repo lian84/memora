@@ -14,5 +14,5 @@ test('elenca gli artefatti della chat', () => {
   expect(markup).toContain('1 artefatti');
   expect(markup).toContain('Scarica riepilogo.md');
   expect(markup).toContain('Elimina riepilogo.md');
-  expect(markup).toContain('Allega riepilogo.md');
+  expect(markup).toContain('Allega alla chat riepilogo.md');
 });

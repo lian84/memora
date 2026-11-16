@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChatAttachment } from '@memora/shared';
 import { chatAttachmentUrl } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
+import { useI18n } from '../i18n';
 
 interface MessageProps {
   role: 'system' | 'user' | 'assistant';
@@ -25,6 +26,7 @@ const roleLabel: Record<string, string> = {
 };
 
 export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false }: MessageProps) {
+  const { t, language } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(content);
   const [editBusy, setEditBusy] = useState(false);
@@ -42,7 +44,7 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
   const htmlBlock = hideHtmlCode && role === 'assistant' ? content.match(/```(?:html|htm)?\s*\n([\s\S]*?)```/i) : null;
   const visibleContent = htmlBlock ? content.replace(htmlBlock[0], '').trim() : content;
   const copyText = role === 'user' ? content.replace(/<[^>]*>/g, '') : htmlBlock ? visibleContent : content;
-  const time = new Date(timestamp).toLocaleTimeString('it-IT', {
+  const time = new Date(timestamp).toLocaleTimeString(language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -64,7 +66,7 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1400);
     } catch {
-      setEditError('Copia non disponibile: seleziona il testo manualmente.');
+      setEditError(t('Copia non disponibile: seleziona il testo manualmente.'));
     }
   };
 
@@ -91,23 +93,23 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
   return (
     <article className={`message message-${role}`}>
       <header className="message-header">
-        <span className="message-author">{roleLabel[role]}</span>
+        <span className="message-author">{t(roleLabel[role]!)}</span>
         <time className="message-time" dateTime={new Date(timestamp).toISOString()}>{time}</time>
-        {streaming && <span className="message-streaming">in corso</span>}
+        {streaming && <span className="message-streaming">{t('in corso')}</span>}
         <span className="message-actions">
           {role === 'user' && onEditText && (
-            <button type="button" className="message-action" onClick={startEdit} title="Modifica domanda" aria-label="Modifica domanda">✎</button>
+            <button type="button" className="message-action" onClick={startEdit} title={t('Modifica domanda')} aria-label={t('Modifica domanda')}>✎</button>
           )}
-          <button type="button" className="message-action" onClick={() => void copy()} title={copied ? 'Copiato' : role === 'user' ? 'Copia domanda (testo)' : 'Copia risposta (Markdown)'} aria-label={copied ? 'Copiato' : role === 'user' ? 'Copia domanda in testo' : 'Copia risposta in Markdown'}>{copied ? '✓' : '⧉'}</button>
+          <button type="button" className="message-action" onClick={() => void copy()} title={copied ? t('Copiato') : role === 'user' ? t('Copia domanda (testo)') : t('Copia risposta (Markdown)')} aria-label={copied ? t('Copiato') : role === 'user' ? t('Copia domanda in testo') : t('Copia risposta in Markdown')}>{copied ? '✓' : '⧉'}</button>
           {role === 'assistant' && onSaveMemory && (
-            <button type="button" className="message-action is-text" onClick={onSaveMemory} title="Salva questa risposta come memoria" aria-label="Salva risposta come memoria">Memoria</button>
+            <button type="button" className="message-action is-text" onClick={onSaveMemory} title={t('Salva questa risposta come memoria')} aria-label={t('Salva risposta come memoria')}>{t('Memoria')}</button>
           )}
           {role === 'assistant' && onRegenerate && (
-            <button type="button" className="message-action is-text" onClick={onRegenerate} title="Chiedi di riformulare" aria-label="Riformula risposta">Riformula</button>
+            <button type="button" className="message-action is-text" onClick={onRegenerate} title={t('Chiedi di riformulare')} aria-label={t('Riformula risposta')}>{t('Riformula')}</button>
           )}
           {role === 'assistant' && onExportPdf && (
-            <button type="button" className="message-action is-text" onClick={onExportPdf} disabled={exportingPdf || !content.trim()} title="Esporta questa risposta in PDF">
-              {exportingPdf ? 'PDF…' : 'PDF'}
+            <button type="button" className="message-action is-text" onClick={onExportPdf} disabled={exportingPdf || !content.trim()} title={t('Esporta questa risposta in PDF')}>
+              {exportingPdf ? t('PDF…') : t('PDF')}
             </button>
           )}
         </span>
@@ -118,8 +120,8 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
           <textarea ref={editRef} value={editText} onChange={event => setEditText(event.target.value)} rows={8} disabled={editBusy} autoFocus />
           {editError && <div className="message-edit-error" role="alert">{editError}</div>}
           <div className="message-edit-actions">
-            <button type="button" onClick={() => setEditing(false)} disabled={editBusy}>Annulla</button>
-            <button type="button" className="is-primary" onClick={() => void saveEdit()} disabled={editBusy || !editText.trim()}>{editBusy ? 'Salvo…' : 'Salva e rigenera'}</button>
+            <button type="button" onClick={() => setEditing(false)} disabled={editBusy}>{t('Annulla')}</button>
+            <button type="button" className="is-primary" onClick={() => void saveEdit()} disabled={editBusy || !editText.trim()}>{editBusy ? t('Salvo…') : t('Salva e rigenera')}</button>
           </div>
         </div>
       ) : (
@@ -129,11 +131,11 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
               {attachments.map(attachment => {
                 const href = sessionId ? chatAttachmentUrl(sessionId, attachment.id) : undefined;
                 return (
-                  <a key={attachment.id} className={`message-attachment is-${attachment.kind}`} href={href} target="_blank" rel="noreferrer" title={href ? 'Apri allegato' : attachment.filename}>
+                  <a key={attachment.id} className={`message-attachment is-${attachment.kind}`} href={href} target="_blank" rel="noreferrer" title={href ? t('Apri allegato') : attachment.filename}>
                     <span className="message-attachment-kind">{attachment.filename.split('.').pop()?.toUpperCase() ?? 'FILE'}</span>
                     <span className="message-attachment-name">{attachment.filename}</span>
                     <span className="message-attachment-size">{formatSize(attachment.size)}</span>
-                    {attachment.projectPath && <span className="message-attachment-project">progetto</span>}
+                    {attachment.projectPath && <span className="message-attachment-project">{t('progetto')}</span>}
                   </a>
                 );
               })}
@@ -142,9 +144,9 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
           <div
             className="message-content"
             aria-live={streaming ? 'polite' : undefined}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(streaming && !visibleContent ? 'Memo sta rispondendo…' : visibleContent) }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(streaming && !visibleContent ? t('Memo sta rispondendo…') : visibleContent) }}
           />
-          {htmlBlock && <div className="message-html-artifact-note">Documento generato · PDF disponibile nella scheda Artefatti.</div>}
+          {htmlBlock && <div className="message-html-artifact-note">{t('Documento generato · PDF disponibile nella scheda Artefatti.')}</div>}
         </>
       )}
     </article>

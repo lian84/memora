@@ -8,6 +8,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { HtmlPreview } from './HtmlPreview';
 import { ZoomControls } from './ZoomControls';
 import { SpreadsheetPreview } from './SpreadsheetPreview';
+import { useI18n } from '../i18n';
 
 interface ArtifactsPanelProps {
   sessionId: string | null;
@@ -28,6 +29,7 @@ function formatDate(timestamp: number): string {
 }
 
 export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = null, onRefresh, onAttachArtifact, onAddArtifactToProject }: ArtifactsPanelProps) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<ChatArtifact | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
             <strong title={selected.name}>{selected.name}</strong>
             {versions.length > 1 && (
               <label className="artifact-version-select artifact-version-inline" title="Seleziona variante">
-                <span>Variante</span>
+                <span>{t('Variante')}</span>
                 <select aria-label="Seleziona variante" value={selectedVersion} onChange={event => setSelectedVersion(Number(event.target.value))}>
                   {versions.map(item => <option key={item.version} value={item.version}>v{item.version}{item.current ? ' · corrente' : ''}</option>)}
                 </select>
@@ -165,7 +167,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
             )}
           </div>
           <div className="artifact-detail-actions">
-            {selectedUrl && <a className="project-file-download" href={selectedUrl} target="_blank" rel="noreferrer">Apri</a>}
+            {selectedUrl && <a className="project-file-download" href={selectedUrl} target="_blank" rel="noreferrer">{t('Apri')}</a>}
             <button type="button" className="artifact-action is-danger" onClick={() => { setDeleteError(null); setDeleteTarget(selected); }} title={`Elimina ${selected.name}`} aria-label={`Elimina ${selected.name}`}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" /></svg>
             </button>
@@ -194,7 +196,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
               previewError
                 ? <div className="project-file-preview-error">{previewError}</div>
                 : content === null
-                  ? <div className="project-file-preview-empty">Caricamento anteprima…</div>
+                  ? <div className="project-file-preview-empty">{t('Caricamento anteprima…')}</div>
                   : <HtmlPreview title={`${selected.name} · v${selectedVersion}`} html={content} openUrl={selectedUrl ?? undefined} />
             ) : selected.kind === 'docx' && sessionId ? (
               <HtmlPreview
@@ -216,18 +218,18 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
                 openUrl={selectedUrl ?? undefined}
               />
             ) : selected.kind === 'pptx' ? (
-              <div className="project-file-preview-empty">L’anteprima PPTX è disponibile per la versione corrente. Puoi scaricare questa variante.</div>
+              <div className="project-file-preview-empty">{t('L’anteprima PPTX è disponibile per la versione corrente. Puoi scaricare questa variante.')}</div>
             ) : isOfficeArtifactKind(selected.kind) ? (
-              <div className="project-file-preview-empty">Anteprima Office in preparazione. Puoi aprire o scaricare il file.</div>
+              <div className="project-file-preview-empty">{t('Anteprima Office in preparazione. Puoi aprire o scaricare il file.')}</div>
             ) : (
               <>
                 <div className="artifact-preview-toolbar">
-                  <span>Anteprima</span>
+                  <span>{t('Anteprima')}</span>
                   <ZoomControls zoom={zoom} onChange={setZoom} />
                 </div>
                 <div className="artifact-preview-scroll">
                   {selected.kind === 'pdf' && selectedUrl && <div className="artifact-preview-content is-pdf"><PdfPreview url={selectedUrl} title={`${selected.name} · v${selectedVersion}`} zoom={zoom} /></div>}
-                  {selected.kind !== 'pdf' && !previewError && content === null && <div className="project-file-preview-empty">Caricamento anteprima…</div>}
+                  {selected.kind !== 'pdf' && !previewError && content === null && <div className="project-file-preview-empty">{t('Caricamento anteprima…')}</div>}
                   {selected.kind !== 'pdf' && !previewError && content !== null && (
                     <div className="artifact-preview-content" style={previewStyle}>
                       {selected.kind === 'markdown'
@@ -243,12 +245,12 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
       ) : (
         <>
           <div className="artifacts-toolbar">
-            <span>{artifacts.length} artefatti</span>
-            {onRefresh && <button type="button" onClick={onRefresh} disabled={loading}>{loading ? 'Caricamento…' : 'Aggiorna'}</button>}
+            <span>{t('{count} artefatti', { count: artifacts.length })}</span>
+            {onRefresh && <button type="button" onClick={onRefresh} disabled={loading}>{loading ? t('Caricamento…') : t('Aggiorna')}</button>}
           </div>
           {error && <div className="project-files-error" role="alert">{error}</div>}
           {!loading && artifacts.length === 0 && (
-            <div className="project-files-empty">Nessun artefatto. Chiedi a Memo di creare un documento, una pagina o un file.</div>
+            <div className="project-files-empty">{t('Nessun artefatto. Chiedi a Memo di creare un documento, una pagina o un file.')}</div>
           )}
           {artifactNotice && <div className={`artifact-notice${artifactNotice.error ? ' is-error' : ''}`} role="status">{artifactNotice.text}</div>}
           <div className="artifact-list">
@@ -262,15 +264,15 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
                   </span>
                 </button>
                 <div className="artifact-row-actions">
-                  <a className="artifact-action" href={sessionId ? artifactUrl(sessionId, artifact.id) : undefined} download={artifact.name} title={`Scarica ${artifact.name}`} aria-label={`Scarica ${artifact.name}`}>
+                  <a className="artifact-action" href={sessionId ? artifactUrl(sessionId, artifact.id) : undefined} download={artifact.name} title={t('Scarica') + ` ${artifact.name}`} aria-label={t('Scarica') + ` ${artifact.name}`}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M4 17v3h16v-3" /></svg>
                   </a>
                   {onAttachArtifact && (
-                    <button type="button" className="artifact-action" onClick={() => void attachArtifact(artifact)} disabled={attachingId === artifact.id} title={`Allega ${artifact.name} al messaggio`} aria-label={`Allega ${artifact.name} al messaggio`}>
+                    <button type="button" className="artifact-action" onClick={() => void attachArtifact(artifact)} disabled={attachingId === artifact.id} title={t('Allega alla chat') + ` ${artifact.name}`} aria-label={t('Allega alla chat') + ` ${artifact.name}`}>
                       {attachingId === artifact.id ? <span className="artifact-action-loading">…</span> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 6" /></svg>}
                     </button>
                   )}
-                  <button type="button" className="artifact-action is-danger" onClick={() => { setDeleteError(null); setDeleteTarget(artifact); }} disabled={deletingId === artifact.id} title={`Elimina ${artifact.name}`} aria-label={`Elimina ${artifact.name}`}>
+                  <button type="button" className="artifact-action is-danger" onClick={() => { setDeleteError(null); setDeleteTarget(artifact); }} disabled={deletingId === artifact.id} title={t('Elimina') + ` ${artifact.name}`} aria-label={t('Elimina') + ` ${artifact.name}`}>
                     {deletingId === artifact.id ? <span className="artifact-action-loading">…</span> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" /></svg>}
                   </button>
                 </div>

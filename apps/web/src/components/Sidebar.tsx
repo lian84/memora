@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import type { SessionInfo } from '../lib/api';
 import type { ProjectRecord } from '@memora/shared';
 import { ProjectPicker } from './ProjectPicker';
+import { useI18n } from '../i18n';
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -88,6 +89,7 @@ export function Sidebar({
   onLogout,
   collapsed = false,
 }: SidebarProps) {
+  const { t } = useI18n();
   const [renameInput, setRenameInput] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<SessionInfo | null>(null);
@@ -154,18 +156,18 @@ export function Sidebar({
 
   const displayTitle = (session: SessionInfo) =>
     session.draft ? 'Nuova chat' : session.name ?? session.firstMessage ?? '(nessun messaggio)';
-  const archiveViewLabel = archivedView ? 'Torna alle chat attive' : 'Mostra chat archiviate';
-  const archiveViewTitle = archivedView ? 'Torna alle chat attive' : 'Chat archiviate';
+  const archiveViewLabel = t(archivedView ? 'Torna alle chat attive' : 'Mostra chat archiviate');
+  const archiveViewTitle = t(archivedView ? 'Torna alle chat attive' : 'Chat archiviate');
 
   return (
-    <aside className={`sidebar${mobileOpen ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label="Barra chat e sessioni">
+    <aside className={`sidebar${mobileOpen ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label={t('Barra chat e sessioni')}>
       <header className="sidebar-header">
         <div>
-          <h1>Memora</h1>
-          <p>Chat &amp; Sessioni</p>
+          <h1>{t('Memora')}</h1>
+          <p>{t('Chat &amp; Sessioni')}</p>
         </div>
         {onClose && (
-          <button type="button" className="sidebar-close" aria-label="Chiudi pannello sessioni" onClick={onClose}>
+          <button type="button" className="sidebar-close" aria-label={t('Chiudi pannello sessioni')} onClick={onClose}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
@@ -184,7 +186,7 @@ export function Sidebar({
         />
       )}
       <div className="sidebar-toolbar">
-        <button type="button" className="new-chat-button" onClick={handleCreate} disabled={loading}>Nuova chat</button>
+        <button type="button" className="new-chat-button" onClick={handleCreate} disabled={loading}>{t('Nuova chat')}</button>
         <button
           type="button"
           className={`archive-view-button${archivedView ? ' is-active' : ''}`}
@@ -198,8 +200,8 @@ export function Sidebar({
       </div>
       {error && <div role="alert" className="sidebar-error">{error}</div>}
       <div className="session-list">
-        {loading && sessions.length === 0 && <div className="session-list-empty">Caricamento sessioni...</div>}
-        {!loading && sessions.length === 0 && <div className="session-list-empty">{archivedView ? 'Nessuna sessione archiviata.' : 'Nessuna sessione. Clicca “Nuova chat” per iniziare.'}</div>}
+        {loading && sessions.length === 0 && <div className="session-list-empty">{t('Caricamento sessioni...')}</div>}
+        {!loading && sessions.length === 0 && <div className="session-list-empty">{t(archivedView ? 'Nessuna sessione archiviata.' : 'Nessuna sessione. Clicca “Nuova chat” per iniziare.')}</div>}
         {sessions.map((session) => {
           const isSelected = selectedSessionId === session.sessionId;
           const isRenaming = renameInput === session.sessionId;
@@ -226,13 +228,13 @@ export function Sidebar({
               ) : (
                 <>
                   <span className="session-title">{title}</span>
-                  <span className="session-actions" aria-label="Azioni sessione">
+                  <span className="session-actions" aria-label={t('Azioni sessione')}>
                     {!session.draft && (
                       <button
                         type="button"
                         className="session-action-button"
                         aria-label={`Rinomina ${title}`}
-                        title="Rinomina"
+                        title={t('Rinomina')}
                         onClick={(event) => { event.stopPropagation(); handleRenameClick(session.sessionId, title); }}
                       >
                         <SessionIcon name="rename" />
@@ -243,7 +245,7 @@ export function Sidebar({
                         type="button"
                         className="session-action-button"
                         aria-label={session.archived ? `Ripristina ${title}` : `Archivia ${title}`}
-                        title={session.archived ? 'Ripristina' : 'Archivia'}
+                        title={t(session.archived ? 'Ripristina' : 'Archivia')}
                         onClick={(event) => { event.stopPropagation(); handleArchive(session.sessionId, !session.archived); }}
                       >
                         <SessionIcon name={session.archived ? 'restore' : 'archive'} />
@@ -253,7 +255,7 @@ export function Sidebar({
                       type="button"
                       className="session-action-button session-action-danger"
                       aria-label={`Elimina definitivamente ${title}`}
-                      title="Elimina definitivamente"
+                      title={t('Elimina definitivamente')}
                       onClick={(event) => { event.stopPropagation(); setDeleteTarget(session); }}
                     >
                       <SessionIcon name="delete" />
@@ -272,8 +274,8 @@ export function Sidebar({
               type="button"
               className={`sidebar-settings sidebar-icon-button${secondBrainActive ? ' is-active' : ''}`}
               aria-current={secondBrainActive ? 'page' : undefined}
-              title="Second Brain"
-              aria-label="Second Brain"
+              title={t('Second Brain')}
+              aria-label={t('Second Brain')}
               onClick={onOpenSecondBrain}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -288,8 +290,8 @@ export function Sidebar({
               type="button"
               className={`sidebar-settings sidebar-icon-button${settingsActive ? ' is-active' : ''}`}
               aria-current={settingsActive ? 'page' : undefined}
-              title="Impostazioni"
-              aria-label="Impostazioni"
+              title={t('Impostazioni')}
+              aria-label={t('Impostazioni')}
               onClick={onOpenSettings}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -302,8 +304,8 @@ export function Sidebar({
             <button
               type="button"
               className="sidebar-settings sidebar-icon-button"
-              title="Esci da Memora"
-              aria-label="Esci da Memora"
+              title={t('Esci da Memora')}
+              aria-label={t('Esci da Memora')}
               onClick={onLogout}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -320,13 +322,13 @@ export function Sidebar({
           onClick={() => { if (!deletingSessionId) setDeleteTarget(null); }}
         >
           <div role="dialog" aria-modal="true" aria-labelledby="delete-session-title" className="delete-dialog" onClick={(event) => event.stopPropagation()}>
-            <h2 id="delete-session-title">Eliminare definitivamente questa chat?</h2>
-            <p>Questa operazione non può essere annullata.</p>
+            <h2 id="delete-session-title">{t('Eliminare definitivamente questa chat?')}</h2>
+            <p>{t('Questa operazione non può essere annullata.')}</p>
             {error && <p role="alert" className="delete-dialog-error">{error}</p>}
             <div className="dialog-actions">
-              <button type="button" onClick={() => setDeleteTarget(null)} disabled={Boolean(deletingSessionId)}>Annulla</button>
+              <button type="button" onClick={() => setDeleteTarget(null)} disabled={Boolean(deletingSessionId)}>{t('Annulla')}</button>
               <button type="button" autoFocus className="delete-confirm-button" onClick={() => void handleDeleteConfirm()} disabled={Boolean(deletingSessionId)}>
-                {deletingSessionId ? 'Eliminazione…' : 'Elimina definitivamente'}
+                {deletingSessionId ? t('Eliminazione…') : t('Elimina definitivamente')}
               </button>
             </div>
           </div>

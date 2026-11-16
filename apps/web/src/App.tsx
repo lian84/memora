@@ -10,6 +10,7 @@ import { ProjectSettings } from './components/ProjectSettings';
 import { NewProjectDialog } from './components/NewProjectDialog';
 import { ProjectDeleteDialog } from './components/ProjectDeleteDialog';
 import { useAuth } from './components/AuthGate';
+import { LanguageSelector, useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
@@ -74,6 +75,7 @@ export default function App() {
   const explicitModelSelection = useRef(false);
   const appearance = useAppearance();
   const { logout } = useAuth();
+  const { t } = useI18n();
 
   useEffect(() => { initAppearance(); }, []);
 
@@ -133,16 +135,16 @@ export default function App() {
   const chatProject = selectedProject
     ?? (selectedSession?.projectId ? projects.find(project => project.id === selectedSession.projectId) ?? null : null);
   const selectedSessionTitle = adminOpen
-    ? 'Amministrazione'
+    ? t('Amministrazione')
     : secondBrainOpen
-      ? 'Second Brain'
+      ? t('Second Brain')
       : projectOpen && selectedProject
       ? selectedProject.name
       : selectedSession
         ? selectedSession.draft
-          ? 'Nuova chat'
+          ? t('Nuova chat')
           : selectedSession.name ?? selectedSession.firstMessage ?? '(nessun messaggio)'
-        : selectedProject ? selectedProject.name : 'Memora';
+        : selectedProject ? selectedProject.name : t('Memora');
 
   const loadMessages = useCallback(
     async (sessionId: string) => {
@@ -423,11 +425,12 @@ export default function App() {
           </button>
 
           <div className="topbar-heading">
-            <span className="topbar-eyebrow">{adminOpen ? 'Configurazione runtime' : secondBrainOpen ? 'Memoria personale' : projectOpen ? 'Progetto' : archivedView ? 'Archivio sessioni' : 'Conversazione'}</span>
+            <span className="topbar-eyebrow">{adminOpen ? t('Configurazione runtime') : secondBrainOpen ? t('Memoria personale') : projectOpen ? t('Progetto') : archivedView ? t('Archivio sessioni') : t('Conversazione')}</span>
             <h1 title={selectedSessionTitle}>{selectedSessionTitle}</h1>
           </div>
 
           <div className="topbar-actions">
+            <LanguageSelector compact />
             {!adminOpen && !projectOpen && !secondBrainOpen && (
               <>
               <ModelSelector
@@ -485,15 +488,15 @@ export default function App() {
               </span>
               <h2>
                 {archivedView
-                  ? sessions.length === 0 ? 'Nessuna chat archiviata' : 'Seleziona una chat archiviata'
-                  : sessions.length === 0 ? (selectedProject ? `Nessuna chat per ${selectedProject.name}` : 'Benvenuto in Memora') : 'Seleziona una chat'}
+                  ? sessions.length === 0 ? t('Nessuna chat archiviata') : t('Seleziona una chat archiviata')
+                  : sessions.length === 0 ? (selectedProject ? t('Nessuna chat per {name}', { name: selectedProject.name }) : t('Benvenuto in Memora')) : t('Seleziona una chat')}
               </h2>
               <p>
                 {archivedView
-                  ? 'Le conversazioni archiviate restano disponibili qui.'
+                  ? t('Le conversazioni archiviate restano disponibili qui.')
                   : sessions.length === 0
-                    ? 'Crea una nuova conversazione per iniziare a usare Memora.'
-                    : 'Scegli una conversazione dalla sidebar oppure iniziane una nuova.'}
+                    ? t('Crea una nuova conversazione per iniziare a usare Memora.')
+                    : t('Scegli una conversazione dalla sidebar oppure iniziane una nuova.')}
               </p>
               {archivedView ? (
                 <button type="button" className="empty-state-action" onClick={handleToggleArchivedView}>

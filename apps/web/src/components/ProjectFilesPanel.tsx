@@ -7,6 +7,7 @@ import { ArtifactsPanel } from './ArtifactsPanel';
 import { PdfPreview } from './PdfPreview';
 import { HtmlPreview } from './HtmlPreview';
 import { SpreadsheetView } from './SpreadsheetView';
+import { useI18n } from '../i18n';
 import { PanelResizeHandle } from './PanelResizeHandle';
 import { PANEL_DEFAULT_WIDTH, PANEL_EXPANDED_WIDTH, usePanelWidth } from '../lib/panel-width';
 
@@ -47,6 +48,7 @@ function fileBadge(file: ProjectFileInfo): string {
 }
 
 export function ProjectFilesPanel({ project, onClose, onAttach, context = null, contextSaving = false, contextError = null, onContextChange, refreshKey = 0, expanded = false, onToggleExpanded, sessionId = null, artifacts = [], artifactsLoading = false, artifactsError = null, onRefreshArtifacts, onAttachArtifact, onAddArtifactToProject }: ProjectFilesPanelProps) {
+  const { t } = useI18n();
   const [files, setFiles] = useState<ProjectFileInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,34 +135,34 @@ export function ProjectFilesPanel({ project, onClose, onAttach, context = null, 
   };
 
   return (
-    <aside className={`project-files-panel${expanded ? ' is-expanded' : ''}`} style={{ width: `${panelWidth}px`, flexBasis: `${panelWidth}px` }} aria-label={`File del progetto ${project.name}`}>
+    <aside className={`project-files-panel${expanded ? ' is-expanded' : ''}`} style={{ width: `${panelWidth}px`, flexBasis: `${panelWidth}px` }} aria-label={`${t('File del progetto')} ${project.name}`}>
       <PanelResizeHandle width={panelWidth} onStartResize={startResize} onResize={setPanelWidth} />
       <header className="project-files-header">
         <div>
-          <span className="project-files-eyebrow">Progetto</span>
+          <span className="project-files-eyebrow">{t('Progetto')}</span>
           <h2 title={project.name}>{project.name}</h2>
         </div>
         <div className="project-files-header-actions">
-          <button type="button" className="project-files-icon" onClick={() => void load()} disabled={loading} title="Aggiorna file" aria-label="Aggiorna file">
+          <button type="button" className="project-files-icon" onClick={() => void load()} disabled={loading} title={t('Aggiorna file')} aria-label={t('Aggiorna file')}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.3-5.7" /><path d="M20 4v7h-7" /></svg>
           </button>
           {onToggleExpanded && (
-            <button type="button" className="project-files-icon" onClick={() => { setPanelWidth(expanded ? PANEL_DEFAULT_WIDTH : PANEL_EXPANDED_WIDTH); onToggleExpanded?.(); }} title={expanded ? 'Riduci pannello' : 'Espandi pannello'} aria-label={expanded ? 'Riduci pannello' : 'Espandi pannello'}>
+            <button type="button" className="project-files-icon" onClick={() => { setPanelWidth(expanded ? PANEL_DEFAULT_WIDTH : PANEL_EXPANDED_WIDTH); onToggleExpanded?.(); }} title={t(expanded ? 'Riduci pannello' : 'Espandi pannello')} aria-label={t(expanded ? 'Riduci pannello' : 'Espandi pannello')}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" /></svg>
             </button>
           )}
           {onClose && (
-            <button type="button" className="project-files-icon" onClick={onClose} title="Comprimi file progetto" aria-label="Comprimi file progetto">
+            <button type="button" className="project-files-icon" onClick={onClose} title={t('Comprimi file progetto')} aria-label={t('Comprimi file progetto')}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           )}
         </div>
       </header>
 
-      <nav className="project-files-tabs" role="tablist" aria-label="Pannello progetto">
-        <button type="button" role="tab" aria-selected={activeTab === 'files'} className={activeTab === 'files' ? 'is-active' : ''} onClick={() => setActiveTab('files')}>File</button>
-        <button type="button" role="tab" aria-selected={activeTab === 'context'} className={activeTab === 'context' ? 'is-active' : ''} onClick={() => setActiveTab('context')}>Contesto</button>
-        <button type="button" role="tab" aria-selected={activeTab === 'artifacts'} className={activeTab === 'artifacts' ? 'is-active' : ''} onClick={() => setActiveTab('artifacts')}>Artefatti</button>
+      <nav className="project-files-tabs" role="tablist" aria-label={t('Pannello progetto')}>
+        <button type="button" role="tab" aria-selected={activeTab === 'files'} className={activeTab === 'files' ? 'is-active' : ''} onClick={() => setActiveTab('files')}>{t('File')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'context'} className={activeTab === 'context' ? 'is-active' : ''} onClick={() => setActiveTab('context')}>{t('Contesto')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'artifacts'} className={activeTab === 'artifacts' ? 'is-active' : ''} onClick={() => setActiveTab('artifacts')}>{t('Artefatti')}</button>
       </nav>
 
       {activeTab === 'artifacts' ? (
@@ -184,18 +186,18 @@ export function ProjectFilesPanel({ project, onClose, onAttach, context = null, 
       ) : selected ? (
         <div className="project-file-detail">
           <div className="project-file-detail-bar">
-            <button type="button" className="project-file-back" onClick={() => { setSelected(null); setPreview(null); setAttachedMessage(null); }}>← File</button>
+            <button type="button" className="project-file-back" onClick={() => { setSelected(null); setPreview(null); setAttachedMessage(null); }}>{t('← File')}</button>
             <span className={`project-file-badge is-${selected.kind}`}>{fileBadge(selected)}</span>
           </div>
           <h3 title={selected.path}>{selected.name}</h3>
           <p className="project-file-path">{selected.path}</p>
           <div className="project-file-detail-actions">
-            <a className="project-file-download" href={projectFileUrl(project.id, selected.path)} target="_blank" rel="noreferrer">Apri / scarica</a>
-            {onAttach && <button type="button" className="project-file-attach" onClick={() => void attach(selected)} disabled={attaching}>{attaching ? 'Aggiungo…' : 'Allega alla chat'}</button>}
+            <a className="project-file-download" href={projectFileUrl(project.id, selected.path)} target="_blank" rel="noreferrer">{t('Apri / scarica')}</a>
+            {onAttach && <button type="button" className="project-file-attach" onClick={() => void attach(selected)} disabled={attaching}>{attaching ? t('Aggiungo…') : t('Allega alla chat')}</button>}
           </div>
           {attachedMessage && <div className="project-file-notice" role="status">{attachedMessage}</div>}
           <div className="project-file-preview">
-            {previewLoading && <div className="project-file-preview-empty">Caricamento anteprima…</div>}
+            {previewLoading && <div className="project-file-preview-empty">{t('Caricamento anteprima…')}</div>}
             {!previewLoading && preview?.kind === 'error' && <div className="project-file-preview-error">{preview.message}</div>}
             {!previewLoading && preview?.kind === 'markdown' && <div className="project-file-markdown" dangerouslySetInnerHTML={{ __html: renderMarkdown(preview.content) }} />}
             {!previewLoading && preview?.kind === 'text' && <pre className="project-file-text">{preview.content}</pre>}
@@ -203,20 +205,20 @@ export function ProjectFilesPanel({ project, onClose, onAttach, context = null, 
             {!previewLoading && preview?.kind === 'pdf' && <PdfPreview url={preview.url} title={selected.name} />}
             {!previewLoading && preview?.kind === 'image' && <img className="project-file-image" src={preview.url} alt={selected.name} />}
             {!previewLoading && preview?.kind === 'xlsx' && <SpreadsheetView data={preview.data} title={selected.name} />}
-            {!previewLoading && preview?.kind === 'pptx' && <div className="project-file-preview-empty">I PPTX caricati non hanno anteprima. Puoi aprire o scaricare il file.</div>}
+            {!previewLoading && preview?.kind === 'pptx' && <div className="project-file-preview-empty">{t('I PPTX caricati non hanno anteprima. Puoi aprire o scaricare il file.')}</div>}
             {!previewLoading && preview?.kind === 'word' && <HtmlPreview title={selected.name} html={preview.html} />}
-            {!previewLoading && selected.kind === 'other' && <div className="project-file-preview-empty">Anteprima non disponibile per questo formato. Puoi aprirlo o scaricarlo.</div>}
+            {!previewLoading && selected.kind === 'other' && <div className="project-file-preview-empty">{t('Anteprima non disponibile per questo formato. Puoi aprirlo o scaricarlo.')}</div>}
           </div>
         </div>
       ) : (
         <>
           <div className="project-files-search">
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Cerca file…" aria-label="Cerca file progetto" />
+            <input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Cerca file…')} aria-label={t('Cerca file progetto')} />
           </div>
           <div className="project-files-list">
-            {loading && <div className="project-files-empty">Caricamento file…</div>}
+            {loading && <div className="project-files-empty">{t('Caricamento file…')}</div>}
             {!loading && error && <div className="project-files-error" role="alert">{error}</div>}
-            {!loading && !error && groups.length === 0 && <div className="project-files-empty">{files.length === 0 ? 'Nessun file nel progetto.' : 'Nessun file corrispondente.'}</div>}
+            {!loading && !error && groups.length === 0 && <div className="project-files-empty">{t(files.length === 0 ? 'Nessun file nel progetto.' : 'Nessun file corrispondente.')}</div>}
             {!loading && !error && groups.map(([directory, directoryFiles]) => (
               <section className="project-files-group" key={directory || '__root'}>
                 <div className="project-files-group-title">{directory || 'Radice'}</div>
@@ -230,7 +232,7 @@ export function ProjectFilesPanel({ project, onClose, onAttach, context = null, 
               </section>
             ))}
           </div>
-          <footer className="project-files-footer">{files.length} file · {project.id}</footer>
+          <footer className="project-files-footer">{t('{count} file · {id}', { count: files.length, id: project.id })}</footer>
         </>
       )}
     </aside>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ProjectRecord } from '@memora/shared';
 import { deleteProject } from '../lib/api';
 import { ConfirmDialog } from './ConfirmDialog';
+import { useI18n } from '../i18n';
 
 interface ProjectDeleteDialogProps {
   project: ProjectRecord;
@@ -10,6 +11,7 @@ interface ProjectDeleteDialogProps {
 }
 
 export function ProjectDeleteDialog({ project, onClose, onDeleted }: ProjectDeleteDialogProps) {
+  const { t } = useI18n();
   const [confirmation, setConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +33,9 @@ export function ProjectDeleteDialog({ project, onClose, onDeleted }: ProjectDele
 
   return (
     <ConfirmDialog
-      title={`Eliminare il progetto “${project.name}”?`}
-      confirmLabel="Elimina progetto"
-      busyLabel="Eliminazione…"
+      title={`${t('Elimina progetto')}: “${project.name}”?`}
+      confirmLabel={t('Elimina progetto')}
+      busyLabel={t('Eliminazione…')}
       busy={deleting}
       error={error}
       confirmDisabled={confirmation !== project.id}
@@ -41,8 +43,8 @@ export function ProjectDeleteDialog({ project, onClose, onDeleted }: ProjectDele
       onClose={onClose}
       onConfirm={() => void remove()}
     >
-      <p>Il progetto e le sue fonti verranno spostati nel cestino di Memora. Le chat esistenti non vengono cancellate.</p>
-      <label className="admin-label project-delete-confirm">Per confermare, scrivi <code>{project.id}</code>
+      <p>{t('Il progetto e le sue fonti verranno spostati nel cestino di Memora. Le chat esistenti non vengono cancellate.')}</p>
+      <label className="admin-label project-delete-confirm">{t('Per confermare, scrivi')} <code>{project.id}</code>
         <input autoFocus value={confirmation} onChange={event => setConfirmation(event.target.value)} placeholder={project.id} disabled={deleting} />
       </label>
     </ConfirmDialog>

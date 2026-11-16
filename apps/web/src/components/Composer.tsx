@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ChatAttachment } from '@memora/shared';
+import { useI18n } from '../i18n';
 
 interface ComposerProps {
   onSend: (text: string) => void;
@@ -16,6 +17,7 @@ interface ComposerProps {
 }
 
 export function Composer({ onSend, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null }: ComposerProps) {
+  const { t } = useI18n();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,13 +54,13 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
               <span className={`attachment-kind is-${attachment.kind}`}>{attachment.filename.split('.').pop()?.toUpperCase() ?? 'FILE'}</span>
               <span className="composer-attachment-name" title={attachment.filename}>{attachment.filename}</span>
               <span className="composer-attachment-size">{formatSize(attachment.size)}</span>
-              {attachment.projectPath && <span className="composer-attachment-project">progetto</span>}
+              {attachment.projectPath && <span className="composer-attachment-project">{t('progetto')}</span>}
               {onRemoveAttachment && (
-                <button type="button" aria-label={`Rimuovi ${attachment.filename}`} onClick={() => onRemoveAttachment(attachment.id)}>×</button>
+                <button type="button" aria-label={t('Rimuovi {name}', { name: attachment.filename })} onClick={() => onRemoveAttachment(attachment.id)}>×</button>
               )}
             </span>
           ))}
-          {attachmentBusy && <span className="composer-attachment is-uploading">Caricamento…</span>}
+          {attachmentBusy && <span className="composer-attachment is-uploading">{t('Caricamento…')}</span>}
           {attachmentError && <span className="composer-attachment-error" role="alert">{attachmentError}</span>}
         </div>
       )}
@@ -77,8 +79,8 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
         <button
           type="button"
           className="attach-button"
-          aria-label="Aggiungi allegati"
-          title="Aggiungi allegati (.md, .txt, .pdf, .docx, .html, immagini)"
+          aria-label={t('Aggiungi allegati')}
+          title={t('Aggiungi allegati (.md, .txt, .pdf, .docx, .html, immagini)')}
           disabled={disabled || isStreaming || attachmentBusy}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -93,7 +95,7 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Scrivi un messaggio… (Invio per inviare, Shift+Invio per andare a capo)"
+        placeholder={t('Scrivi un messaggio… (Invio per inviare, Shift+Invio per andare a capo)')}
         disabled={disabled || isStreaming || attachmentBusy}
         rows={1}
       />
@@ -104,7 +106,7 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
           </button>
         )}
         <button type="button" className="send-button" onClick={handleSend} disabled={sendDisabled}>
-          {isStreaming ? 'Rispondo…' : 'Invia'}
+          {isStreaming ? t('Rispondo…') : t('Invia')}
         </button>
       </div>
     </div>

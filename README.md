@@ -247,6 +247,27 @@ non ha il flag `Secure`; impostare `MEMORA_COOKIE_SECURE=true` solo quando
 l'accesso avviene tramite HTTPS. Tailscale cifra il trasporto, ma il login resta
 necessario.
 
+## Lingue dell’interfaccia
+
+La UI supporta:
+
+```text
+Italiano
+English
+Français
+```
+
+La lingua viene rilevata dal browser, salvata in `localStorage` con la chiave
+`memora-language` e può essere cambiata dal selettore nella topbar, nella
+schermata di login e in **Impostazioni → Aspetto**. Il fallback è l’inglese.
+
+Il dizionario è in `apps/web/src/i18n/`: `it` è la lingua sorgente, mentre
+`en.ts` e `fr.ts` contengono le traduzioni. Per aggiungere una lingua si copia
+un dizionario e si registra il codice in `SUPPORTED_LANGUAGES`.
+
+La lingua della UI non forza la lingua di Memo: l’assistente risponde nella
+lingua del messaggio dell’utente.
+
 ## Development
 
 Servono due processi:

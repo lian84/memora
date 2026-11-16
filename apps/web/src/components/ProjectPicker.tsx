@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ProjectRecord } from '@memora/shared';
+import { useI18n } from '../i18n';
 
 interface ProjectPickerProps {
   projects: ProjectRecord[];
@@ -24,6 +25,7 @@ function CheckIcon() {
 }
 
 export function ProjectPicker({ projects, selectedProjectId, onSelect, onNew, onEdit, onDelete, settingsActive = false }: ProjectPickerProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const selected = projects.find(project => project.id === selectedProjectId) ?? null;
@@ -49,29 +51,29 @@ export function ProjectPicker({ projects, selectedProjectId, onSelect, onNew, on
 
   return (
     <div className="project-picker" ref={rootRef}>
-      <label>Progetto</label>
+      <label>{t('Progetto')}</label>
       <button
         type="button"
         className={`project-picker-trigger${settingsActive ? ' is-active' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(value => !value)}
-        title={selected ? `Progetto: ${selected.name}` : 'Tutti i progetti'}
+        title={selected ? t('Progetto: {name}', { name: selected.name }) : t('Tutti i progetti')}
       >
         <span className={`project-picker-dot${selected ? ` is-${selected.status}` : ''}`} aria-hidden="true" />
-        <span className="project-picker-current">{selected?.name ?? 'Tutti i progetti'}</span>
+        <span className="project-picker-current">{selected?.name ?? t('Tutti i progetti')}</span>
         <span className="project-picker-count">{projects.length}</span>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
       </button>
       {open && (
-        <div className="project-picker-menu" role="listbox" aria-label="Seleziona progetto">
+        <div className="project-picker-menu" role="listbox" aria-label={t('Seleziona progetto')}>
           <button type="button" role="option" aria-selected={!selectedProjectId} className={`project-picker-item${!selectedProjectId ? ' is-selected' : ''}`} onClick={() => choose(null)}>
             <span className="project-picker-item-icon">◎</span>
-            <span className="project-picker-item-name">Tutti i progetti</span>
+            <span className="project-picker-item-name">{t('Tutti i progetti')}</span>
             {!selectedProjectId && <span className="project-picker-check"><CheckIcon /></span>}
           </button>
-          <div className="project-picker-section">Progetti</div>
-          {projects.length === 0 && <div className="project-picker-empty">Nessun progetto. Creane uno per organizzare chat e fonti.</div>}
+          <div className="project-picker-section">{t('Progetti')}</div>
+          {projects.length === 0 && <div className="project-picker-empty">{t('Nessun progetto. Creane uno per organizzare chat e fonti.')}</div>}
           {projects.map(project => (
             <div className={`project-picker-project${project.id === selectedProjectId ? ' is-selected' : ''}`} key={project.id}>
               <button type="button" role="option" aria-selected={project.id === selectedProjectId} className="project-picker-item" onClick={() => choose(project.id)}>
@@ -80,19 +82,19 @@ export function ProjectPicker({ projects, selectedProjectId, onSelect, onNew, on
                 {project.id === selectedProjectId && <span className="project-picker-check"><CheckIcon /></span>}
               </button>
               <div className="project-picker-item-actions">
-                <button type="button" className="project-picker-action" title={`Modifica ${project.name}`} aria-label={`Modifica ${project.name}`} onClick={() => { setOpen(false); onEdit(project.id); }}>
+                <button type="button" className="project-picker-action" title={t('Modifica') + ` ${project.name}`} aria-label={t('Modifica') + ` ${project.name}`} onClick={() => { setOpen(false); onEdit(project.id); }}>
                   <PencilIcon />
                 </button>
-                <button type="button" className="project-picker-action is-danger" title={`Elimina ${project.name}`} aria-label={`Elimina ${project.name}`} onClick={() => { setOpen(false); onDelete(project); }}>
+                <button type="button" className="project-picker-action is-danger" title={t('Elimina') + ` ${project.name}`} aria-label={t('Elimina') + ` ${project.name}`} onClick={() => { setOpen(false); onDelete(project); }}>
                   <TrashIcon />
                 </button>
               </div>
             </div>
           ))}
           <div className="project-picker-footer">
-            <button type="button" className="project-picker-new" onClick={() => { setOpen(false); onNew(); }}>+ Nuovo progetto</button>
+            <button type="button" className="project-picker-new" onClick={() => { setOpen(false); onNew(); }}>{t('+ Nuovo progetto')}</button>
             {selected && (
-              <button type="button" className={`project-picker-edit${settingsActive ? ' is-active' : ''}`} onClick={() => { setOpen(false); onEdit(selected.id); }}>Impostazioni</button>
+              <button type="button" className={`project-picker-edit${settingsActive ? ' is-active' : ''}`} onClick={() => { setOpen(false); onEdit(selected.id); }}>{t('Impostazioni')}</button>
             )}
           </div>
         </div>

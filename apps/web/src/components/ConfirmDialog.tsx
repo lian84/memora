@@ -1,5 +1,6 @@
 import { useEffect, useId } from 'react';
 import type { ReactNode } from 'react';
+import { useI18n } from '../i18n';
 
 interface ConfirmDialogProps {
   title: string;
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onClose,
   onConfirm,
 }: ConfirmDialogProps) {
+  const { t } = useI18n();
   const titleId = useId();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !busy) onClose(); };
@@ -40,7 +42,7 @@ export function ConfirmDialog({
         {children}
         {error && <p role="alert" className="delete-dialog-error">{error}</p>}
         <div className="dialog-actions">
-          <button type="button" autoFocus={cancelAutoFocus} onClick={onClose} disabled={busy}>Annulla</button>
+          <button type="button" autoFocus={cancelAutoFocus} onClick={onClose} disabled={busy}>{t('Annulla')}</button>
           <button type="button" className="delete-confirm-button" onClick={onConfirm} disabled={busy || confirmDisabled}>
             {busy ? busyLabel : confirmLabel}
           </button>

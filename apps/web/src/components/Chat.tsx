@@ -5,6 +5,7 @@ import { ProjectFilesPanel } from './ProjectFilesPanel';
 import { SessionContextPanel } from './SessionContextPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { useSSE } from '../hooks/useSSE';
+import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings } from '@memora/shared';
 import type { ChatMessage } from '../lib/api';
 import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, updateSessionContext, uploadChatAttachment } from '../lib/api';
@@ -58,6 +59,7 @@ function shouldFinalizeAssistantMessage(payload: unknown): boolean {
 }
 
 export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
+  const { t } = useI18n();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingContentRef = useRef('');
   const streamingAssistantIdRef = useRef<string | null>(null);
@@ -359,9 +361,9 @@ function messageTitle(content: string, html: string | null): string {
     <div className={`chat-layout${project || context ? ' has-side-panel' : ''}`}>
       <div className="chat-area">
       {(project || context) && !filesOpen && (
-        <button type="button" className="project-files-reopen" onClick={() => setFilesOpen(true)} title={project ? 'Apri file del progetto' : 'Apri contesto chat'}>
+        <button type="button" className="project-files-reopen" onClick={() => setFilesOpen(true)} title={t(project ? 'Apri file del progetto' : 'Apri contesto chat')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></svg>
-          <span>{project ? 'File progetto' : 'Contesto'}</span>
+          <span>{t(project ? 'File progetto' : 'Contesto')}</span>
         </button>
       )}
       <div className="messages-container">
@@ -373,8 +375,8 @@ function messageTitle(content: string, html: string | null): string {
                 <path d="M8 9h8M8 13h5" />
               </svg>
             </span>
-            <h2>Inizia la conversazione</h2>
-            <p>Scrivi un messaggio qui sotto. Memo userà il contesto del Second Brain quando utile.</p>
+            <h2>{t('Inizia la conversazione')}</h2>
+            <p>{t('Scrivi un messaggio qui sotto. Memo userà il contesto del Second Brain quando utile.')}</p>
           </div>
         )}
 
@@ -386,7 +388,7 @@ function messageTitle(content: string, html: string | null): string {
 
         {memorySources.length > 0 && (
           <aside className="memory-used">
-            <div className="memory-used-header">Memoria utilizzata ({memorySources.length})</div>
+            <div className="memory-used-header">{t('Memoria utilizzata ({count})', { count: memorySources.length })}</div>
             <div className="memory-used-list">
               {memorySources.map((source, index) => (
                 <div className="memory-source" key={`${source.relativePath}-${index}`}>
@@ -440,7 +442,7 @@ function messageTitle(content: string, html: string | null): string {
       {memoryDialogMessage && sessionId && (() => {
         const index = messages.findIndex(item => item.id === memoryDialogMessage.id);
         const question = index > 0 ? [...messages.slice(0, index)].reverse().find(item => item.role === 'user')?.content : undefined;
-        const context = messages.slice(Math.max(0, index - 5), index).map(item => `${item.role === 'user' ? 'Utente' : 'Memo'}: ${item.content.slice(0, 700)}`);
+        const context = messages.slice(Math.max(0, index - 5), index).map(item => `${item.role === 'user' ? t('Utente') : 'Memo'}: ${item.content.slice(0, 700)}`);
         return (
         <SaveMemoryDialog
           sessionId={sessionId}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { MemorySource } from '../lib/api';
 import { listSources } from '../lib/api';
 import { MemoryInbox } from './MemoryInbox';
+import { useI18n } from '../i18n';
 
 interface ChatMemoryPanelProps {
   refreshKey?: number;
@@ -11,6 +12,7 @@ interface ChatMemoryPanelProps {
 }
 
 export function ChatMemoryPanel({ refreshKey = 0, projectId = null, projectName, onOpenSecondBrain }: ChatMemoryPanelProps) {
+  const { t } = useI18n();
   const [sources, setSources] = useState<MemorySource[]>([]);
   const [inboxCount, setInboxCount] = useState(0);
 
@@ -26,9 +28,9 @@ export function ChatMemoryPanel({ refreshKey = 0, projectId = null, projectName,
   return (
     <details className="second-brain chat-memory">
       <summary className="second-brain-summary">
-        <span className="second-brain-title">Memoria della chat</span>
-        {inboxCount > 0 && <span className="second-brain-inbox-badge">{inboxCount} da rivedere</span>}
-        <span className="second-brain-status">{projectId ? `${projectCount} di progetto · ${globalCount} globali` : `${globalCount} memorie globali`}</span>
+        <span className="second-brain-title">{t('Memoria della chat')}</span>
+        {inboxCount > 0 && <span className="second-brain-inbox-badge">{t('{count} da rivedere', { count: inboxCount })}</span>}
+        <span className="second-brain-status">{projectId ? t('{project} di progetto · {global} globali', { project: projectCount, global: globalCount }) : t('{count} memorie globali', { count: globalCount })}</span>
         <svg className="second-brain-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
         </svg>
@@ -36,11 +38,11 @@ export function ChatMemoryPanel({ refreshKey = 0, projectId = null, projectName,
       <div className="second-brain-body">
         <div className="chat-memory-overview">
           <button type="button" onClick={() => onOpenSecondBrain?.('global')}>
-            <span>Memoria globale</span><strong>{globalCount}</strong>
+            <span>{t('Memoria globale')}</span><strong>{globalCount}</strong>
           </button>
           {projectId && (
             <button type="button" onClick={() => onOpenSecondBrain?.(projectId)}>
-              <span>{projectName ?? 'Memoria di progetto'}</span><strong>{projectCount}</strong>
+              <span>{projectName ?? t('Memoria di progetto')}</span><strong>{projectCount}</strong>
             </button>
           )}
           <button type="button" className="chat-memory-open" onClick={() => onOpenSecondBrain?.()}>

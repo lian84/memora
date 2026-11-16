@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getAuthStatus, login as loginRequest, logout as logoutRequest, setupPassword, type AuthStatus } from '../lib/api';
+import { LanguageSelector, useI18n } from '../i18n';
 
 interface AuthContextValue {
   logout: () => Promise<void>;
@@ -15,6 +16,7 @@ export function useAuth(): AuthContextValue {
 }
 
 function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuthenticated: () => void }) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -25,11 +27,11 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
     event.preventDefault();
     setError(null);
     if (isSetup && password !== confirmation) {
-      setError('Le password non coincidono.');
+      setError(t('Le password non coincidono.'));
       return;
     }
     if (password.length < 12) {
-      setError('La password deve avere almeno 12 caratteri.');
+      setError(t('La password deve avere almeno 12 caratteri.'));
       return;
     }
     setBusy(true);
@@ -47,19 +49,20 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
   return (
     <main className="auth-screen">
       <section className="auth-card" aria-labelledby="auth-title">
+        <div className="auth-language"><LanguageSelector compact /></div>
         <div className="auth-brand">
           <span className="auth-mark" aria-hidden="true">M</span>
           <div>
-            <strong>Memora</strong>
-            <span>assistente personale</span>
+            <strong>{t('Memora')}</strong>
+            <span>{t('assistente personale')}</span>
           </div>
         </div>
-        <span className="admin-eyebrow">{isSetup ? 'Primo accesso' : 'Accesso protetto'}</span>
-        <h1 id="auth-title">{isSetup ? 'Crea la password di Memora' : 'Bentornato'}</h1>
+        <span className="admin-eyebrow">{t(isSetup ? 'Primo accesso' : 'Accesso protetto')}</span>
+        <h1 id="auth-title">{t(isSetup ? 'Crea la password di Memora' : 'Bentornato')}</h1>
         <p>
-          {isSetup
+          {t(isSetup
             ? 'La prima password impostata protegge tutte le chat, la memoria e le impostazioni. Sceglila ora e conservala in un posto sicuro.'
-            : 'Inserisci la password per accedere a Memora e alla memoria di Memo.'}
+            : 'Inserisci la password per accedere a Memora e alla memoria di Memo.')}
         </p>
         <form onSubmit={event => void submit(event)}>
           <label className="admin-label">Password
@@ -89,16 +92,17 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
           )}
           {error && <div className="auth-error" role="alert">{error}</div>}
           <button type="submit" className="auth-submit" disabled={busy}>
-            {busy ? 'Verifico…' : isSetup ? 'Imposta password e entra' : 'Accedi'}
+            {busy ? t('Verifico…') : isSetup ? t('Imposta password e entra') : t('Accedi')}
           </button>
         </form>
-        <small className="auth-hint">Sessione valida per 24 ore. Nessun nome utente: Memora è personale.</small>
+        <small className="auth-hint">{t('Sessione valida per 24 ore. Nessun nome utente: Memora è personale.')}</small>
       </section>
     </main>
   );
 }
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,14 +131,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setStatus(current => current ? { ...current, authenticated: false } : { setupRequired: false, authenticated: false });
   };
 
-  if (loading) return <main className="auth-screen"><div className="auth-card auth-loading">Caricamento Memora…</div></main>;
+  if (loading) return <main className="auth-screen"><div className="auth-card auth-loading">{t('Caricamento Memora…')}</div></main>;
   if (error || !status) {
     return (
       <main className="auth-screen">
         <div className="auth-card">
-          <h1>Memora non disponibile</h1>
-          <div className="auth-error" role="alert">{error ?? 'Stato di autenticazione non disponibile.'}</div>
-          <button type="button" className="auth-submit" onClick={() => void loadStatus()}>Riprova</button>
+          <h1>{t('Memora non disponibile')}</h1>
+          <div className="auth-error" role="alert">{error ?? t('Stato di autenticazione non disponibile.')}</div>
+          <button type="button" className="auth-submit" onClick={() => void loadStatus()}>{t('Riprova')}</button>
         </div>
       </main>
     );
