@@ -2,9 +2,16 @@
  * Renderer Markdown minimale, senza dipendenze esterne.
  * Supporta: titoli, grassetto, corsivo, codice inline, blocchi codice, elenchi puntati, paragrafi.
  */
+export interface MarkdownCitation {
+  url: string;
+  domain?: string;
+  title?: string;
+  snippet?: string;
+}
+
 export interface MarkdownOptions {
-  /** Mappa numero fonte → URL, usata per rendere cliccabili le citazioni [n]. */
-  citations?: Map<number, string>;
+  /** Mappa numero fonte → metadati, usata per rendere cliccabili le citazioni [n]. */
+  citations?: Map<number, MarkdownCitation>;
 }
 
 export function renderMarkdown(text: string, options: MarkdownOptions = {}): string {
@@ -47,11 +54,19 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
     if (options.citations) {
       inline = inline.replace(/\[(\d{1,3})\]/g, (match, raw: string) => {
         const number = Number(raw);
-        const url = options.citations?.get(number);
-        const href = url ? citationUrl(url) : null;
-        return href
-          ? `<a class="message-citation" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" title="Fonte ${number}">[${number}]</a>`
-          : match;
+        const citation = options.citations?.get(number);
+        if (!citation) return match;
+        const href = citationUrl(citation.url);
+        if (!href) return match;
+        const domain = citation.domain || (() => {
+          try { return new URL(href).hostname; } catch { return ''; }
+        })();
+        const title = citation.title || domain || href;
+        const rawSnippet = (citation.snippet ?? '').replace(/\s+/g, ' ').trim();
+        const snippet = rawSnippet.slice(0, 220);
+        const label = [domain, title, snippet].filter(Boolean).join(' — ');
+        const tooltip = `<span class="citation-tooltip" role="tooltip"><span class="citation-tooltip-domain">${escapeHtml(domain || href)}</span><span class="citation-tooltip-title">${escapeHtml(title)}</span>${snippet ? `<span class="citation-tooltip-snippet">${escapeHtml(snippet)}${rawSnippet.length > snippet.length ? '…' : ''}</span>` : ''}</span>`;
+        return `<a class="message-citation" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="${escapeHtml(label)}">[${number}]${tooltip}</a>`;
       });
     }
     return inline.replace(/\u0000(\d+)\u0000/g, (_match, index: string) => placeholders[Number(index)] ?? '');

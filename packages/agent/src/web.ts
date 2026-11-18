@@ -84,12 +84,15 @@ async function readLimited(response: Response): Promise<Buffer> {
   return Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
 }
 
-function htmlToText(html: string, url: string): string {
+function extractHtml(html: string, url: string): { text: string; title: string } {
   const dom = new JSDOM(html, { url });
   const reader = new Readability(dom.window.document);
   const article = reader.parse();
-  if (article?.textContent?.trim()) return article.textContent.replace(/\s+/g, ' ').trim();
-  return dom.window.document.body?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  const title = cleanSnippet(article?.title) || cleanSnippet(dom.window.document.title);
+  const text = article?.textContent?.trim()
+    ? article.textContent.replace(/\s+/g, ' ').trim()
+    : dom.window.document.body?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  return { text, title };
 }
 
 /** Client web minimale: solo ricerca e lettura, senza browser o sessione. */
@@ -148,14 +151,17 @@ export class WebService {
     if (!response.ok) throw new WebError('fetch_failed', `Pagina non disponibile (${response.status})`);
     const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
     const buffer = await readLimited(response);
-    let text = '';
+    let text: string;
+    let pageTitle = '';
     let kind: WebSource['kind'] = 'page';
     if (contentType.includes('application/pdf') || url.pathname.toLowerCase().endsWith('.pdf')) {
       kind = 'pdf';
       const parser = new PDFParse({ data: new Uint8Array(buffer) });
       try { text = (await parser.getText()).text; } finally { await parser.destroy().catch(() => undefined); }
     } else if (contentType.includes('text/html') || contentType.includes('application/xhtml')) {
-      text = htmlToText(buffer.toString('utf8'), url.toString());
+      const extracted = extractHtml(buffer.toString('utf8'), url.toString());
+      text = extracted.text;
+      pageTitle = extracted.title;
     } else if (contentType.includes('text/plain') || contentType.includes('application/json') || contentType.includes('text/')) {
       text = buffer.toString('utf8');
     } else {
@@ -164,10 +170,11 @@ export class WebService {
     const source: WebSource = {
       id: sourceId(url.toString()),
       url: url.toString(),
-      title: cleanSnippet(url.hostname + url.pathname).slice(0, 200),
+      title: pageTitle || cleanSnippet(url.hostname + url.pathname).slice(0, 200),
       domain: domainOf(url.toString()),
       kind,
       ...(query ? { query } : {}),
+      snippet: cleanSnippet(text).slice(0, 300),
       fetchedAt: Date.now(),
       status: 'ok',
     };

@@ -16,18 +16,20 @@ test('nasconde i commenti metadata delle memorie', () => {
 
 test('rende cliccabili solo le citazioni numeriche con una fonte mappata', () => {
   const html = renderMarkdown('Il fatto è riportato [1] e anche [2].', {
-    citations: new Map([[1, 'https://example.com/fonte']]),
+    citations: new Map([[1, { url: 'https://example.com/fonte', domain: 'example.com', title: 'Fonte di esempio', snippet: 'Descrizione breve della fonte.' }]]),
   });
   expect(html).toContain('class="message-citation"');
   expect(html).toContain('href="https://example.com/fonte"');
   expect(html).toContain('[1]');
   expect(html).toContain('[2]');
+  expect(html).toContain('Fonte di esempio');
+  expect(html).toContain('Descrizione breve della fonte.');
   expect((html.match(/class="message-citation"/g) ?? [])).toHaveLength(1);
 });
 
 test('non trasforma in link le citazioni dentro il codice inline', () => {
   const html = renderMarkdown('`[1]` e [1]', {
-    citations: new Map([[1, 'https://example.com/fonte']]),
+    citations: new Map([[1, { url: 'https://example.com/fonte', domain: 'example.com', title: 'Fonte di esempio', snippet: 'Descrizione breve della fonte.' }]]),
   });
   expect(html).toContain('<code>[1]</code>');
   expect((html.match(/class="message-citation"/g) ?? [])).toHaveLength(1);
@@ -35,7 +37,7 @@ test('non trasforma in link le citazioni dentro il codice inline', () => {
 
 test('rifiuta URL non HTTP nelle citazioni', () => {
   const html = renderMarkdown('Fatto [1].', {
-    citations: new Map([[1, 'javascript:alert(1)']]),
+    citations: new Map([[1, { url: 'javascript:alert(1)', domain: 'example.com', title: 'Fonte' }]]),
   });
   expect(html).not.toContain('message-citation');
   expect(html).toContain('[1]');

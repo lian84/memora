@@ -1171,3 +1171,33 @@ ricerche successive e dopo il limite delle 50 fonti.
 - Il modello deve seguire il formato; se non lo fa, la risposta non viene
   modificata artificialmente con fonti inventate.
 - Il limite di 50 fonti resta, ma i numeri non collassano.
+
+---
+## ADR-038 — Metadati e tooltip delle fonti web
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+Il tooltip nativo delle citazioni mostrava solo “Fonte n”, mentre l’utente
+voleva riconoscere subito sito, titolo e contenuto senza aprire la fonte. Le
+etichette `WEB` e `HTML` della scheda Fonti non spiegavano la differenza tra un
+risultato di ricerca e una pagina letta.
+
+### Decisione
+- Le citazioni `[n]` contengono un tooltip HTML/CSS con dominio, titolo e uno
+  snippet breve; il tooltip compare su hover e su focus da tastiera.
+- I metadati provengono dalla `WebSource` e vengono passati al renderer Markdown;
+  testo e attributi sono sempre escapati.
+- Le etichette della scheda Fonti diventano:
+  - **Ricerca**: risultato del motore, non ancora letto;
+  - **Letta**: pagina recuperata e letta;
+  - **PDF**: PDF letto.
+- Una legenda nella scheda spiega le etichette.
+- Per le pagine lette vengono salvati anche titolo reale e un estratto iniziale;
+  per i PDF viene salvato un estratto del testo estratto.
+
+### Conseguenze
+- Il tooltip non dipende da JavaScript e resta disponibile anche con la UI
+  statica.
+- Il tooltip è informativo ma non sostituisce l’apertura della fonte.
+- I vecchi riferimenti senza metadati restano testo `[n]`.

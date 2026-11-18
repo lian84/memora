@@ -67,6 +67,8 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Estrazione HTML con Readability e testo da PDF.
 - [x] Fonti persistenti nella sessione, numerate in modo stabile e visibili nella scheda Fonti.
 - [x] Citazioni numeriche `[n]` per ogni informazione, cliccabili nella risposta.
+- [x] Tooltip della citazione con sito, titolo e breve descrizione.
+- [x] La scheda Fonti distingue **Ricerca** (risultato non letto), **Letta** (pagina letta) e **PDF**.
 - [x] I numeri non vengono riutilizzati quando la cronologia supera il limite delle fonti.
 - [x] Blocco SSRF, URL privati/metadata, credenziali negli URL e redirect eccessivi.
 - [x] Contenuto web trattato come dato non fidato.

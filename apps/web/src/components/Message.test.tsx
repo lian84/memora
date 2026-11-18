@@ -45,11 +45,15 @@ test('collega le citazioni numeriche alle fonti web', () => {
       content="Il fatto è riportato [1]."
       timestamp={1}
       webSources={[
-        { id: 'https://example.com', number: 1, url: 'https://example.com', title: 'Example', domain: 'example.com', kind: 'search', fetchedAt: 1, status: 'ok' },
+        { id: 'https://example.com', number: 1, url: 'https://example.com', title: 'Example title', domain: 'example.com', kind: 'search', snippet: 'Breve descrizione della fonte.', fetchedAt: 1, status: 'ok' },
       ]}
     />,
   );
   expect(markup).toContain('class="message-citation"');
   expect(markup).toContain('href="https://example.com"');
   expect(markup).toContain('[1]');
+  expect(markup).toContain('citation-tooltip');
+  expect(markup).toContain('example.com');
+  expect(markup).toContain('Example title');
+  expect(markup).toContain('Breve descrizione della fonte.');
 });

@@ -45,9 +45,14 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
   const htmlBlock = hideHtmlCode && role === 'assistant' ? content.match(/```(?:html|htm)?\s*\n([\s\S]*?)```/i) : null;
   const visibleContent = htmlBlock ? content.replace(htmlBlock[0], '').trim() : content;
   const copyText = role === 'user' ? content.replace(/<[^>]*>/g, '') : htmlBlock ? visibleContent : content;
-  const citationMap = new Map<number, string>();
+  const citationMap = new Map<number, { url: string; domain: string; title: string; snippet?: string }>();
   for (const [index, source] of webSources.entries()) {
-    citationMap.set(source.number ?? index + 1, source.url);
+    citationMap.set(source.number ?? index + 1, {
+      url: source.url,
+      domain: source.domain,
+      title: source.title,
+      ...(source.snippet ? { snippet: source.snippet } : {}),
+    });
   }
   const time = new Date(timestamp).toLocaleTimeString(language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB', {
     hour: '2-digit',

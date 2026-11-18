@@ -870,8 +870,13 @@ body { font-size: calc(14px * var(--font-scale)); }
 .message-content pre { background: var(--code-bg); }
 .message-content code { border-color: var(--border); background: var(--code-bg); color: var(--code-text); }
 .message-content a { color: var(--accent); }
-.message-citation { display: inline-block; margin: 0 1px; padding: 0 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-size: .72em; font-weight: 750; line-height: 1.25; text-decoration: none; vertical-align: super; }
-.message-citation:hover { background: var(--accent); color: #fff; }
+.message-citation { position: relative; display: inline-block; margin: 0 1px; padding: 0 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-size: .72em; font-weight: 750; line-height: 1.25; text-decoration: none; vertical-align: super; }
+.message-citation:hover, .message-citation:focus-visible { background: var(--accent); color: #fff; }
+.citation-tooltip { position: absolute; z-index: 30; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); width: min(300px, 70vw); display: none; flex-direction: column; gap: 3px; padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-elevated); box-shadow: var(--shadow-md); color: var(--text-soft); font-size: 10px; font-style: normal; font-weight: 400; line-height: 1.4; text-align: left; text-decoration: none; white-space: normal; pointer-events: none; }
+.message-citation:hover .citation-tooltip, .message-citation:focus-visible .citation-tooltip { display: flex; }
+.citation-tooltip-domain { color: var(--accent); font-size: 9px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.citation-tooltip-title { color: var(--text); font-size: 11px; font-weight: 650; }
+.citation-tooltip-snippet { color: var(--muted); font-size: 10px; }
 
 .composer {
   padding-top: 10px;
@@ -1403,11 +1408,15 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
 .web-sources-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 10px 12px; overflow: hidden; }
 .web-sources-toolbar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
 .web-sources-toolbar button { height: 25px; padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 9px; cursor: pointer; }
+.web-sources-legend { flex: 0 0 auto; display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; color: var(--muted); font-size: 9px; line-height: 1.4; }
+.web-sources-legend > span { display: flex; align-items: center; gap: 4px; }
 .web-sources-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
 .web-source { padding: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
 .web-source-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
 .web-source-number { flex: 0 0 auto; min-width: 20px; padding: 1px 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; font-weight: 800; text-align: center; }
 .web-source-kind { padding: 1px 4px; border-radius: 3px; background: var(--accent-soft); color: var(--accent-strong); font-size: 8px; font-weight: 800; }
+.web-source-kind.is-search { background: var(--accent-soft); color: var(--accent-strong); }
+.web-source-kind.is-page { background: var(--success-soft); color: var(--success); }
 .web-source-kind.is-pdf { background: var(--danger-soft-strong); color: var(--danger); }
 .web-source-domain { min-width: 0; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .web-source-title { display: block; overflow: hidden; color: var(--text-soft); font-size: 10px; font-weight: 650; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }

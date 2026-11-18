@@ -13,4 +13,6 @@ test('numera le fonti web in modo stabile', () => {
   expect(markup).toContain('[7]');
   expect(markup).toContain('example.com');
   expect(markup).toContain('Example');
+  expect(markup).toContain('Ricerca');
+  expect(markup).toContain('trovata nella ricerca');
 });
