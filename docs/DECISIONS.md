@@ -1314,7 +1314,8 @@ esisteva uno stato condiviso tra sessioni o dispositivi.
   coda, non iniettati nella risposta in corso.
 - La disconnessione del browser non interrompe il turno; solo un abort esplicito
   o un riavvio del server lo fermano.
-- Gli eventi hanno una sequenza e un buffer per consentire la riconnessione.
+- Gli eventi hanno una sequenza e un buffer per consentire la riconnessione;
+  il client usa EventSource e riprende da `after` quando la chat torna visibile.
 - `GET /api/turns` espone lo stato sintetico; la sidebar usa polling leggero e
   mostra giallo per turni in corso fuori dalla chat attiva e verde per risposte
   completate non ancora lette.

@@ -8,11 +8,12 @@ import { ArtifactsPanel } from './ArtifactsPanel';
 import { WebSourcesPanel } from './WebSourcesPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { useSSE } from '../hooks/useSSE';
+import { useSessionTurn } from '../hooks/useSessionTurn';
 import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
-import type { ChatMessage, TurnStatus, WebStatus } from '../lib/api';
-import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import type { ChatMessage, SSEEvent, TurnStatus, WebStatus } from '../lib/api';
+import { abortSession, attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -71,6 +72,10 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingContentRef = useRef('');
   const streamingAssistantIdRef = useRef<string | null>(null);
+  const activeAssistantIdRef = useRef<string | null>(null);
+  const activeTurnIdRef = useRef<string | null>(null);
+  const completedTurnRef = useRef<string | null>(null);
+  const streamEventHandlerRef = useRef<(event: SSEEvent) => void>(() => undefined);
   const finalizedRef = useRef(false);
   const [memorySources, setMemorySources] = useState<MemorySource[]>([]);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
@@ -101,7 +106,12 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const artifactsRef = useRef<ChatArtifact[]>([]);
   const autoOpenedArtifactsRef = useRef<Set<string>>(new Set());
   const turnStartedAtRef = useRef(0);
-  const { sendMessage, editMessage, abort, isStreaming } = useSSE(sessionId);
+  const turnStream = useSessionTurn(sessionId, { onEvent: event => streamEventHandlerRef.current(event) });
+  const { editMessage, abort: abortEdit, isStreaming: isEditStreaming } = useSSE(sessionId);
+  const isStreaming = turnStream.isActive || isEditStreaming || turnStatus === 'running' || turnStatus === 'queued';
+  const effectiveTurnStatus = turnStatus === 'running' || turnStatus === 'queued'
+    ? turnStatus
+    : turnStream.turn?.status ?? turnStatus;
 
   const openPanelTab = useCallback((tab: ChatSidePanelTab, artifactId: string | null = null) => {
     setPanelTab(tab);
@@ -163,6 +173,14 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     if (update.webSources.length > 0) ingestWebSources(update.webSources);
   }, [ingestArtifacts, ingestWebSources]);
 
+  const handleStreamEvent = useCallback((event: SSEEvent) => {
+    if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+    if (event.type === 'session_title') onSessionTitle?.();
+    if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
+    if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
+  }, [handleToolExecutionEnd, onSessionTitle]);
+  streamEventHandlerRef.current = handleStreamEvent;
+
   const refreshWeb = useCallback(async (options: { autoOpen?: boolean } = {}): Promise<WebSource[]> => {
     if (!sessionId) return [];
     setWebSourcesLoading(true);
@@ -191,6 +209,38 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     if (!project && panelTab === 'files') setPanelTab('context');
   }, [panelTab, project]);
 
+  useEffect(() => {
+    const turn = turnStream.turn;
+    if (!turn) return;
+    const assistantId = activeAssistantIdRef.current;
+    if (assistantId && (turn.status === 'running' || turn.status === 'queued')) {
+      onStreamingUpdate(assistantId, turnStream.content, true);
+    }
+    if (turn.status === 'running' || turn.status === 'queued') {
+      activeTurnIdRef.current = turn.turnId;
+    }
+    if (turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted') {
+      if (assistantId) {
+        onStreamingUpdate(assistantId, turnStream.content, false);
+        activeAssistantIdRef.current = null;
+      }
+      if (activeTurnIdRef.current === turn.turnId && completedTurnRef.current !== turn.turnId) {
+        completedTurnRef.current = turn.turnId;
+        activeTurnIdRef.current = null;
+        onTurnComplete?.();
+        setComposerFocus(value => value + 1);
+        void refreshArtifacts({ autoOpen: true });
+        void refreshWeb({ autoOpen: true });
+      }
+    }
+  }, [onStreamingUpdate, onTurnComplete, refreshArtifacts, refreshWeb, turnStream.content, turnStream.turn]);
+
+  useEffect(() => {
+    if ((turnStatus === 'running' || turnStatus === 'queued') && !turnStream.isActive) {
+      void turnStream.sync();
+    }
+  }, [turnStatus, turnStream.isActive, turnStream.sync]);
+
   const toggleWeb = useCallback(async () => {
     if (!sessionId) return;
     setAttachmentError(null);
@@ -218,6 +268,9 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     setWebSources([]);
     webSourcesRef.current = [];
     setWebSourcesError(null);
+    activeAssistantIdRef.current = null;
+    activeTurnIdRef.current = null;
+    completedTurnRef.current = null;
     autoOpenedArtifactsRef.current = new Set();
     turnStartedAtRef.current = 0;
     if (!sessionId) return;
@@ -412,11 +465,12 @@ function messageTitle(content: string, html: string | null): string {
   }, [attachments, onQueueTurn, sessionId]);
 
   const handleSend = useCallback(async (text: string) => {
+    if (!sessionId) return;
     const timestamp = Date.now();
     const assistantId = `stream-${timestamp}-${Math.random().toString(36).slice(2)}`;
-    streamingAssistantIdRef.current = assistantId;
-    streamingContentRef.current = '';
-    finalizedRef.current = false;
+    activeAssistantIdRef.current = assistantId;
+    activeTurnIdRef.current = null;
+    completedTurnRef.current = null;
     turnStartedAtRef.current = timestamp;
     autoOpenedArtifactsRef.current = new Set();
     setMemorySources([]);
@@ -425,30 +479,13 @@ function messageTitle(content: string, html: string | null): string {
     setAttachmentError(null);
     onStartTurn(text, assistantId, timestamp, pendingAttachments);
     try {
-      await sendMessage(text, (event) => {
-        const delta = event.type === 'message_update' ? getTextDelta(event.payload) : '';
-        if (delta) {
-          streamingContentRef.current += delta;
-          onStreamingUpdate(assistantId, streamingContentRef.current, true);
-        }
-        if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
-        if (event.type === 'session_title') onSessionTitle?.();
-        if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
-        if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
-        if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
-        if (event.type === 'agent_end' || event.type === 'agent_settled') finalizeStreaming();
-      }, pendingAttachments.map(attachment => attachment.id));
+      await turnStream.start(text, pendingAttachments.map(attachment => attachment.id));
     } catch (err) {
+      activeAssistantIdRef.current = null;
       setAttachments(pendingAttachments);
       setAttachmentError(err instanceof Error ? err.message : String(err));
-    } finally {
-      finalizeStreaming();
-      onTurnComplete?.();
-      setComposerFocus(value => value + 1);
-      void refreshArtifacts({ autoOpen: true });
-      void refreshWeb({ autoOpen: true });
     }
-  }, [attachments, finalizeStreaming, handleToolExecutionEnd, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, sendMessage, onTurnComplete, onSessionTitle]);
+  }, [attachments, onStartTurn, sessionId, turnStream.start]);
 
   const handleEditMessage = useCallback(async (message: DisplayChatMessage, text: string) => {
     if (!sessionId || !message.entryId || !text.trim()) return;
@@ -493,7 +530,13 @@ function messageTitle(content: string, html: string | null): string {
     void handleSend('Riformula la risposta precedente in modo più chiaro, completo e ben organizzato, mantenendo lo stesso contenuto e gli stessi fatti.');
   }, [sessionId, handleSend]);
 
-  const handleAbort = useCallback(() => { abort(); finalizeStreaming(); setComposerFocus(value => value + 1); }, [abort, finalizeStreaming]);
+  const handleAbort = useCallback(() => {
+    if (turnStream.isActive) void turnStream.abort();
+    else if (sessionId && (turnStatus === 'running' || turnStatus === 'queued')) void abortSession(sessionId);
+    else abortEdit();
+    finalizeStreaming();
+    setComposerFocus(value => value + 1);
+  }, [abortEdit, finalizeStreaming, sessionId, turnStatus, turnStream]);
 
   return (
     <div className={`chat-layout${panelOpen ? ' has-side-panel' : ''}`}>
@@ -539,11 +582,21 @@ function messageTitle(content: string, html: string | null): string {
             </div>
           </aside>
         )}
+        {turnStream.isActive && !activeAssistantIdRef.current && (
+          <div className="message-row">
+            <Message
+              role="assistant"
+              content={turnStream.content || t(effectiveTurnStatus === 'queued' ? 'In coda…' : 'Memo sta rispondendo…')}
+              timestamp={Date.now()}
+              streaming
+            />
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
-      {(turnStatus === 'running' || turnStatus === 'queued') && !isStreaming && (
+      {(effectiveTurnStatus === 'running' || effectiveTurnStatus === 'queued') && !turnStream.isActive && (
         <div className="chat-notice is-remote-turn" role="status">
-          {t(turnStatus === 'queued' ? 'Risposta in coda per questa chat…' : 'Risposta in corso in un’altra scheda…')}
+          {t(effectiveTurnStatus === 'queued' ? 'Risposta in coda per questa chat…' : 'Risposta in corso in un’altra scheda…')}
         </div>
       )}
       {pdfNotice && <div className={`chat-notice${pdfNotice.error ? ' is-error' : ''}`} role="status">{pdfNotice.text}</div>}

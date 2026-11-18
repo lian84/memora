@@ -34,7 +34,8 @@ Le risposte possono continuare in background: fino a due turni sono eseguiti
 contemporaneamente, gli altri vengono accodati. Chiudere il browser non
 interrompe il turno; un riavvio di Memora sì. La sidebar mostra un pallino
 giallo per una risposta in corso in un’altra chat e verde per una risposta
-completata non ancora letta.
+completata non ancora letta. Tornando nella chat, il client si ricollega agli
+eventi già prodotti e riprende il testo parziale.
 
 ## MVP
 1. Web UI.

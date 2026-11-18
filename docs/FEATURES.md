@@ -25,6 +25,7 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Turni eseguiti dal server anche quando la chat non è aperta o il browser viene chiuso.
 - [x] Massimo 2 turni concorrenti con coda esplicita; una sola risposta attiva per sessione.
 - [x] Indicatori sidebar: giallo per risposta in corso in un’altra chat, verde per risposta completata non letta.
+- [x] Client SSE riconnettibile: EventSource con replay `after` e ripresa del testo parziale su reload/cambio chat.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 
 ## 2. Memoria e Second Brain
