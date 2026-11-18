@@ -21,12 +21,6 @@ Pi resta il motore agentico. Memora aggiunge:
 ## Principi
 1. Pi è il motore, non va forkato.
 2. La memoria importante resta leggibile in Markdown.
-
-Le risposte possono continuare in background: fino a due turni sono eseguiti
-contemporaneamente, gli altri vengono accodati. Chiudere il browser non
-interrompe il turno; un riavvio di Memora sì. La sidebar mostra un pallino
-giallo per una risposta in corso in un’altra chat e verde per una risposta
-completata non ancora letta.
 3. Le sessioni restano nel formato Pi JSONL.
 4. Le credenziali non entrano nel repository.
 5. Prima LAN/Tailscale, niente esposizione pubblica.
@@ -35,6 +29,12 @@ completata non ancora letta.
 8. Memora è progettato per essere pubblicato come open source e installato da altri utenti.
    Nessun percorso hardcoded; separazione tra codice, configurazione, dati e segreti.
    I dati runtime risiedono in `MEMORA_DATA_DIR` (configurabile).
+
+Le risposte possono continuare in background: fino a due turni sono eseguiti
+contemporaneamente, gli altri vengono accodati. Chiudere il browser non
+interrompe il turno; un riavvio di Memora sì. La sidebar mostra un pallino
+giallo per una risposta in corso in un’altra chat e verde per una risposta
+completata non ancora letta.
 
 ## MVP
 1. Web UI.

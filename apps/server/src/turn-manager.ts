@@ -119,6 +119,11 @@ export class TurnManager {
     return () => turn.subscribers.delete(listener);
   }
 
+  async abortSession(sessionId: string): Promise<TurnInfo | null> {
+    const current = this.getCurrent(sessionId);
+    return current ? this.abort(current.turnId) : null;
+  }
+
   async abort(turnId: string): Promise<TurnInfo | null> {
     const turn = this.turns.get(turnId);
     if (!turn) return null;

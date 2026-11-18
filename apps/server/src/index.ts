@@ -990,7 +990,8 @@ app.delete<{ Params: { id: string } }>('/api/memory/sources/:id', async (req, re
 // --- Abort sessione ---
 app.post<{ Params: { id: string } }>('/api/sessions/:id/abort', async (req, reply) => {
   try {
-    await agentService.abort(req.params.id);
+    const turn = await turnManager.abortSession(req.params.id);
+    if (!turn) await agentService.abort(req.params.id);
     return reply.send({ ok: true });
   } catch (err) {
     if (err instanceof AgentServiceError && err.code === 'session_not_found') {
