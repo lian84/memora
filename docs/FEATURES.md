@@ -11,6 +11,7 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Web UI React servita da Fastify.
 - [x] Sessioni persistenti nel formato Pi JSONL.
 - [x] Streaming SSE dei turni con stato “Memo sta rispondendo…”.
+- [x] Rendering Markdown con tabelle, elenchi, codice e interruzioni `<br>` sicure.
 - [x] Interruzione della risposta, modifica di un messaggio utente e rigenerazione.
 - [x] Ripresa, rinomina, archiviazione, ripristino ed eliminazione delle chat.
 - [x] Titolo e cronologia della sessione.

@@ -1,6 +1,7 @@
 /**
  * Renderer Markdown minimale, senza dipendenze esterne.
- * Supporta: titoli, grassetto, corsivo, codice inline, blocchi codice, elenchi puntati, paragrafi.
+ * Supporta: titoli, grassetto, corsivo, codice inline, blocchi codice, elenchi puntati,
+ * tabelle GFM, interruzioni <br> sicure e paragrafi.
  */
 export interface MarkdownCitation {
   url: string;
@@ -49,6 +50,7 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
       const index = placeholders.push(`<code>${code}</code>`) - 1;
       return `\u0000${index}\u0000`;
     });
+    inline = inline.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
     inline = inline.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     inline = inline.replace(/\*(.+?)\*/g, '<em>$1</em>');
     if (options.citations) {
@@ -70,6 +72,46 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
       });
     }
     return inline.replace(/\u0000(\d+)\u0000/g, (_match, index: string) => placeholders[Number(index)] ?? '');
+  };
+
+  const splitTableRow = (line: string): string[] => {
+    let value = line.trim();
+    if (value.startsWith('|')) value = value.slice(1);
+    if (value.endsWith('|')) value = value.slice(0, -1);
+    return value.split('|').map(cell => cell.trim());
+  };
+
+  const isTableSeparator = (line: string): boolean => {
+    if (!line.includes('|')) return false;
+    const cells = splitTableRow(line);
+    return cells.length > 0 && cells.every(cell => /^:?-{3,}:?$/.test(cell));
+  };
+
+  const isTableStart = (line: string, nextLine: string | undefined): boolean => {
+    if (!nextLine || !line.includes('|') || !isTableSeparator(nextLine)) return false;
+    return splitTableRow(line).length === splitTableRow(nextLine).length;
+  };
+
+  const renderTable = (headerLine: string, separatorLine: string, rows: string[][]): string => {
+    const headers = splitTableRow(headerLine);
+    const aligns = splitTableRow(separatorLine).map(cell =>
+      cell.startsWith(':') && cell.endsWith(':') ? 'center'
+        : cell.endsWith(':') ? 'right'
+          : cell.startsWith(':') ? 'left'
+            : ''
+    );
+    const head = headers.map((cell, index) => {
+      const align = aligns[index];
+      return `<th${align ? ` style="text-align:${align}"` : ''}>${formatInline(cell)}</th>`;
+    }).join('');
+    const body = rows.map(row => {
+      const cells = Array.from({ length: headers.length }, (_, index) => row[index] ?? '');
+      return `<tr>${cells.map((cell, index) => {
+        const align = aligns[index];
+        return `<td${align ? ` style="text-align:${align}"` : ''}>${formatInline(cell)}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    return `<div class="markdown-table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
   };
 
   let paraBuf: string[] = [];
@@ -104,6 +146,23 @@ export function renderMarkdown(text: string, options: MarkdownOptions = {}): str
       const headingText = formatInline(hMatch[2]);
       htmlParts.push(`<h${level}>${headingText}</h${level}>`);
       i++;
+      continue;
+    }
+
+    // Tabella GFM
+    if (isTableStart(line, lines[i + 1])) {
+      flushParagraph(paraBuf);
+      const headerLine = line;
+      const separatorLine = lines[i + 1]!;
+      const headerCount = splitTableRow(headerLine).length;
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i]!.includes('|') && lines[i]!.trim() !== '') {
+        const cells = splitTableRow(lines[i]!);
+        rows.push(Array.from({ length: headerCount }, (_, index) => cells[index] ?? ''));
+        i++;
+      }
+      htmlParts.push(renderTable(headerLine, separatorLine, rows));
       continue;
     }
 

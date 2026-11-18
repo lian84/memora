@@ -42,3 +42,25 @@ test('rifiuta URL non HTTP nelle citazioni', () => {
   expect(html).not.toContain('message-citation');
   expect(html).toContain('[1]');
 });
+
+test('renderizza le tabelle Markdown e le interruzioni <br>', () => {
+  const html = renderMarkdown([
+    '| Suoni DOLCI | Suoni DURI |',
+    '|---|---|',
+    '| C dolce | C duro |',
+    '| Cecilia (Ce)<br>cerco (ce) | Chicco (chi)<br>cuccia (cu) |',
+  ].join('\n'));
+  expect(html).toContain('<div class="markdown-table-wrap">');
+  expect(html).toContain('<table>');
+  expect(html).toContain('<th>Suoni DOLCI</th>');
+  expect(html).toContain('<td>C dolce</td>');
+  expect(html).toContain('Cecilia (Ce)<br>cerco (ce)');
+  expect(html).not.toContain('| Suoni DOLCI');
+});
+
+test('accetta <br> sicuro ma continua a nascondere HTML arbitrario', () => {
+  const html = renderMarkdown('prima<br>dopo\n\n<script>alert(1)</script>');
+  expect(html).toContain('prima<br>dopo');
+  expect(html).toContain('&lt;script&gt;');
+  expect(html).not.toContain('<script>');
+});
