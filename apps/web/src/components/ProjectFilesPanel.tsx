@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ChatArtifact, ProjectFileInfo, ProjectRecord, SessionContextSettings, SpreadsheetPreview } from '@memora/shared';
+import type { ChatArtifact, ProjectFileInfo, ProjectRecord, SessionContextSettings, SpreadsheetPreview, WebSource } from '@memora/shared';
 import { getProjectFilePreview, getProjectFileText, listProjectFiles, projectFileUrl } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 import { SessionContextPanel } from './SessionContextPanel';
@@ -8,6 +8,7 @@ import { PdfPreview } from './PdfPreview';
 import { HtmlPreview } from './HtmlPreview';
 import { SpreadsheetView } from './SpreadsheetView';
 import { useI18n } from '../i18n';
+import { WebSourcesPanel } from './WebSourcesPanel';
 import { PanelResizeHandle } from './PanelResizeHandle';
 import { PANEL_DEFAULT_WIDTH, PANEL_EXPANDED_WIDTH, usePanelWidth } from '../lib/panel-width';
 
@@ -29,6 +30,10 @@ interface ProjectFilesPanelProps {
   onRefreshArtifacts?: () => void;
   onAttachArtifact?: (artifact: ChatArtifact) => Promise<void> | void;
   onAddArtifactToProject?: (artifact: ChatArtifact) => Promise<{ destination: 'source' | 'file'; relativePath: string; indexed: boolean }>;
+  webSources?: WebSource[];
+  webSourcesLoading?: boolean;
+  webSourcesError?: string | null;
+  onRefreshWebSources?: () => void;
 }
 
 type PreviewState =
@@ -47,7 +52,7 @@ function fileBadge(file: ProjectFileInfo): string {
   return file.extension ? file.extension.toUpperCase() : 'FILE';
 }
 
-export function ProjectFilesPanel({ project, onClose, onAttach, context = null, contextSaving = false, contextError = null, onContextChange, refreshKey = 0, expanded = false, onToggleExpanded, sessionId = null, artifacts = [], artifactsLoading = false, artifactsError = null, onRefreshArtifacts, onAttachArtifact, onAddArtifactToProject }: ProjectFilesPanelProps) {
+export function ProjectFilesPanel({ project, onClose, onAttach, context = null, contextSaving = false, contextError = null, onContextChange, refreshKey = 0, expanded = false, onToggleExpanded, sessionId = null, artifacts = [], artifactsLoading = false, artifactsError = null, onRefreshArtifacts, onAttachArtifact, onAddArtifactToProject, webSources = [], webSourcesLoading = false, webSourcesError = null, onRefreshWebSources }: ProjectFilesPanelProps) {
   const { t } = useI18n();
   const [files, setFiles] = useState<ProjectFileInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +63,7 @@ export function ProjectFilesPanel({ project, onClose, onAttach, context = null, 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [attaching, setAttaching] = useState(false);
   const [attachedMessage, setAttachedMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'files' | 'context' | 'artifacts'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'context' | 'artifacts' | 'web'>('files');
   const { width: panelWidth, setWidth: setPanelWidth, startResize } = usePanelWidth();
 
   const load = useCallback(async () => {
@@ -175,6 +180,8 @@ export function ProjectFilesPanel({ project, onClose, onAttach, context = null, 
           onAttachArtifact={onAttachArtifact}
           onAddArtifactToProject={onAddArtifactToProject}
         />
+      ) : activeTab === 'web' ? (
+        <WebSourcesPanel sources={webSources} loading={webSourcesLoading} error={webSourcesError} onRefresh={onRefreshWebSources} />
       ) : activeTab === 'context' ? (
         <SessionContextPanel
           embedded

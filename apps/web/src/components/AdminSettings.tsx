@@ -14,6 +14,7 @@ import type {
 } from '@memora/shared';
 import { PROVIDER_LABELS, REASONING_LEVELS } from '@memora/shared';
 import { useI18n } from '../i18n';
+import { WebSettingsPanel } from './WebSettingsPanel';
 import {
   getAdminSettings,
   getAdminStatus,
@@ -379,7 +380,7 @@ export function AdminSettingsView({
   const [activePage, setActivePage] = useState('appearance');
   const pages = [
     ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'],
-    ['memory', 'Memoria'], ['curator', 'Curator'], ['system', 'Sistema'],
+    ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
   ] as const;
 
   return (
@@ -597,6 +598,10 @@ export function AdminSettingsView({
       </section>
       </div>
 
+      <div id="admin-page-web" role="tabpanel" aria-labelledby="admin-tab-web" className="admin-page" hidden={activePage !== 'web'}>
+        <WebSettingsPanel />
+      </div>
+
       <div id="admin-page-system" role="tabpanel" aria-labelledby="admin-tab-system" className="admin-page" hidden={activePage !== 'system'}>
       <section id="admin-section-egress" className="admin-card">
         <h3>{t('Dati e provider esterni')}</h3>
@@ -667,13 +672,13 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      <div className="admin-savebar">
+      {activePage !== 'web' && <div className="admin-savebar">
         <span>{activePage === 'appearance' ? t('Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.') : `${hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · ${t('I valori gestiti dall’ambiente non vengono inviati.')}`}</span>
         <div className="admin-savebar-actions">
           <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>{t('Annulla')}</button>
           <button type="button" className="admin-primary" onClick={onSave} disabled={saving}>{saving ? t('Salvo…') : t('Salva impostazioni')}</button>
         </div>
-      </div>
+      </div>}
     </section>
   );
 }

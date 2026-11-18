@@ -258,6 +258,9 @@ importers:
       '@memora/shared':
         specifier: workspace:*
         version: link:../shared
+      '@mozilla/readability':
+        specifier: ^0.6.0
+        version: 0.6.0
       '@sparticuz/chromium':
         specifier: ^153.0.0
         version: 153.0.0(bare-buffer@3.7.2)
@@ -276,6 +279,9 @@ importers:
       jsdom:
         specifier: ^31.0.1
         version: 31.0.1(@noble/hashes@1.8.0)
+      pdf-parse:
+        specifier: ^2.4.5
+        version: 2.4.5
       pdfkit:
         specifier: ^0.20.2
         version: 0.20.2
@@ -1164,6 +1170,10 @@ packages:
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
     engines: {node: '>=8'}
+
+  '@mozilla/readability@0.6.0':
+    resolution: {integrity: sha512-juG5VWh4qAivzTAeMzvY9xs9HY5rAcr2E4I7tiSSCokRFi7XIZCAu92ZkSTsIj1OPceCifL3cpfteP3pDT9/QQ==}
+    engines: {node: '>=14.0.0'}
 
   '@napi-rs/canvas-android-arm64@0.1.80':
     resolution: {integrity: sha512-sk7xhN/MoXeuExlggf91pNziBxLPVUqF2CAVnB57KLG/pz7+U5TKG8eXdc3pm0d7Od0WreB6ZKLj37sX9muGOQ==}
@@ -4854,6 +4864,8 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   '@lukeed/ms@2.0.2': {}
+
+  '@mozilla/readability@0.6.0': {}
 
   '@napi-rs/canvas-android-arm64@0.1.80':
     optional: true

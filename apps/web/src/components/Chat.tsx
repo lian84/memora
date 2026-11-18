@@ -6,9 +6,9 @@ import { SessionContextPanel } from './SessionContextPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { useSSE } from '../hooks/useSSE';
 import { useI18n } from '../i18n';
-import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings } from '@memora/shared';
-import type { ChatMessage } from '../lib/api';
-import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
+import type { ChatMessage, WebStatus } from '../lib/api';
+import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -82,6 +82,11 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [memoryNotice, setMemoryNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [memoryDialogMessage, setMemoryDialogMessage] = useState<DisplayChatMessage | null>(null);
   const [composerFocus, setComposerFocus] = useState(0);
+  const [webStatus, setWebStatus] = useState<WebStatus | null>(null);
+  const [webEnabled, setWebEnabled] = useState(false);
+  const [webSources, setWebSources] = useState<WebSource[]>([]);
+  const [webSourcesLoading, setWebSourcesLoading] = useState(false);
+  const [webSourcesError, setWebSourcesError] = useState<string | null>(null);
   const { sendMessage, editMessage, abort, isStreaming } = useSSE(sessionId);
 
   const refreshArtifacts = useCallback(async () => {
@@ -99,6 +104,35 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
 
   useEffect(() => { void refreshArtifacts(); }, [refreshArtifacts]);
 
+  const refreshWeb = useCallback(async () => {
+    if (!sessionId) return;
+    setWebSourcesLoading(true);
+    setWebSourcesError(null);
+    try {
+      const [status, sessionWeb, sources] = await Promise.all([getWebStatus(), getSessionWeb(sessionId), listWebSources(sessionId)]);
+      setWebStatus(status);
+      setWebEnabled(sessionWeb.enabled);
+      setWebSources(sources);
+    } catch (err) {
+      setWebSourcesError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setWebSourcesLoading(false);
+    }
+  }, [sessionId]);
+
+  useEffect(() => { void refreshWeb(); }, [refreshWeb]);
+
+  const toggleWeb = useCallback(async () => {
+    if (!sessionId) return;
+    setAttachmentError(null);
+    try {
+      const next = await setSessionWeb(sessionId, !webEnabled);
+      setWebEnabled(next.enabled);
+    } catch (err) {
+      setAttachmentError(err instanceof Error ? err.message : String(err));
+    }
+  }, [sessionId, webEnabled]);
+
   useEffect(() => {
     setAttachments([]);
     setAttachmentError(null);
@@ -108,6 +142,9 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     setContextError(null);
     setArtifacts([]);
     setArtifactsError(null);
+    setWebEnabled(false);
+    setWebSources([]);
+    setWebSourcesError(null);
     if (!sessionId) return;
     let cancelled = false;
     void getSessionContext(sessionId)
@@ -416,6 +453,9 @@ function messageTitle(content: string, html: string | null): string {
         onRemoveAttachment={handleRemoveAttachment}
         attachmentBusy={attachmentBusy}
         attachmentError={attachmentError}
+        webEnabled={webEnabled}
+        webAvailable={Boolean(webStatus?.configured)}
+        onToggleWeb={() => void toggleWeb()}
       />
       </div>
       {project && filesOpen && (
@@ -437,6 +477,10 @@ function messageTitle(content: string, html: string | null): string {
           onRefreshArtifacts={() => void refreshArtifacts()}
           onAttachArtifact={handleAttachArtifact}
           onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
+          webSources={webSources}
+          webSourcesLoading={webSourcesLoading}
+          webSourcesError={webSourcesError}
+          onRefreshWebSources={() => void refreshWeb()}
         />
       )}
       {memoryDialogMessage && sessionId && (() => {
@@ -478,6 +522,10 @@ function messageTitle(content: string, html: string | null): string {
           onRefreshArtifacts={() => void refreshArtifacts()}
           onAttachArtifact={handleAttachArtifact}
           onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
+          webSources={webSources}
+          webSourcesLoading={webSourcesLoading}
+          webSourcesError={webSourcesError}
+          onRefreshWebSources={() => void refreshWeb()}
         />
       )}
     </div>

@@ -17,6 +17,20 @@ Memora contiene dati personali e può invocare tool di filesystem/shell.
 - `.env` mai committato (solo `.env.example`);
 - backup cifrati se contengono dati personali.
 
+## Ricerca web
+
+- Web disattivato per default e abilitato per singola chat.
+- Provider Brave/SearXNG configurabile dall’amministrazione.
+- `web_fetch` accetta solo HTTP/HTTPS pubblici; blocca loopback, IP privati,
+  link-local e metadata cloud.
+- Redirect limitati, timeout, limite byte e caratteri.
+- HTML estratto con Readability, PDF solo testo; niente JavaScript, cookie o
+  login.
+- Il contenuto web è dato non fidato: non viene eseguito e non può cambiare
+  ruolo, policy, permessi o strumenti.
+- Le fonti sono persistite nella sessione e mostrate nel pannello Web.
+- I log non contengono query, URL completi o contenuto delle pagine.
+
 ## Memoria e provider esterni
 
 Il confine di fiducia tra conversazione, memoria, Curator e provider è descritto

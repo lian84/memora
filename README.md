@@ -268,6 +268,30 @@ un dizionario e si registra il codice in `SUPPORTED_LANGUAGES`.
 La lingua della UI non forza la lingua di Memo: l’assistente risponde nella
 lingua del messaggio dell’utente.
 
+## Ricerca web
+
+L’accesso web è **disattivato per default**. Si configura da
+**Amministrazione → Web** scegliendo Brave Search o SearXNG; la chiave Brave
+resta in `$MEMORA_DATA_DIR/config/web.json` con permessi `0600` e non viene mai
+restituita dall’API.
+
+Nella chat il pulsante **Web**, accanto agli allegati, abilita la ricerca per
+quella sessione. Le fonti consultate compaiono nella scheda **Web** del pannello
+laterale destro, insieme a File, Contesto e Artefatti.
+
+Sono supportiti:
+
+- ricerca di pagine;
+- lettura del testo HTML con Readability;
+- estrazione testo da PDF;
+- citazione degli URL;
+- blocco di URL privati/locali, redirect limitati, timeout e limiti di
+  dimensione.
+
+Il contenuto web è trattato come **dato non fidato**: non viene mai eseguito e
+non può modificare istruzioni, permessi o strumenti. `web_fetch` non usa
+JavaScript, cookie o sessioni.
+
 ## Development
 
 Servono due processi:

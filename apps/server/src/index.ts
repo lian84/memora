@@ -20,6 +20,8 @@ import { memoraEnv } from './env.js';
 import { ModelCatalogService } from './model-catalog.js';
 import { registerAdminRoutes } from './admin-settings.js';
 import { renderDocxPreviewHtml } from './docx-preview.js';
+import { WebSettingsStore, WebSettingsError } from './web-settings.js';
+import { WebError, WebService } from '@memora/agent';
 import { MemoryService, MemorySourceError, MemoryWriter, MemoryWriterError, MemoryCurator, OpenRouterCuratorProvider, OpenCodeGoCuratorProvider, TransformersEmbeddingService, DEFAULT_EMBEDDING_DIMENSIONS } from '@memora/memory';
 
 const app = fastify({ logger: true });
@@ -160,6 +162,10 @@ const reloadCurator = () => {
   app.log.info('memory curator provider reloaded');
 };
 
+const webSettingsStore = new WebSettingsStore(dataDir);
+await webSettingsStore.load();
+const webService = new WebService(() => webSettingsStore.getConfig());
+
 const agentService = new AgentService({
   dataDir,
   cwd,
@@ -174,6 +180,7 @@ const agentService = new AgentService({
   memoryService,
   memoryWriter: memoryWriterQueue ?? memoryWriter,
   projectStore,
+  webService,
 });
 
 const catalog = new ModelCatalogService({
@@ -208,6 +215,81 @@ app.get('/api/health', async () => {
 });
 
 registerAuthRoutes(app, { store: authStore, secureCookie: secureAuthCookie });
+
+app.get('/api/web/status', async (_request, reply) => {
+  const config = webSettingsStore.getPublic();
+  return reply.send({ configured: config.enabled && (config.provider === 'searxng' ? Boolean(config.searxngUrl) : config.braveConfigured), enabled: config.enabled, provider: config.provider });
+});
+
+app.get('/api/admin/web', async (_request, reply) => {
+  return reply.send({ settings: webSettingsStore.getPublic() });
+});
+
+app.patch<{ Body: Record<string, unknown> }>('/api/admin/web', async (request, reply) => {
+  try {
+    const body = request.body ?? {};
+    const settings = await webSettingsStore.update({
+      ...(typeof body.enabled === 'boolean' ? { enabled: body.enabled } : {}),
+      ...(body.provider === 'brave' || body.provider === 'searxng' ? { provider: body.provider } : {}),
+      ...(typeof body.maxResults === 'number' ? { maxResults: body.maxResults } : {}),
+      ...(typeof body.maxChars === 'number' ? { maxChars: body.maxChars } : {}),
+      ...(typeof body.timeoutMs === 'number' ? { timeoutMs: body.timeoutMs } : {}),
+      ...(typeof body.searxngUrl === 'string' ? { searxngUrl: body.searxngUrl } : {}),
+      ...(typeof body.braveApiKey === 'string' ? { braveApiKey: body.braveApiKey.trim() } : {}),
+    });
+    return reply.send({ settings });
+  } catch (err) {
+    if (err instanceof WebSettingsError) return reply.status(400).send({ error: err.code, message: err.message });
+    app.log.error(err);
+    return reply.status(500).send({ error: 'web_settings_failed' });
+  }
+});
+
+app.post('/api/admin/web/test', async (_request, reply) => {
+  try {
+    const results = await webService.search('Memora self-hosted personal assistant');
+    return reply.send({ ok: true, results: results.slice(0, 2) });
+  } catch (err) {
+    if (err instanceof WebError) return reply.status(400).send({ error: err.code, message: err.message });
+    app.log.error(err);
+    return reply.status(500).send({ error: 'web_test_failed' });
+  }
+});
+
+app.get<{ Params: { id: string } }>('/api/sessions/:id/web', async (req, reply) => {
+  try {
+    return reply.send({ enabled: await agentService.getSessionWebEnabled(req.params.id) });
+  } catch (err) {
+    if (err instanceof AgentServiceError && err.code === 'session_not_found') return reply.status(404).send({ error: err.code });
+    app.log.error(err);
+    return reply.status(500).send({ error: 'web_session_failed' });
+  }
+});
+
+app.patch<{ Params: { id: string }; Body: { enabled?: unknown } }>('/api/sessions/:id/web', async (req, reply) => {
+  try {
+    if (typeof req.body?.enabled !== 'boolean') return reply.status(400).send({ error: 'invalid_web_setting' });
+    const config = webSettingsStore.getConfig();
+    if (req.body.enabled && (!config.enabled || (config.provider === 'brave' ? !config.braveApiKey : !config.searxngUrl))) {
+      return reply.status(409).send({ error: 'web_not_configured' });
+    }
+    return reply.send({ enabled: await agentService.setSessionWebEnabled(req.params.id, req.body.enabled) });
+  } catch (err) {
+    if (err instanceof AgentServiceError && err.code === 'session_not_found') return reply.status(404).send({ error: err.code });
+    app.log.error(err);
+    return reply.status(500).send({ error: 'web_session_failed' });
+  }
+});
+
+app.get<{ Params: { id: string } }>('/api/sessions/:id/web/sources', async (req, reply) => {
+  try {
+    return reply.send({ sources: await agentService.getWebSources(req.params.id) });
+  } catch (err) {
+    if (err instanceof AgentServiceError && err.code === 'session_not_found') return reply.status(404).send({ error: err.code });
+    app.log.error(err);
+    return reply.status(500).send({ error: 'web_sources_failed' });
+  }
+});
 
 // --- Lista sessioni ---
 app.get('/api/sessions', async (req, reply) => {

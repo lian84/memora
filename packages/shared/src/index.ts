@@ -180,6 +180,8 @@ export interface AgentServiceConfig {
   memoryWriter?: MemoryWriterLike;
   /** Registry progetti per prompt e default di sessione. */
   projectStore?: ProjectStoreLike;
+  /** Servizio web opzionale (ricerca e lettura pagine). */
+  webService?: WebServiceLike;
 }
 
 /** Interfaccia minimale per il servizio memoria (evita dipendenze circolari). */
@@ -201,6 +203,11 @@ export interface MemoryHistoryEntry {
   curatorProvider?: string;
   curatorModel?: string;
   supersededBy?: string | null;
+}
+
+export interface WebServiceLike {
+  search(query: string): Promise<import('./web.js').WebSearchResult[]>;
+  fetchPage(url: string, query?: string): Promise<{ source: import('./web.js').WebSource; text: string }>;
 }
 
 export interface ProjectStoreLike {
@@ -307,6 +314,7 @@ export class AgentServiceError extends Error {
 }
 
 export * from './settings.js';
+export * from './web.js';
 export * from './providers.js';
 
 export type {

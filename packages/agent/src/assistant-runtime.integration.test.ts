@@ -54,7 +54,7 @@ describe('Personal Assistant runtime isolation', () => {
     const diagnostics = service.getSessionRuntimeDiagnostics(created.sessionId);
 
     expect(diagnostics.cwd).toBe(join(root, 'runtime', 'assistant'));
-    expect(diagnostics.activeTools).toEqual(['create_artifact', 'create_pdf', 'create_docx', 'create_xlsx', 'create_pptx']);
+    expect(diagnostics.activeTools).toEqual(['create_artifact', 'create_pdf', 'create_docx', 'create_xlsx', 'create_pptx', 'web_search', 'web_fetch']);
     for (const tool of ['read', 'bash', 'edit', 'write', 'grep', 'find', 'ls']) {
       expect(diagnostics.activeTools).not.toContain(tool);
     }
@@ -82,7 +82,7 @@ describe('Personal Assistant runtime isolation', () => {
     const diagnostics = service.getSessionRuntimeDiagnostics(resumed.sessionId);
 
     expect(diagnostics.cwd).toBe(assistantCwd);
-    expect(diagnostics.activeTools).toEqual(['create_artifact', 'create_pdf', 'create_docx', 'create_xlsx', 'create_pptx']);
+    expect(diagnostics.activeTools).toEqual(['create_artifact', 'create_pdf', 'create_docx', 'create_xlsx', 'create_pptx', 'web_search', 'web_fetch']);
     expect(diagnostics.contextFiles).toEqual([]);
     expect(diagnostics.skills).toEqual([]);
     expect(diagnostics.prompts).toEqual([]);

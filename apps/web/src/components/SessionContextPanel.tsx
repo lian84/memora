@@ -1,8 +1,9 @@
-import type { ChatArtifact, SessionContextSettings } from '@memora/shared';
+import type { ChatArtifact, SessionContextSettings, WebSource } from '@memora/shared';
 import { ArtifactsPanel } from './ArtifactsPanel';
 import { PanelResizeHandle } from './PanelResizeHandle';
 import { PANEL_DEFAULT_WIDTH, PANEL_EXPANDED_WIDTH, usePanelWidth } from '../lib/panel-width';
 import { useI18n } from '../i18n';
+import { WebSourcesPanel } from './WebSourcesPanel';
 
 interface SessionContextPanelProps {
   context: SessionContextSettings | null;
@@ -18,11 +19,15 @@ interface SessionContextPanelProps {
   onRefreshArtifacts?: () => void;
   onAttachArtifact?: (artifact: ChatArtifact) => Promise<void> | void;
   onAddArtifactToProject?: (artifact: ChatArtifact) => Promise<{ destination: 'source' | 'file'; relativePath: string; indexed: boolean }>;
+  webSources?: WebSource[];
+  webSourcesLoading?: boolean;
+  webSourcesError?: string | null;
+  onRefreshWebSources?: () => void;
   expanded?: boolean;
   onToggleExpanded?: () => void;
 }
 
-export function SessionContextPanel({ context, saving = false, error = null, embedded = false, onClose, onChange, sessionId = null, artifacts = [], artifactsLoading = false, artifactsError = null, onRefreshArtifacts, onAttachArtifact, onAddArtifactToProject, expanded = false, onToggleExpanded }: SessionContextPanelProps) {
+export function SessionContextPanel({ context, saving = false, error = null, embedded = false, onClose, onChange, sessionId = null, artifacts = [], artifactsLoading = false, artifactsError = null, onRefreshArtifacts, onAttachArtifact, onAddArtifactToProject, webSources = [], webSourcesLoading = false, webSourcesError = null, onRefreshWebSources, expanded = false, onToggleExpanded }: SessionContextPanelProps) {
   const { t } = useI18n();
   const { width: panelWidth, setWidth: setPanelWidth, startResize } = usePanelWidth();
   const body = (
@@ -59,6 +64,7 @@ export function SessionContextPanel({ context, saving = false, error = null, emb
       {error && <div className="session-context-error" role="alert">{error}</div>}
       <div className="session-context-note">{t('Gli allegati del singolo messaggio restano sempre inclusi.')}</div>
       {!embedded && <div className="session-context-artifacts"><div className="session-context-artifacts-title">{t('Artefatti della chat')}</div><ArtifactsPanel sessionId={sessionId} artifacts={artifacts} loading={artifactsLoading} error={artifactsError} onRefresh={onRefreshArtifacts} onAttachArtifact={onAttachArtifact} onAddArtifactToProject={onAddArtifactToProject} /></div>}
+      {!embedded && <div className="session-context-artifacts"><div className="session-context-artifacts-title">{t('Fonti web')}</div><WebSourcesPanel sources={webSources} loading={webSourcesLoading} error={webSourcesError} onRefresh={onRefreshWebSources} /></div>}
     </div>
   );
 

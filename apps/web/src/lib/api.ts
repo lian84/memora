@@ -20,6 +20,7 @@ import {
   type ChatArtifact,
   type ArtifactVersion,
   type SpreadsheetPreview,
+  type WebSettingsView,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -165,6 +166,51 @@ async function request(path: string, options: RequestInit = {}): Promise<Respons
 export interface AuthStatus {
   setupRequired: boolean;
   authenticated: boolean;
+}
+
+export interface WebStatus {
+  configured: boolean;
+  enabled: boolean;
+  provider: 'brave' | 'searxng';
+}
+
+export async function getWebStatus(): Promise<WebStatus> {
+  const res = await request('/api/web/status');
+  return res.json();
+}
+
+export async function getAdminWebSettings(): Promise<WebSettingsView> {
+  const res = await request('/api/admin/web');
+  const data = await res.json() as { settings: WebSettingsView };
+  return data.settings;
+}
+
+export async function updateAdminWebSettings(patch: Partial<WebSettingsView> & { braveApiKey?: string }): Promise<WebSettingsView> {
+  const res = await request('/api/admin/web', { method: 'PATCH', body: JSON.stringify(patch) });
+  const data = await res.json() as { settings: WebSettingsView };
+  return data.settings;
+}
+
+export async function testAdminWebSearch(): Promise<Array<{ title: string; url: string; snippet: string }>> {
+  const res = await request('/api/admin/web/test', { method: 'POST' });
+  const data = await res.json() as { results: Array<{ title: string; url: string; snippet: string }> };
+  return data.results;
+}
+
+export async function getSessionWeb(sessionId: string): Promise<{ enabled: boolean }> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/web`);
+  return res.json();
+}
+
+export async function setSessionWeb(sessionId: string, enabled: boolean): Promise<{ enabled: boolean }> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/web`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+  return res.json();
+}
+
+export async function listWebSources(sessionId: string): Promise<import('@memora/shared').WebSource[]> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/web/sources`);
+  const data = await res.json() as { sources: import('@memora/shared').WebSource[] };
+  return data.sources;
 }
 
 export async function getAuthStatus(): Promise<AuthStatus> {
