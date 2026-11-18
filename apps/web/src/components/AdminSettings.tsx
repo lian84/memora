@@ -27,12 +27,56 @@ import {
 } from '../lib/api';
 import { ModelCombobox, filterModels } from './ModelCombobox';
 import { AppearanceSettings } from './AppearanceSettings';
+import {
+  getBrowserNotificationPermission,
+  isBrowserNotificationEnabled,
+  requestBrowserNotificationPermission,
+  setBrowserNotificationEnabled,
+} from '../lib/browser-notifications';
 
 type Preset = 'lite' | 'standard' | 'custom';
 type Category = keyof RuntimeSettings;
 type ModelRole = 'chat' | 'curator';
 type ProviderSecrets = Record<ProviderId, ProviderSecretStatus>;
 type KeyMessage = { ok: boolean; text: string };
+
+function BrowserNotificationsSetting() {
+  const { t } = useI18n();
+  const [enabled, setEnabled] = useState(() => isBrowserNotificationEnabled());
+  const [permission, setPermission] = useState(() => getBrowserNotificationPermission());
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = async (next: boolean) => {
+    setError(null);
+    if (!next) {
+      setBrowserNotificationEnabled(false);
+      setEnabled(false);
+      return;
+    }
+    const result = await requestBrowserNotificationPermission();
+    setPermission(result);
+    if (result !== 'granted') {
+      setError(result === 'unsupported'
+        ? t('Questo browser non supporta le notifiche.')
+        : t('Permesso notifiche negato. Abilitalo nelle impostazioni del browser.'));
+      return;
+    }
+    setBrowserNotificationEnabled(true);
+    setEnabled(true);
+  };
+
+  return (
+    <div className="admin-notification-setting">
+      <label className="admin-toggle">
+        <input type="checkbox" checked={enabled} onChange={event => void toggle(event.target.checked)} />
+        <span>{t('Notifiche browser a risposta pronta')}</span>
+      </label>
+      <small>{t('Solo su questo browser. La scheda Memora deve restare aperta, anche in background.')}</small>
+      {permission === 'denied' && <span className="admin-field-note is-locked">{t('Permesso notifiche negato nel browser.')}</span>}
+      {error && <div role="alert" className="admin-alert is-error">{error}</div>}
+    </div>
+  );
+}
 
 interface AdminSettingsViewProps {
   settings: AdminSettingsData;
@@ -115,6 +159,7 @@ export function settingsValues(settings: AdminSettingsData): RuntimeSettings {
       defaultModel: settings.settings.chat.defaultModel.value,
       reasoningLevel: settings.settings.chat.reasoningLevel.value,
       autoTitleEnabled: settings.settings.chat.autoTitleEnabled.value,
+      maxConcurrentTurns: settings.settings.chat.maxConcurrentTurns.value,
     },
   };
 }
@@ -151,6 +196,7 @@ export function validateSettingsDraft(draft: RuntimeSettings): string | null {
   if (!draft.embeddings.model.trim()) return 'Il modello embedding non può essere vuoto.';
   if (!draft.chat.defaultModel.trim()) return 'Il modello chat predefinito non può essere vuoto.';
   if (draft.curator.enabled && !draft.curator.model.trim()) return 'Seleziona un modello per il Memory Curator.';
+  if (!Number.isInteger(draft.chat.maxConcurrentTurns ?? 2) || (draft.chat.maxConcurrentTurns ?? 2) < 1 || (draft.chat.maxConcurrentTurns ?? 2) > 4) return 'La concorrenza dei turni deve essere un intero tra 1 e 4.';
   return null;
 }
 
@@ -487,6 +533,12 @@ export function AdminSettingsView({
           <span>{t('Titoli automatici delle chat')}</span>
         </label>
         <FieldLock field={field('chat', 'autoTitleEnabled')} />
+        <label className="admin-label">{t('Turni simultanei')}
+          <input type="number" min={1} max={4} value={draft.chat.maxConcurrentTurns ?? 2} disabled={disabled('chat', 'maxConcurrentTurns')} onChange={event => onDraftChange('chat', 'maxConcurrentTurns', Number(event.target.value))} />
+          <small>{t('Quante risposte possono essere generate in parallelo (1–4). Le altre restano in coda.')}</small>
+          <FieldLock field={field('chat', 'maxConcurrentTurns')} />
+        </label>
+        <BrowserNotificationsSetting />
         <p className="admin-card-description">Il modello Chat viene usato solo dalle nuove sessioni; quelle esistenti mantengono il modello già persistito. I titoli automatici usano solo il primo messaggio della nuova chat; il titolo manuale non viene sovrascritto.</p>
       </section>
       </div>
@@ -668,6 +720,7 @@ export function AdminSettingsView({
           <div><span>Token budget / diversità</span><strong>{status ? `${status.memory.maxTokens} / ${status.memory.diversity.toFixed(2)}` : '—'}</strong></div>
           <div><span>Chat attuale</span><strong>{status ? `${PROVIDER_LABELS[status.chat.provider]} / ${status.chat.model}` : '—'}</strong></div>
           <div><span>Chat credential</span><strong>{status ? (status.chat.credential.configured ? 'configured' : 'missing') : '—'}</strong></div>
+          <div><span>Turni simultanei</span><strong>{status?.chat.maxConcurrentTurns ?? '—'}</strong></div>
           <div><span>Curator</span><strong>{status ? `${PROVIDER_LABELS[status.curator.provider]} / ${status.curator.model || '—'}` : '—'}</strong></div>
           <div><span>Curator credential</span><strong>{status ? (status.curator.credential.configured ? 'configured' : 'missing') : '—'}</strong></div>
           <div><span>Curator queue</span><strong>{status ? `${status.curator.queueLength ?? 0} in coda · ${status.curator.queueFailed} failed · ${status.curator.queueAttempts} tentativi` : '—'}</strong></div>

@@ -32,6 +32,8 @@ export interface RuntimeSettings {
     reasoningLevel: ReasoningLevel;
     /** Titolo LLM automatico per le nuove chat; il fallback locale resta attivo. */
     autoTitleEnabled?: boolean;
+    /** Numero massimo di turni eseguiti in parallelo. */
+    maxConcurrentTurns?: number;
   };
 }
 
@@ -54,7 +56,7 @@ export const DEFAULT_RUNTIME_SETTINGS: RuntimeSettings = {
     minConfidence: 0.75,
     minSalience: 0.7,
   },
-  chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium', autoTitleEnabled: true },
+  chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium', autoTitleEnabled: true, maxConcurrentTurns: 2 },
 };
 
 export type SettingSource = 'default' | 'file' | 'environment';
@@ -95,6 +97,7 @@ export interface AdminSettings {
       defaultModel: SettingField<string>;
       reasoningLevel: SettingField<ReasoningLevel>;
       autoTitleEnabled: SettingField<boolean>;
+      maxConcurrentTurns: SettingField<number>;
     };
   };
 }
@@ -152,6 +155,7 @@ export interface AdminStatus {
     model: string;
     reasoningLevel: ReasoningLevel;
     autoTitleEnabled: boolean;
+    maxConcurrentTurns: number;
     credential: ProviderSecretStatus;
   };
   embeddings: EmbeddingRuntimeStatus;

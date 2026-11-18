@@ -23,11 +23,15 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.
 - [x] Titoli automatici delle chat dal primo scambio richiesta/risposta: fallback locale immediato + titolo LLM asincrono.
 - [x] Turni eseguiti dal server anche quando la chat non è aperta o il browser viene chiuso.
-- [x] Massimo 2 turni concorrenti con coda esplicita; una sola risposta attiva per sessione.
+- [x] Turni concorrenti configurabili da Amministrazione (1–4, default 2) con coda esplicita; una sola risposta attiva per sessione.
 - [x] Indicatori sidebar: giallo per risposta in corso in un’altra chat, verde per risposta completata non letta.
 - [x] Client SSE riconnettibile: EventSource con replay `after` e ripresa del testo parziale su reload/cambio chat.
 - [x] Stato sintetico dei turni persistito in `$MEMORA_DATA_DIR/config/turns.json`; al riavvio i turni attivi diventano `interrupted`.
 - [x] Cleanup dei turni completati sostituiti e indicatore rosso per errore/interruzione.
+- [x] Messaggio in coda visibile subito e dopo il reload; il testo non viene persistito in `turns.json`.
+- [x] Stato “risposta letta” condiviso tra dispositivi in `config/turn-reads.json`.
+- [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta; niente Telegram).
+- [x] Test end-to-end HTTP con due client SSE e replay dopo riconnessione.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 
 ## 2. Memoria e Second Brain
@@ -126,7 +130,7 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Segreti in environment o `config/secrets.json` con mode `0600`.
 - [x] Configurazione web in `config/web.json` con mode `0600`.
 - [x] Nessuna API key restituita dalle API.
-- [x] Provider/modello chat, Curator, embedding, retrieval, web, titoli automatici e aspetto configurabili.
+- [x] Provider/modello chat, Curator, embedding, retrieval, web, titoli automatici, concorrenza turni, notifiche browser e aspetto configurabili.
 - [x] Riavvio richiesto esplicitamente per le modifiche che non sono a caldo.
 - [x] Nessun `sudo` o `systemctl` eseguito dal processo web.
 

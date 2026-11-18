@@ -45,6 +45,10 @@ interface AgentAdminService {
   setProviderApiKey(provider: ProviderId, apiKey: string): void;
 }
 
+interface TurnAdminService {
+  setMaxConcurrent(value: number): void;
+}
+
 export interface AdminRouteDependencies {
   store: AdminSettingsStore;
   memoryService: MemoryAdminService;
@@ -54,6 +58,7 @@ export interface AdminRouteDependencies {
   metrics?: MetricsAdminService;
   reloadCurator?: () => void;
   agentService: AgentAdminService;
+  turns?: TurnAdminService;
   secrets: SecretStore;
   catalog: ModelCatalogService;
   dataDir: string;
@@ -63,7 +68,7 @@ export interface AdminRouteDependencies {
 
 /** Applies only settings that are safe and effective without replacing services. */
 export function applyLiveSettings(
-  deps: Pick<AdminRouteDependencies, 'memoryService' | 'curator' | 'agentService' | 'reloadCurator'>,
+  deps: Pick<AdminRouteDependencies, 'memoryService' | 'curator' | 'agentService' | 'reloadCurator' | 'turns'>,
   changed: string[],
   settings: RuntimeSettings,
 ): string[] {
@@ -103,6 +108,10 @@ export function applyLiveSettings(
     deps.agentService.setAutoTitleEnabled(settings.chat.autoTitleEnabled !== false);
     applied.push('chat.autoTitleEnabled');
   }
+  if (changed.includes('chat.maxConcurrentTurns') && deps.turns) {
+    deps.turns.setMaxConcurrent(settings.chat.maxConcurrentTurns ?? 2);
+    applied.push('chat.maxConcurrentTurns');
+  }
   return applied;
 }
 
@@ -133,6 +142,7 @@ export async function buildAdminStatus(deps: AdminRouteDependencies): Promise<Ad
       model: settings.chat.defaultModel,
       reasoningLevel: settings.chat.reasoningLevel,
       autoTitleEnabled: settings.chat.autoTitleEnabled !== false,
+      maxConcurrentTurns: settings.chat.maxConcurrentTurns ?? 2,
       credential: deps.secrets.getStatus(settings.chat.provider),
     },
     embeddings: deps.memoryService.getEmbeddingStatus(),

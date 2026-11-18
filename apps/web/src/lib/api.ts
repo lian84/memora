@@ -125,6 +125,7 @@ export interface TurnInfo {
   createdAt: number;
   updatedAt: number;
   error?: string;
+  text?: string;
   firstSeq: number;
   lastSeq: number;
 }
@@ -358,6 +359,16 @@ export async function listTurns(): Promise<TurnInfo[]> {
   const res = await request('/api/turns');
   const data = (await res.json()) as { turns: TurnInfo[] };
   return data.turns;
+}
+
+export async function listTurnReads(): Promise<Record<string, string>> {
+  const res = await request('/api/turns/reads');
+  const data = (await res.json()) as { reads: Record<string, string> };
+  return data.reads;
+}
+
+export async function markTurnRead(sessionId: string, turnId: string): Promise<void> {
+  await request(`/api/sessions/${encodeURIComponent(sessionId)}/turns/${encodeURIComponent(turnId)}/read`, { method: 'PUT' });
 }
 
 export async function getCurrentTurn(sessionId: string): Promise<TurnInfo | null> {

@@ -61,10 +61,61 @@ describe('TurnManager', () => {
     await vi.waitFor(() => expect(calls).toEqual(['s1']));
     expect(first.status).toBe('running');
     expect(second.status).toBe('queued');
+    expect(manager.getCurrent('s1')?.turnId).toBe(first.turnId);
     gate.resolve();
     await vi.waitFor(() => expect(calls).toEqual(['s1', 's1']));
   });
 
+
+  it('aumenta la concorrenza a runtime senza interrompere i turni attivi', async () => {
+    const gates = new Map<string, ReturnType<typeof deferred>>();
+    const calls: string[] = [];
+    const manager = new TurnManager({
+      maxConcurrent: 1,
+      agentService: {
+        sendMessage: vi.fn(async (sessionId: string) => {
+          calls.push(sessionId);
+          const gate = deferred();
+          gates.set(sessionId, gate);
+          await gate.promise;
+        }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    manager.start('s1', 'uno');
+    manager.start('s2', 'due');
+    manager.start('s3', 'tre');
+    await vi.waitFor(() => expect(calls).toEqual(['s1']));
+    manager.setMaxConcurrent(3);
+    await vi.waitFor(() => expect(calls).toEqual(['s1', 's2', 's3']));
+    expect(manager.getMaxConcurrent()).toBe(3);
+    gates.get('s1')!.resolve();
+    gates.get('s2')!.resolve();
+    gates.get('s3')!.resolve();
+  });
+
+  it('espone il testo della richiesta per i turni in coda e lo mantiene nel replay', async () => {
+    const gate = deferred();
+    const manager = new TurnManager({
+      maxConcurrent: 1,
+      agentService: {
+        sendMessage: vi.fn(async (sessionId: string, _text: string, onEvent: (event: StreamEvent) => void) => {
+          onEvent(event('message_start', sessionId));
+          await gate.promise;
+        }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    const running = manager.start('s1', 'prima');
+    const queued = manager.start('s2', 'seconda');
+    await vi.waitFor(() => expect(manager.getTurn(running.turnId)?.status).toBe('running'));
+    expect(manager.getTurn(queued.turnId)).toMatchObject({ status: 'queued', text: 'seconda' });
+    const received: Array<{ seq: number; event: StreamEvent }> = [];
+    manager.subscribe(running.turnId, 1, entry => received.push(entry));
+    expect(received.some(entry => entry.event.type === 'turn_status')).toBe(true);
+    gate.resolve();
+    await vi.waitFor(() => expect(manager.getTurn(running.turnId)?.status).toBe('completed'));
+  });
   it('permette di rileggere gli eventi da una sequenza', async () => {
     const manager = new TurnManager({
       maxConcurrent: 1,
@@ -126,6 +177,7 @@ describe('TurnManager persistence', () => {
     const turn = first.start('s1', 'risposta interrotta');
     await vi.waitFor(() => expect(first.getTurn(turn.turnId)?.status).toBe('running'));
     await vi.waitFor(async () => expect(await fs.readFile(persistencePath, 'utf8')).toContain('running'));
+    expect(await fs.readFile(persistencePath, 'utf8')).not.toContain('risposta interrotta');
     const second = new TurnManager({
       persistencePath,
       agentService: { sendMessage: vi.fn(), abort: vi.fn(async () => undefined) },

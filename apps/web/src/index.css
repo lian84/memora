@@ -1495,3 +1495,8 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
 .web-source-title:hover { color: var(--accent); text-decoration: underline; }
 .web-source p { margin: 4px 0 0; color: var(--muted); font-size: 9px; line-height: 1.4; }
 .web-source-error { color: var(--danger) !important; }
+
+.admin-notification-setting { margin-top: 10px; }
+.admin-notification-setting small { display: block; color: var(--muted); font-size: 10px; line-height: 1.45; margin-top: 2px; }
+.admin-notification-setting .admin-alert { margin-top: 8px; margin-bottom: 0; }
+.message-row-pending { opacity: .8; }

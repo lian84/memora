@@ -1332,3 +1332,44 @@ esisteva uno stato condiviso tra sessioni o dispositivi.
 - Servono un limite di concorrenza e una coda per proteggere RAM, CPU e quota
   provider.
 - La consegna cross-device può arrivare con il ritardo del polling.
+
+---
+## ADR-043 — Robustezza dei turni in background (P2)
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+Dopo il primo rilascio dei turni in background restavano cinque limiti: il
+limite di concorrenza era fisso, lo stato “letta” viveva solo nel browser, i
+messaggi in coda potevano sparire dopo un reload, non c’erano notifiche e i test
+coprivano il manager ma non il percorso HTTP con più client.
+
+### Decisione
+- La concorrenza è configurabile in **Amministrazione → Chat** con
+  `chat.maxConcurrentTurns` (intero 1–4, default 2). È applicata a caldo tramite
+  `TurnManager.setMaxConcurrent()` e non usa variabili d’ambiente.
+- Lo stato letto è persistito dal server in `config/turn-reads.json` con mode
+  `0600`; il localStorage resta un fallback ottimistico. La mappa è
+  `sessionId → turnId` e non contiene testo delle conversazioni.
+- `TurnInfo.text` espone il testo della richiesta in memoria, così la UI può
+  mostrare subito i messaggi in coda anche dopo un reload. `turns.json` non
+  persiste quel testo: i turni interrotti dopo un riavvio restano senza prompt
+  duplicato e il contenuto autorevole resta nel JSONL.
+- `GET /turns/current` restituisce il turno in esecuzione quando esiste, anche
+  se c’è una richiesta in coda; `/api/turns` continua a esporre l’ultimo turno
+  per sessione.
+- Le notifiche sono notifiche browser opt-in, con permesso richiesto da un gesto
+  esplicito. Richiedono la scheda Memora aperta e non sono push notification.
+  Telegram non è implementato e non viene simulato.
+- I test end-to-end HTTP avviano due client SSE, verificano la chiusura al
+  completamento e il replay di un turno già completato; restano test del manager
+  per coda, abort, aumento di concorrenza e riavvio.
+
+### Conseguenze
+- L’amministratore può adattare il parallelismo alla RAM disponibile senza
+  riavviare il servizio.
+- “Letta” è coerente tra browser e dispositivi, con un ulteriore file di stato
+  da includere nei backup.
+- Le notifiche browser non raggiungono un browser chiuso; una futura integrazione
+  Telegram o Web Push potrà aggiungere la consegna esterna.
+- Il polling può ancora arrivare con circa 2 secondi di ritardo.

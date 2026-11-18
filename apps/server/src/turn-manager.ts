@@ -12,6 +12,8 @@ export interface TurnInfo {
   createdAt: number;
   updatedAt: number;
   error?: string;
+  /** Testo della richiesta: consente alla UI di mostrare subito i turni in coda. */
+  text?: string;
   firstSeq: number;
   lastSeq: number;
 }
@@ -57,7 +59,7 @@ interface TurnManagerOptions {
  * sottoscrivere gli eventi e può riconnettersi con `after`.
  */
 export class TurnManager {
-  private readonly maxConcurrent: number;
+  private maxConcurrent: number;
   private readonly maxBufferedEvents: number;
   private readonly agentService: TurnAgentService;
   private readonly persistencePath?: string;
@@ -73,6 +75,16 @@ export class TurnManager {
     this.persistencePath = options.persistencePath;
     this.maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
     this.maxBufferedEvents = Math.max(50, options.maxBufferedEvents ?? 2000);
+  }
+
+  setMaxConcurrent(value: number): void {
+    if (!Number.isSafeInteger(value) || value < 1 || value > 4) return;
+    this.maxConcurrent = value;
+    this.schedule();
+  }
+
+  getMaxConcurrent(): number {
+    return this.maxConcurrent;
   }
 
   async load(): Promise<void> {
@@ -126,9 +138,9 @@ export class TurnManager {
       subscribers: new Set(),
       abortRequested: false,
     };
-    this.prune();
     this.turns.set(turn.turnId, turn);
     this.latestBySession.set(sessionId, turn.turnId);
+    this.prune();
     this.queue.push(turn.turnId);
     this.append(turn, {
       type: 'turn_status',
@@ -147,6 +159,11 @@ export class TurnManager {
   }
 
   getCurrent(sessionId: string): TurnInfo | null {
+    // Se una sessione ha una risposta in corso e una richiesta in coda,
+    // "current" è quella in esecuzione: il client deve potersi riconnettere
+    // allo stream giusto, mentre la coda resta visibile da /api/turns.
+    const running = [...this.turns.values()].find(turn => turn.sessionId === sessionId && turn.status === 'running');
+    if (running) return this.toInfo(running);
     const turnId = this.latestBySession.get(sessionId);
     return turnId ? this.getTurn(turnId) : null;
   }
@@ -205,6 +222,7 @@ export class TurnManager {
       createdAt: turn.createdAt,
       updatedAt: turn.updatedAt,
       ...(turn.error ? { error: turn.error } : {}),
+      text: turn.text,
       firstSeq: turn.firstSeq,
       lastSeq: turn.lastSeq,
     };
@@ -254,7 +272,10 @@ export class TurnManager {
 
   private persist(): void {
     if (!this.persistencePath) return;
-    const snapshot = this.list();
+    // Il testo della richiesta resta in memoria per la UI della coda, ma non
+    // viene duplicato nel file di stato: dopo un riavvio i turni sono
+    // interrotti e il contenuto resta nel JSONL della sessione.
+    const snapshot = this.list().map(turn => ({ ...turn, text: undefined }));
     this.persistChain = this.persistChain.then(async () => {
       const directory = path.dirname(this.persistencePath!);
       await fs.mkdir(directory, { recursive: true, mode: 0o700 });

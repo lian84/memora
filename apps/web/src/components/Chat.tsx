@@ -11,7 +11,7 @@ import { useSessionTurn } from '../hooks/useSessionTurn';
 import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
-import type { ChatMessage, SSEEvent, TurnStatus, WebStatus } from '../lib/api';
+import type { ChatMessage, SSEEvent, TurnInfo, TurnStatus, WebStatus } from '../lib/api';
 import { abortSession, attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
@@ -34,7 +34,8 @@ interface ChatProps {
   /** Il server ha aggiornato il titolo automatico della sessione. */
   onSessionTitle?: () => void;
   turnStatus?: TurnStatus | null;
-  onQueueTurn?: (text: string, timestamp: number, attachments: ChatAttachment[]) => void;
+  /** Ultimo turno della sessione: se è in coda, mostra subito la richiesta. */
+  queuedTurn?: TurnInfo | null;
   onTruncateFromMessage?: (messageId: string) => void;
   project?: ProjectRecord | null;
   projects?: ProjectRecord[];
@@ -50,7 +51,7 @@ function getMemorySources(payload: unknown): MemorySource[] {
     return typeof value.relativePath === 'string' && typeof value.category === 'string' && (typeof value.heading === 'string' || value.heading === null) && typeof value.startLine === 'number' && typeof value.endLine === 'number';
   });
 }
-export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, turnStatus = null, onQueueTurn, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
+export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, turnStatus = null, queuedTurn = null, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
   const { t } = useI18n();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeAssistantIdRef = useRef<string | null>(null);
@@ -61,6 +62,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [queuedPrompts, setQueuedPrompts] = useState<Array<{ text: string; timestamp: number }>>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<ChatSidePanelTab>(() => project ? 'files' : 'context');
   const [panelExpanded, setPanelExpanded] = useState(false);
@@ -220,6 +222,12 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     }
   }, [turnStatus, turnStream.isActive, turnStream.sync]);
 
+  useEffect(() => {
+    const active = turnStream.turn;
+    if (!active?.text) return;
+    setQueuedPrompts(current => current.some(item => item.text === active.text) ? current.filter(item => item.text !== active.text) : current);
+  }, [turnStream.turn?.text, turnStream.turn?.turnId]);
+
   const toggleWeb = useCallback(async () => {
     if (!sessionId) return;
     setAttachmentError(null);
@@ -234,6 +242,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   useEffect(() => {
     setAttachments([]);
     setAttachmentError(null);
+    setQueuedPrompts([]);
     setPanelOpen(false);
     setPanelTab(project ? 'files' : 'context');
     setPanelExpanded(false);
@@ -427,14 +436,15 @@ function messageTitle(content: string, html: string | null): string {
     const pendingAttachments = attachments;
     setAttachments([]);
     setAttachmentError(null);
-    onQueueTurn?.(text, timestamp, pendingAttachments);
+    setQueuedPrompts(current => [...current, { text, timestamp }]);
     try {
       await startTurn(sessionId, text, pendingAttachments.map(attachment => attachment.id));
     } catch (err) {
+      setQueuedPrompts(current => current.filter(item => item.timestamp !== timestamp));
       setAttachments(pendingAttachments);
       setAttachmentError(err instanceof Error ? err.message : String(err));
     }
-  }, [attachments, onQueueTurn, sessionId]);
+  }, [attachments, sessionId]);
 
   const handleSend = useCallback(async (text: string) => {
     if (!sessionId) return;
@@ -520,6 +530,23 @@ function messageTitle(content: string, html: string | null): string {
           </div>
         ))}
 
+        {(() => {
+          const isInHistory = (text: string, timestamp: number) => messages.some(message =>
+            message.role === 'user' && message.content === text && Math.abs(message.timestamp - timestamp) < 10 * 60_000,
+          );
+          const activePrompt = turnStream.turn?.text && (turnStream.turn.status === 'queued' || turnStream.turn.status === 'running') && !isInHistory(turnStream.turn.text, turnStream.turn.createdAt)
+            ? [{ text: turnStream.turn.text, timestamp: turnStream.turn.createdAt }]
+            : [];
+          const queued = queuedTurn?.status === 'queued' && queuedTurn.text && !isInHistory(queuedTurn.text, queuedTurn.createdAt)
+            ? [{ text: queuedTurn.text, timestamp: queuedTurn.createdAt }]
+            : [];
+          const pending = [...queuedPrompts, ...queued, ...activePrompt].filter((item, index, all) => !isInHistory(item.text, item.timestamp) && all.findIndex(other => other.text === item.text) === index);
+          return pending.map(item => (
+            <div className="message-row message-row-pending" key={`queued-${item.timestamp}-${item.text.slice(0, 12)}`}>
+              <Message role="user" content={item.text} timestamp={item.timestamp} />
+            </div>
+          ));
+        })()}
         {memorySources.length > 0 && (
           <aside className="memory-used">
             <div className="memory-used-header">{t('Memoria utilizzata ({count})', { count: memorySources.length })}</div>

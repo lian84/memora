@@ -203,6 +203,31 @@ describe('admin settings API', () => {
     expect(agentService.setAutoTitleEnabled).toHaveBeenCalledWith(false);
   });
 
+
+  it('applica a caldo il limite di turni simultanei', () => {
+    const turns = { setMaxConcurrent: vi.fn() };
+    const dependencies = {
+      memoryService: {
+        getConfiguredSearchMode: () => 'lexical' as const,
+        getActiveSearchMode: () => 'lexical' as const,
+        getRetrievalDefaults: () => ({ topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 }),
+        getEmbeddingStatus: () => ({ enabled: false, available: false, model: null, loaded: false, dimensions: null }),
+        getStats: () => ({ sourceCount: 0, chunkCount: 0, vectorCount: 0 }),
+        setSearchMode: vi.fn(),
+        setRetrievalDefaults: vi.fn(),
+      },
+      agentService: { setDefaultChat: vi.fn(), setProviderApiKey: vi.fn(), setAutoTitleEnabled: vi.fn() },
+      turns,
+    };
+    const applied = applyLiveSettings(dependencies, ['chat.maxConcurrentTurns'], {
+      memory: { searchMode: 'lexical', topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 },
+      embeddings: { enabled: false, model: 'Owner/model' },
+      curator: { enabled: false, auto: true, provider: 'openrouter', model: '', reasoningLevel: 'low', minConfidence: 0.75, minSalience: 0.7 },
+      chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium', maxConcurrentTurns: 3 },
+    });
+    expect(applied).toEqual(['chat.maxConcurrentTurns']);
+    expect(turns.setMaxConcurrent).toHaveBeenCalledWith(3);
+  });
   it('applies curator thresholds and chat defaults live', () => {
     const dependencies = {
       memoryService: {

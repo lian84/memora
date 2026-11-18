@@ -16,8 +16,9 @@ import { useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
-import { deleteProjectSection, getAdminStatus, listProjectSections, listProjects, listTurns, setSessionReasoningLevel, type TurnInfo } from './lib/api';
+import { deleteProjectSection, getAdminStatus, listProjectSections, listProjects, listTurnReads, listTurns, markTurnRead as markTurnReadApi, setSessionReasoningLevel, type TurnInfo } from './lib/api';
 import { initAppearance, updateAppearance, useAppearance } from './lib/appearance';
+import { notifyTurnFinished } from './lib/browser-notifications';
 import type { ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
 
 const SESSION_STORAGE_KEY = 'memora-selected-session';
@@ -76,6 +77,9 @@ export default function App() {
     remove,
   } = useSessions();
   const storedSelection = readStoredModelSelection();
+  const sessionsRef = useRef(sessions);
+  sessionsRef.current = sessions;
+  const handleSelectSessionRef = useRef<(sessionId: string) => void>(() => undefined);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>(storedSelection?.provider ?? 'openrouter');
   const [selectedModelId, setSelectedModelId] = useState<string>(storedSelection?.modelId ?? '');
@@ -99,6 +103,7 @@ export default function App() {
   const [turnReadRevision, setTurnReadRevision] = useState(0);
   const turnReadRef = useRef<Record<string, string>>(readTurnReadMap());
   const previousTurnsRef = useRef<Record<string, TurnInfo>>({});
+  const lastPollAtRef = useRef<number | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => typeof window === 'undefined' ? null : localStorage.getItem(PROJECT_STORAGE_KEY));
   const [projectOpen, setProjectOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -184,6 +189,14 @@ export default function App() {
           : selectedSession.name ?? selectedSession.firstMessage ?? '(nessun messaggio)'
         : selectedProject ? selectedProject.name : t('Memora');
 
+  const markRead = useCallback((sessionId: string, turnId: string) => {
+    if (turnReadRef.current[sessionId] === turnId) return;
+    turnReadRef.current = { ...turnReadRef.current, [sessionId]: turnId };
+    persistTurnReadMap(turnReadRef.current);
+    setTurnReadRevision(value => value + 1);
+    void markTurnReadApi(sessionId, turnId).catch(() => undefined);
+  }, []);
+
   const loadMessages = useCallback(
     async (sessionId: string) => {
       const msgs = await getMessages(sessionId);
@@ -221,29 +234,57 @@ export default function App() {
           const current = latest[turn.sessionId];
           if (!current || turn.updatedAt >= current.updatedAt) latest[turn.sessionId] = turn;
         }
+        // Lo stato letto è condiviso dal server; il localStorage resta un
+        // fallback se la rete è temporaneamente assente.
+        let serverReads: Record<string, string> = {};
+        try { serverReads = await listTurnReads(); } catch { /* usa il fallback locale */ }
+        const mergedReads = { ...turnReadRef.current, ...serverReads };
+        const readsChanged = Object.keys(mergedReads).some(key => turnReadRef.current[key] !== mergedReads[key]);
+        if (readsChanged) {
+          turnReadRef.current = mergedReads;
+          persistTurnReadMap(turnReadRef.current);
+          setTurnReadRevision(value => value + 1);
+        }
         const previous = previousTurnsRef.current;
         setTurnsBySession(latest);
         previousTurnsRef.current = latest;
         if (selectedSessionId) {
           const selectedTurn = latest[selectedSessionId];
           const before = previous[selectedSessionId];
-          if (selectedTurn && (selectedTurn.status === 'completed' || selectedTurn.status === 'failed' || selectedTurn.status === 'aborted')) {
+          if (selectedTurn && (selectedTurn.status === 'completed' || selectedTurn.status === 'failed' || selectedTurn.status === 'aborted' || selectedTurn.status === 'interrupted')) {
             if ((before?.status === 'running' || before?.status === 'queued') && before.turnId === selectedTurn.turnId) {
               void loadMessages(selectedSessionId);
             }
-            if (turnReadRef.current[selectedSessionId] !== selectedTurn.turnId) {
-              turnReadRef.current = { ...turnReadRef.current, [selectedSessionId]: selectedTurn.turnId };
-              persistTurnReadMap(turnReadRef.current);
-              setTurnReadRevision(value => value + 1);
-            }
+            markRead(selectedSessionId, selectedTurn.turnId);
           }
         }
-        const newlyFinished = Object.values(latest).some(turn => {
+        const pollStartedAt = lastPollAtRef.current;
+        const finishedNow = Object.values(latest).filter(turn => {
           const before = previous[turn.sessionId];
-          const terminal = turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted';
-          return terminal && before?.turnId !== turn.turnId;
+          const terminal = turn.status === 'completed' || turn.status === 'failed' || turn.status === 'interrupted';
+          if (!terminal) return false;
+          // Al primo polling non notifichiamo la cronologia già presente.
+          // Dal secondo in poi copriamo anche i turni più veloci dell'intervallo.
+          return pollStartedAt === null
+            ? false
+            : before ? before.turnId !== turn.turnId : turn.updatedAt >= pollStartedAt;
         });
-        if (newlyFinished) void load(archivedView);
+        lastPollAtRef.current = Date.now();
+        for (const turn of finishedNow) {
+          const session = sessionsRef.current.find(item => item.sessionId === turn.sessionId);
+          notifyTurnFinished({
+            sessionId: turn.sessionId,
+            title: `Memo · ${session?.name || session?.firstMessage || t('Chat')}`,
+            body: turn.status === 'completed'
+              ? t('La risposta è pronta.')
+              : turn.status === 'interrupted'
+                ? t('Memora è stato riavviato durante la generazione.')
+                : t('La generazione della risposta è fallita.'),
+            activeSessionId: selectedSessionId,
+            onOpen: () => handleSelectSessionRef.current(turn.sessionId),
+          });
+        }
+        if (finishedNow.length > 0) void load(archivedView);
       } catch {
         // Il polling dei turni non deve disturbare la chat.
       }
@@ -251,7 +292,7 @@ export default function App() {
     void refresh();
     const timer = window.setInterval(() => { void refresh(); }, 2000);
     return () => { cancelled = true; window.clearInterval(timer); };
-  }, [archivedView, load, loadMessages, selectedSessionId]);
+  }, [archivedView, load, loadMessages, markRead, selectedSessionId, t]);
 
   const turnStatuses = useMemo(() => Object.fromEntries(
     Object.values(turnsBySession).map(turn => [turn.sessionId, turn.status]),
@@ -365,10 +406,8 @@ export default function App() {
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
       const selectedTurn = turnsBySession[sessionId];
-      if (selectedTurn) {
-        turnReadRef.current = { ...turnReadRef.current, [sessionId]: selectedTurn.turnId };
-        persistTurnReadMap(turnReadRef.current);
-        setTurnReadRevision(value => value + 1);
+      if (selectedTurn && (selectedTurn.status === 'completed' || selectedTurn.status === 'failed' || selectedTurn.status === 'aborted' || selectedTurn.status === 'interrupted')) {
+        markRead(sessionId, selectedTurn.turnId);
       }
       setAdminOpen(false);
       setSecondBrainOpen(false);
@@ -389,8 +428,9 @@ export default function App() {
       }
       await loadMessages(sessionId);
     },
-    [resume, loadMessages, sessions, turnsBySession],
+    [resume, loadMessages, markRead, sessions, turnsBySession],
   );
+  handleSelectSessionRef.current = handleSelectSession;
 
   const handleNewSession = useCallback(async (projectId?: string | null): Promise<string> => {
     const targetProjectId = projectId === undefined ? selectedProjectId : projectId;
@@ -501,10 +541,6 @@ export default function App() {
     if (selectedSessionId) void loadMessages(selectedSessionId);
     setMemoryRevision((revision) => revision + 1);
   }, [load, archivedView, selectedSessionId, loadMessages]);
-
-  const handleQueueTurn = useCallback((text: string, timestamp: number, attachments: ChatAttachment[]) => {
-    setMessages(current => [...current, { id: `queued-${timestamp}-${Math.random().toString(36).slice(2)}`, role: 'user', content: text, timestamp, ...(attachments.length > 0 ? { attachments } : {}) }]);
-  }, []);
 
   const handleTruncateFromMessage = useCallback((messageId: string) => {
     setMessages(current => {
@@ -673,11 +709,11 @@ export default function App() {
               onStreamingUpdate={handleStreamingUpdate}
               onTurnComplete={handleTurnComplete}
               onSessionTitle={() => void load(archivedView)}
-              onQueueTurn={handleQueueTurn}
               onTruncateFromMessage={handleTruncateFromMessage}
               project={chatProject}
               projects={projects}
               turnStatus={selectedSessionId ? turnsBySession[selectedSessionId]?.status ?? null : null}
+              queuedTurn={selectedSessionId ? turnsBySession[selectedSessionId] ?? null : null}
               onSessionUnavailable={handleRecoverSession}
             />
           )}

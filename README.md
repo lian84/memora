@@ -30,13 +30,16 @@ Pi resta il motore agentico. Memora aggiunge:
    Nessun percorso hardcoded; separazione tra codice, configurazione, dati e segreti.
    I dati runtime risiedono in `MEMORA_DATA_DIR` (configurabile).
 
-Le risposte possono continuare in background: fino a due turni sono eseguiti
-contemporaneamente, gli altri vengono accodati. Chiudere il browser non
-interrompe il turno; un riavvio di Memora sì. La sidebar mostra un pallino
-giallo per una risposta in corso in un’altra chat e verde per una risposta
-completata non ancora letta. Tornando nella chat, il client si ricollega agli
-eventi già prodotti e riprende il testo parziale. Dopo un riavvio del server i
-turni in corso vengono marcati come interrotti.
+Le risposte possono continuare in background: la concorrenza è configurabile
+da Amministrazione (1–4, default 2) e gli altri turni vengono accodati.
+Chiudere il browser non interrompe il turno; un riavvio di Memora sì. La sidebar
+mostra un pallino giallo per una risposta in corso in un’altra chat e verde per
+una risposta completata non ancora letta. Lo stato letto è condiviso tra
+dispositivi, mentre le notifiche browser a risposta pronta sono opt-in e
+richiedono la scheda aperta (Telegram non è ancora implementato). Tornando
+nella chat, il client si ricollega agli eventi già prodotti e riprende il testo
+parziale. Dopo un riavvio del server i turni in corso vengono marcati come
+interrotti.
 
 ## MVP
 1. Web UI.

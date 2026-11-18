@@ -15,6 +15,7 @@ import { registerProjectFileRoutes } from './project-files.js';
 import { ChatAttachmentStore } from './chat-attachments.js';
 import { registerChatAttachmentRoutes } from './chat-attachment-routes.js';
 import { TurnManager } from './turn-manager.js';
+import { TurnReadStore } from './turn-reads.js';
 import { registerTurnRoutes } from './turn-routes.js';
 import { SecretStore } from './secrets.js';
 import { AuthStore } from './auth.js';
@@ -190,10 +191,12 @@ const agentService = new AgentService({
 
 const turnManager = new TurnManager({
   agentService,
-  maxConcurrent: 2,
+  maxConcurrent: initialSettings.chat.maxConcurrentTurns ?? 2,
   persistencePath: path.join(dataDir, 'config', 'turns.json'),
 });
 await turnManager.load();
+const turnReadStore = new TurnReadStore(dataDir);
+await turnReadStore.load();
 
 const catalog = new ModelCatalogService({
   getPiModels: provider => agentService.getProviderModels(provider),
@@ -211,6 +214,7 @@ registerAdminRoutes(app, {
   metrics: runtimeMetrics,
   reloadCurator,
   agentService,
+  turns: turnManager,
   dataDir,
   startedAt,
   version: memoraVersion,
@@ -226,6 +230,7 @@ registerTurnRoutes(app, {
   turns: turnManager,
   chatAttachmentStore,
   hasSession: sessionId => agentService.hasSession(sessionId),
+  reads: turnReadStore,
 });
 
 app.get('/api/health', async () => {

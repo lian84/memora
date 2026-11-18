@@ -158,6 +158,16 @@ describe('AdminSettingsStore', () => {
     expect(store.getAdminSettings().settings.chat.autoTitleEnabled).toMatchObject({ value: false, source: 'file' });
   });
 
+
+  it('valida e persiste la concorrenza massima dei turni', async () => {
+    const { store } = await fixture();
+    const result = await store.patch({ chat: { maxConcurrentTurns: 3 } });
+    expect(result.changed).toEqual(['chat.maxConcurrentTurns']);
+    expect(store.getSettings().chat.maxConcurrentTurns).toBe(3);
+    expect(store.getAdminSettings().settings.chat.maxConcurrentTurns).toMatchObject({ value: 3, source: 'file' });
+    await expect(store.patch({ chat: { maxConcurrentTurns: 5 } })).rejects.toMatchObject({ code: 'invalid_setting_value' });
+    await expect(store.patch({ chat: { maxConcurrentTurns: 1.5 } })).rejects.toMatchObject({ code: 'invalid_setting_value' });
+  });
   it('accepts provider-specific bare model ids and rejects unknown providers', async () => {
     const { store } = await fixture();
     const result = await store.patch({ chat: { provider: 'opencode-go', defaultModel: 'deepseek-v4.1-flash' } });

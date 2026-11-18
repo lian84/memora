@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ChatAttachmentContext } from '@memora/shared';
 import { TurnManager } from './turn-manager.js';
+import type { TurnReadStore } from './turn-reads.js';
 
 interface TurnRouteDeps {
   turns: TurnManager;
@@ -9,6 +10,7 @@ interface TurnRouteDeps {
     toModelContext(attachment: unknown): Promise<ChatAttachmentContext>;
   };
   hasSession(sessionId: string): Promise<boolean>;
+  reads: TurnReadStore;
 }
 
 function isTurnForSession(turns: TurnManager, turnId: string, sessionId: string): boolean {
@@ -100,5 +102,22 @@ export function registerTurnRoutes(app: FastifyInstance, deps: TurnRouteDeps): v
 
   app.get('/api/turns', async (_request, reply) => {
     return reply.send({ turns: deps.turns.list() });
+  });
+
+  app.get('/api/turns/reads', async (_request, reply) => {
+    return reply.send({ reads: deps.reads.getAll() });
+  });
+
+  app.put<{ Params: { id: string; turnId: string } }>('/api/sessions/:id/turns/:turnId/read', async (request, reply) => {
+    if (!isTurnForSession(deps.turns, request.params.turnId, request.params.id)) {
+      return reply.status(404).send({ error: 'turn_not_found' });
+    }
+    const turn = deps.turns.getTurn(request.params.turnId);
+    if (!turn) return reply.status(404).send({ error: 'turn_not_found' });
+    if (turn.status === 'queued' || turn.status === 'running') {
+      return reply.status(409).send({ error: 'turn_not_completed' });
+    }
+    await deps.reads.mark(request.params.id, request.params.turnId);
+    return reply.send({ read: { [request.params.id]: request.params.turnId } });
   });
 }

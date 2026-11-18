@@ -34,7 +34,8 @@ type SettingKey =
   | 'chat.provider'
   | 'chat.defaultModel'
   | 'chat.reasoningLevel'
-  | 'chat.autoTitleEnabled';
+  | 'chat.autoTitleEnabled'
+  | 'chat.maxConcurrentTurns';
 
 interface SettingDefinition {
   env: string[];
@@ -165,6 +166,12 @@ const SETTING_DEFINITIONS: Record<SettingKey, SettingDefinition> = {
     requiresRestart: false,
     validate: booleanValue,
     parseEnv: (value) => parseBoolean(value),
+  },
+  'chat.maxConcurrentTurns': {
+    env: [],
+    requiresRestart: false,
+    validate: numberInRange(1, 4, true),
+    parseEnv: (value) => Number(value),
   },
 };
 
@@ -314,6 +321,7 @@ export class AdminSettingsStore {
           defaultModel: this.field<string>('chat.defaultModel'),
           reasoningLevel: this.field<ReasoningLevel>('chat.reasoningLevel'),
           autoTitleEnabled: this.field<boolean>('chat.autoTitleEnabled'),
+          maxConcurrentTurns: this.field<number>('chat.maxConcurrentTurns'),
         },
       },
     };

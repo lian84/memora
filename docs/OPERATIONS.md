@@ -51,6 +51,18 @@ Se la coda è bloccata:
 3. riavvia il servizio: i job pending vengono ripresi;
 4. non cancellare il file se non si vuole perdere la coda.
 
+## Stato dei turni
+
+```text
+$MEMORA_DATA_DIR/config/turns.json      stato sintetico dei turni
+$MEMORA_DATA_DIR/config/turn-reads.json sessioni già lette (condiviso tra dispositivi)
+```
+
+`turns.json` non contiene il testo delle richieste né gli eventi. Al riavvio i
+turni `running`/`queued` diventano `interrupted`. `turn-reads.json` contiene solo
+la mappa `sessionId → turnId` e va incluso nei backup se si vuole conservare lo
+stato “non letta” tra dispositivi.
+
 ## Backup
 
 1. fermare il servizio;
