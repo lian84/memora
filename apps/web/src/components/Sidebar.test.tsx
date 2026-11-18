@@ -87,3 +87,17 @@ test('mostra le sezioni e i progetti annidati', () => {
   expect(markup).toContain('aria-label="Azioni sezione Lavoro"');
   expect(markup).toContain('aria-label="Azioni progetto Orione"');
 });
+
+test('mostra i pallini di risposta in corso e non letta', () => {
+  const markup = renderToStaticMarkup(
+    <Sidebar
+      {...baseProps}
+      sessions={[session, { ...session, sessionId: 'session-2' }]}
+      selectedSessionId="session-2"
+      turnStatuses={{ 'session-1': 'running', 'session-2': 'completed' }}
+      unreadSessions={new Set(['session-2'])}
+    />,
+  );
+  expect(markup).toContain('Risposta in corso in un’altra chat');
+  expect(markup).toContain('Risposta non letta');
+});

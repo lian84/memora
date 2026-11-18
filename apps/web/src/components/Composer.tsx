@@ -4,6 +4,7 @@ import { useI18n } from '../i18n';
 
 interface ComposerProps {
   onSend: (text: string) => void;
+  onQueue?: (text: string) => void;
   onAbort: () => void;
   disabled?: boolean;
   isStreaming?: boolean;
@@ -19,7 +20,7 @@ interface ComposerProps {
   onToggleWeb?: () => void;
 }
 
-export function Composer({ onSend, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null, webEnabled = false, webAvailable = false, onToggleWeb }: ComposerProps) {
+export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null, webEnabled = false, webAvailable = false, onToggleWeb }: ComposerProps) {
   const { t } = useI18n();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -39,13 +40,13 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
 
   const handleSend = () => {
     const value = text.trim();
-    if (!value || disabled || isStreaming) return;
-    onSend(value);
+    if (!value || disabled || (isStreaming && !onQueue)) return;
+    if (isStreaming && onQueue) onQueue(value); else onSend(value);
     setText('');
     textareaRef.current?.focus();
   };
 
-  const sendDisabled = disabled || isStreaming || attachmentBusy || !text.trim();
+  const sendDisabled = disabled || (isStreaming && !onQueue) || attachmentBusy || !text.trim();
   const formatSize = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
   return (
@@ -112,7 +113,7 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={t('Scrivi un messaggio… (Invio per inviare, Shift+Invio per andare a capo)')}
-        disabled={disabled || isStreaming || attachmentBusy}
+        disabled={disabled || (isStreaming && !onQueue) || attachmentBusy}
         rows={1}
       />
       <div className="composer-actions">
@@ -122,7 +123,7 @@ export function Composer({ onSend, onAbort, disabled = false, isStreaming = fals
           </button>
         )}
         <button type="button" className="send-button" onClick={handleSend} disabled={sendDisabled}>
-          {isStreaming ? t('Rispondo…') : t('Invia')}
+          {isStreaming ? (onQueue ? t('Accoda') : t('Rispondo…')) : t('Invia')}
         </button>
       </div>
     </div>

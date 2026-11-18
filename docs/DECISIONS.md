@@ -1295,3 +1295,36 @@ che è spesso lungo e poco leggibile.
 - Se il primo titolo automatico resta il fallback, viene ritentato al turno
   successivo fino a due tentativi.
 - Il nome manuale resta sempre prioritario.
+
+---
+## ADR-042 — Turni in background e coda
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+L’esecuzione di un turno era legata alla connessione SSE del browser. Cambiando
+chat o chiudendo il browser il lavoro poteva continuare senza controllo, e non
+esisteva uno stato condiviso tra sessioni o dispositivi.
+
+### Decisione
+- Un `TurnManager` server-side possiede i turni, indipendentemente dalla
+  connessione del client.
+- Massimo 2 turni concorrenti globali; gli altri vengono accodati.
+- Una sessione ha un solo turno attivo; i messaggi successivi vengono messi in
+  coda, non iniettati nella risposta in corso.
+- La disconnessione del browser non interrompe il turno; solo un abort esplicito
+  o un riavvio del server lo fermano.
+- Gli eventi hanno una sequenza e un buffer per consentire la riconnessione.
+- `GET /api/turns` espone lo stato sintetico; la sidebar usa polling leggero e
+  mostra giallo per turni in corso fuori dalla chat attiva e verde per risposte
+  completate non ancora lette.
+- I turni in corso non vengono persistiti: dopo un riavvio sono considerati
+  interrotti.
+
+### Conseguenze
+- L’utente può leggere una chat mentre un’altra lavora.
+- Il browser può essere chiuso durante la generazione; il risultato viene
+  recuperato alla riapertura.
+- Servono un limite di concorrenza e una coda per proteggere RAM, CPU e quota
+  provider.
+- La consegna cross-device può arrivare con il ritardo del polling.

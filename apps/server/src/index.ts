@@ -14,6 +14,8 @@ import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
 import { ChatAttachmentStore } from './chat-attachments.js';
 import { registerChatAttachmentRoutes } from './chat-attachment-routes.js';
+import { TurnManager } from './turn-manager.js';
+import { registerTurnRoutes } from './turn-routes.js';
 import { SecretStore } from './secrets.js';
 import { AuthStore } from './auth.js';
 import { registerAuthGuard, registerAuthRoutes } from './auth-routes.js';
@@ -186,6 +188,8 @@ const agentService = new AgentService({
   autoTitleEnabled: initialSettings.chat.autoTitleEnabled !== false,
 });
 
+const turnManager = new TurnManager({ agentService, maxConcurrent: 2 });
+
 const catalog = new ModelCatalogService({
   getPiModels: provider => agentService.getProviderModels(provider),
   getApiKey: provider => secretStore.getKey(provider),
@@ -213,6 +217,11 @@ registerProjectSectionRoutes(app, { sections: projectSectionStore, projects: pro
 registerProjectSourceRoutes(app, { projects: projectStore, memory: memoryService, writer: memoryWriter, agentService, dataDir });
 registerProjectFileRoutes(app, { dataDir, projects: projectStore });
 registerChatAttachmentRoutes(app, { store: chatAttachmentStore, agentService, dataDir, projects: projectStore });
+registerTurnRoutes(app, {
+  turns: turnManager,
+  chatAttachmentStore,
+  hasSession: sessionId => agentService.hasSession(sessionId),
+});
 
 app.get('/api/health', async () => {
   return { status: 'ok', service: 'memora' };
@@ -698,7 +707,7 @@ app.post<{ Params: { id: string; entryId: string }; Body: { text: string } }>(
   }
 );
 
-// --- Invia messaggio con streaming (SSE) ---
+// --- Invia messaggio in coda e osserva gli eventi (SSE) ---
 app.post<{ Params: { id: string }; Body: { text: string; attachmentIds?: string[] } }>(
   '/api/sessions/:id/messages',
   async (req, reply) => {
@@ -710,63 +719,52 @@ app.post<{ Params: { id: string }; Body: { text: string; attachmentIds?: string[
     }
     const attachmentIds = Array.isArray(req.body.attachmentIds) ? req.body.attachmentIds.filter((id): id is string => typeof id === 'string') : [];
     if (attachmentIds.length > 8) return reply.status(400).send({ error: 'too_many_attachments' });
+    if (!(await agentService.hasSession(sessionId))) return reply.status(404).send({ error: 'session_not_found' });
 
+    let attachmentContexts;
+    try {
+      attachmentContexts = await Promise.all((await chatAttachmentStore.loadMany(sessionId, attachmentIds)).map(attachment => chatAttachmentStore.toModelContext(attachment)));
+    } catch (err) {
+      app.log.error(err, 'chat_attachment_load_failed');
+      return reply.status(500).send({ error: 'attachment_load_failed' });
+    }
+
+    const turn = turnManager.start(sessionId, text, attachmentContexts);
+    reply.hijack();
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     });
 
-    const sendEvent = (type: string, payload: unknown) => {
-      const event = { type, sessionId, timestamp: Date.now(), payload };
-      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+    let closed = false;
+    let unsubscribe: (() => void) | null = null;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      unsubscribe?.();
     };
-
-    let settled = false;
-
-    try {
-      const attachmentContexts = await Promise.all((await chatAttachmentStore.loadMany(sessionId, attachmentIds)).map(attachment => chatAttachmentStore.toModelContext(attachment)));
-      const { sourcesUsed, memoryCandidatesCreated, memoryWriterError } = await agentService.sendMessage(sessionId, text, (event) => {
-          if (settled && event.type !== 'session_title') return;
-          sendEvent(event.type, event.payload);
-
-          if (event.type === 'agent_settled' || event.type === 'agent_end') {
-            settled = true;
-          }
-        }, attachmentContexts);
-
-        if (sourcesUsed.length > 0) {
-          sendEvent('memory_sources', sourcesUsed);
-        }
-        if (memoryCandidatesCreated.length > 0) {
-          sendEvent('memory_candidates', memoryCandidatesCreated.map((candidate) => ({
-            id: candidate.id,
-            status: candidate.status,
-            targetPath: candidate.targetPath,
-            project: candidate.project,
-            category: candidate.category,
-          })));
-        }
-        if (memoryWriterError) {
-          app.log.warn({ message: memoryWriterError }, 'memory writer failed');
-        }
-        if (!settled) {
-          sendEvent('done', null);
-        }
+    unsubscribe = turnManager.subscribe(turn.turnId, 0, entry => {
+      if (closed) return;
+      const event = { ...entry.event, seq: entry.seq };
+      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      if (entry.event.type === 'turn_complete') {
+        close();
         reply.raw.end();
-    } catch (err) {
-      if (!settled) {
-        sendEvent('error', err instanceof Error ? err.message : String(err));
       }
-      try {
-        reply.raw.end();
-      } catch {
-        // stream già chiuso
-      }
+    });
+    if (!unsubscribe) {
+      reply.raw.end();
+      return reply;
     }
-
-    return reply.hijack();
+    reply.raw.on('close', close);
+    const current = turnManager.getTurn(turn.turnId);
+    if (current && (current.status === 'completed' || current.status === 'failed' || current.status === 'aborted')) {
+      close();
+      reply.raw.end();
+    }
+    return reply;
   }
 );
 

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { SessionInfo } from '../lib/api';
+import type { SessionInfo, TurnStatus } from '../lib/api';
 import type { ProjectRecord, ProjectSection } from '@memora/shared';
 import { SidebarTree } from './SidebarTree';
 import { RowMenu } from './RowMenu';
@@ -56,6 +56,8 @@ interface SidebarProps {
   onNewSection?: () => void;
   onEditSection?: (section: ProjectSection) => void;
   onDeleteSection?: (section: ProjectSection) => void;
+  turnStatuses?: Record<string, TurnStatus>;
+  unreadSessions?: Set<string>;
   projectSettingsActive?: boolean;
   onOpenSecondBrain?: () => void;
   secondBrainActive?: boolean;
@@ -89,6 +91,8 @@ export function Sidebar({
   onNewSection,
   onEditSection,
   onDeleteSection,
+  turnStatuses = {},
+  unreadSessions = new Set(),
   onOpenSecondBrain,
   secondBrainActive = false,
   onLogout,
@@ -183,6 +187,9 @@ export function Sidebar({
     const isSelected = selectedSessionId === session.sessionId;
     const isRenaming = renameInput === session.sessionId;
     const isPinned = pinnedSessionIds.has(session.sessionId);
+    const turnStatus = turnStatuses[session.sessionId];
+    const isGeneratingElsewhere = (turnStatus === 'running' || turnStatus === 'queued') && selectedSessionId !== session.sessionId;
+    const isUnread = turnStatus === 'completed' && unreadSessions.has(session.sessionId);
     const title = displayTitle(session);
     return (
       <div
@@ -206,6 +213,8 @@ export function Sidebar({
         ) : (
           <>
             <span className="session-title">{title}</span>
+            {isUnread && <span className="session-status-dot is-completed" title={t('Risposta non letta')} aria-label={t('Risposta non letta')} />}
+            {isGeneratingElsewhere && <span className="session-status-dot is-running" title={t('Risposta in corso in un’altra chat')} aria-label={t('Risposta in corso in un’altra chat')} />}
             {isPinned && <span className="session-pin" title={t('In evidenza')}><PinIcon filled /></span>}
             <RowMenu
               label={`${t('Azioni chat')} ${title}`}

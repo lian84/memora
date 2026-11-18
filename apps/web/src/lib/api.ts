@@ -116,6 +116,19 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
+export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted';
+
+export interface TurnInfo {
+  turnId: string;
+  sessionId: string;
+  status: TurnStatus;
+  createdAt: number;
+  updatedAt: number;
+  error?: string;
+  firstSeq: number;
+  lastSeq: number;
+}
+
 export interface SSEEvent {
   type: string;
   sessionId: string;
@@ -339,6 +352,33 @@ export async function rejectMemoryCandidate(id: string, reason?: string): Promis
   });
   const data = (await res.json()) as { candidate: MemoryCandidate };
   return data.candidate;
+}
+
+export async function listTurns(): Promise<TurnInfo[]> {
+  const res = await request('/api/turns');
+  const data = (await res.json()) as { turns: TurnInfo[] };
+  return data.turns;
+}
+
+export async function getCurrentTurn(sessionId: string): Promise<TurnInfo | null> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/turns/current`);
+  const data = (await res.json()) as { turn: TurnInfo | null };
+  return data.turn;
+}
+
+export async function startTurn(sessionId: string, text: string, attachmentIds: string[] = []): Promise<TurnInfo> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/turns`, {
+    method: 'POST',
+    body: JSON.stringify({ text, attachmentIds }),
+  });
+  const data = (await res.json()) as { turn: TurnInfo };
+  return data.turn;
+}
+
+export async function abortTurn(sessionId: string, turnId: string): Promise<TurnInfo> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/turns/${encodeURIComponent(turnId)}/abort`, { method: 'POST' });
+  const data = (await res.json()) as { turn: TurnInfo };
+  return data.turn;
 }
 
 export async function listProjects(): Promise<ProjectRecord[]> {

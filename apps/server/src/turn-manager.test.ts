@@ -1,0 +1,108 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { StreamEvent } from '@memora/shared';
+import { TurnManager } from './turn-manager.js';
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+function event(type: string, sessionId: string): StreamEvent {
+  return { type, sessionId, timestamp: Date.now(), payload: {} };
+}
+
+describe('TurnManager', () => {
+  it('esegue al massimo due turni e accoda gli altri', async () => {
+    const gates = new Map<string, ReturnType<typeof deferred>>();
+    const calls: string[] = [];
+    const manager = new TurnManager({
+      maxConcurrent: 2,
+      agentService: {
+        sendMessage: vi.fn(async (sessionId: string, _text: string, onEvent: (event: StreamEvent) => void) => {
+          calls.push(sessionId);
+          const gate = deferred();
+          gates.set(sessionId, gate);
+          onEvent(event('message_start', sessionId));
+          await gate.promise;
+        }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    const first = manager.start('s1', 'a');
+    const second = manager.start('s2', 'b');
+    const third = manager.start('s3', 'c');
+    await vi.waitFor(() => expect(calls).toEqual(['s1', 's2']));
+    expect(first.status).toBe('running');
+    expect(second.status).toBe('running');
+    expect(third.status).toBe('queued');
+    gates.get('s1')!.resolve();
+    await vi.waitFor(() => expect(calls).toEqual(['s1', 's2', 's3']));
+    expect(manager.getCurrent('s1')?.status).toBe('completed');
+    gates.get('s2')!.resolve();
+    gates.get('s3')!.resolve();
+  });
+
+  it('accoda i messaggi della stessa sessione senza avviarli in parallelo', async () => {
+    const gate = deferred();
+    const calls: string[] = [];
+    const manager = new TurnManager({
+      maxConcurrent: 2,
+      agentService: {
+        sendMessage: vi.fn(async (sessionId: string) => {
+          calls.push(sessionId);
+          await gate.promise;
+        }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    const first = manager.start('s1', 'prima');
+    const second = manager.start('s1', 'seconda');
+    await vi.waitFor(() => expect(calls).toEqual(['s1']));
+    expect(first.status).toBe('running');
+    expect(second.status).toBe('queued');
+    gate.resolve();
+    await vi.waitFor(() => expect(calls).toEqual(['s1', 's1']));
+  });
+
+  it('permette di rileggere gli eventi da una sequenza', async () => {
+    const manager = new TurnManager({
+      maxConcurrent: 1,
+      agentService: {
+        sendMessage: vi.fn(async (sessionId: string, _text: string, onEvent: (event: StreamEvent) => void) => {
+          onEvent(event('message_start', sessionId));
+          onEvent(event('message_end', sessionId));
+        }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    const turn = manager.start('s1', 'ciao');
+    await vi.waitFor(() => expect(manager.getTurn(turn.turnId)?.status).toBe('completed'));
+    const received: number[] = [];
+    manager.subscribe(turn.turnId, 1, entry => received.push(entry.seq));
+    expect(received.length).toBeGreaterThan(0);
+    expect(received[0]).toBeGreaterThan(1);
+  });
+
+  it('annulla un turno in coda e uno in esecuzione', async () => {
+    const gate = deferred();
+    const abort = vi.fn(async () => undefined);
+    const manager = new TurnManager({
+      maxConcurrent: 1,
+      agentService: {
+        sendMessage: vi.fn(async () => { await gate.promise; }),
+        abort,
+      },
+    });
+    const running = manager.start('s1', 'uno');
+    const queued = manager.start('s2', 'due');
+    await vi.waitFor(() => expect(manager.getTurn(running.turnId)?.status).toBe('running'));
+    expect(manager.getTurn(queued.turnId)?.status).toBe('queued');
+    await manager.abort(queued.turnId);
+    expect(manager.getTurn(queued.turnId)?.status).toBe('aborted');
+    await manager.abort(running.turnId);
+    expect(abort).toHaveBeenCalledWith('s1');
+    gate.resolve();
+    await vi.waitFor(() => expect(manager.getTurn(running.turnId)?.status).toBe('aborted'));
+  });
+});

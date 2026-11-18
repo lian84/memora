@@ -16,12 +16,30 @@ import { useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
-import { deleteProjectSection, getAdminStatus, listProjectSections, listProjects, setSessionReasoningLevel } from './lib/api';
+import { deleteProjectSection, getAdminStatus, listProjectSections, listProjects, listTurns, setSessionReasoningLevel, type TurnInfo } from './lib/api';
 import { initAppearance, updateAppearance, useAppearance } from './lib/appearance';
 import type { ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
 
 const SESSION_STORAGE_KEY = 'memora-selected-session';
 const PROJECT_STORAGE_KEY = 'memora-selected-project';
+const TURN_READ_KEY = 'memora-read-turns';
+
+function readTurnReadMap(): Record<string, string> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(TURN_READ_KEY) ?? '{}');
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).filter(([, turnId]) => typeof turnId === 'string'))
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistTurnReadMap(value: Record<string, string>): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(TURN_READ_KEY, JSON.stringify(value)); } catch { /* storage may be unavailable */ }
+}
 
 function getSessionFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
@@ -77,6 +95,10 @@ export default function App() {
   const [sectionDeleteBusy, setSectionDeleteBusy] = useState(false);
   const [sectionDeleteError, setSectionDeleteError] = useState<string | null>(null);
   const [newProjectSectionId, setNewProjectSectionId] = useState<string | null>(null);
+  const [turnsBySession, setTurnsBySession] = useState<Record<string, TurnInfo>>({});
+  const [turnReadRevision, setTurnReadRevision] = useState(0);
+  const turnReadRef = useRef<Record<string, string>>(readTurnReadMap());
+  const previousTurnsRef = useRef<Record<string, TurnInfo>>({});
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => typeof window === 'undefined' ? null : localStorage.getItem(PROJECT_STORAGE_KEY));
   const [projectOpen, setProjectOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -188,6 +210,49 @@ export default function App() {
     void loadMessages(initial);
   }, [loading, selectedSessionId, sessions, loadMessages]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const list = await listTurns();
+        if (cancelled) return;
+        const latest: Record<string, TurnInfo> = {};
+        for (const turn of list) {
+          const current = latest[turn.sessionId];
+          if (!current || turn.updatedAt >= current.updatedAt) latest[turn.sessionId] = turn;
+        }
+        const previous = previousTurnsRef.current;
+        setTurnsBySession(latest);
+        previousTurnsRef.current = latest;
+        if (selectedSessionId) {
+          const selectedTurn = latest[selectedSessionId];
+          const before = previous[selectedSessionId];
+          if (selectedTurn && (selectedTurn.status === 'completed' || selectedTurn.status === 'failed' || selectedTurn.status === 'aborted')) {
+            if ((before?.status === 'running' || before?.status === 'queued') && before.turnId === selectedTurn.turnId) {
+              void loadMessages(selectedSessionId);
+            }
+            if (turnReadRef.current[selectedSessionId] !== selectedTurn.turnId) {
+              turnReadRef.current = { ...turnReadRef.current, [selectedSessionId]: selectedTurn.turnId };
+              persistTurnReadMap(turnReadRef.current);
+              setTurnReadRevision(value => value + 1);
+            }
+          }
+        }
+        const newlyFinished = Object.values(latest).some(turn => {
+          const before = previous[turn.sessionId];
+          const terminal = turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted';
+          return terminal && before?.turnId !== turn.turnId;
+        });
+        if (newlyFinished) void load(archivedView);
+      } catch {
+        // Il polling dei turni non deve disturbare la chat.
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => { void refresh(); }, 2000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [archivedView, load, loadMessages, selectedSessionId]);
+
   const handleSelectProject = useCallback((projectId: string | null) => {
     setSelectedProjectId(projectId);
     setProjectOpen(false);
@@ -289,6 +354,12 @@ export default function App() {
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
+      const selectedTurn = turnsBySession[sessionId];
+      if (selectedTurn) {
+        turnReadRef.current = { ...turnReadRef.current, [sessionId]: selectedTurn.turnId };
+        persistTurnReadMap(turnReadRef.current);
+        setTurnReadRevision(value => value + 1);
+      }
       setAdminOpen(false);
       setSecondBrainOpen(false);
       const sessionProjectId = sessions.find(session => session.sessionId === sessionId)?.projectId ?? null;
@@ -308,7 +379,7 @@ export default function App() {
       }
       await loadMessages(sessionId);
     },
-    [resume, loadMessages, sessions],
+    [resume, loadMessages, sessions, turnsBySession],
   );
 
   const handleNewSession = useCallback(async (projectId?: string | null): Promise<string> => {
@@ -421,6 +492,10 @@ export default function App() {
     setMemoryRevision((revision) => revision + 1);
   }, [load, archivedView, selectedSessionId, loadMessages]);
 
+  const handleQueueTurn = useCallback((text: string, timestamp: number, attachments: ChatAttachment[]) => {
+    setMessages(current => [...current, { id: `queued-${timestamp}-${Math.random().toString(36).slice(2)}`, role: 'user', content: text, timestamp, ...(attachments.length > 0 ? { attachments } : {}) }]);
+  }, []);
+
   const handleTruncateFromMessage = useCallback((messageId: string) => {
     setMessages(current => {
       const index = current.findIndex(message => message.id === messageId);
@@ -462,6 +537,8 @@ export default function App() {
         onLogout={() => void logout()}
         projects={projects}
         sections={sections}
+        turnStatuses={Object.fromEntries(Object.values(turnsBySession).map(turn => [turn.sessionId, turn.status]))}
+        unreadSessions={new Set(Object.values(turnsBySession).filter(turn => turnReadRevision >= 0 && turn.status === 'completed' && turnReadRef.current[turn.sessionId] !== turn.turnId).map(turn => turn.sessionId))}
         selectedProjectId={selectedProjectId}
         onSelectProject={handleSelectProject}
         onEditProject={handleEditProject}
@@ -586,9 +663,11 @@ export default function App() {
               onStreamingUpdate={handleStreamingUpdate}
               onTurnComplete={handleTurnComplete}
               onSessionTitle={() => void load(archivedView)}
+              onQueueTurn={handleQueueTurn}
               onTruncateFromMessage={handleTruncateFromMessage}
               project={chatProject}
               projects={projects}
+              turnStatus={selectedSessionId ? turnsBySession[selectedSessionId]?.status ?? null : null}
               onSessionUnavailable={handleRecoverSession}
             />
           )}

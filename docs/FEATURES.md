@@ -22,6 +22,9 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Esportazione della risposta in PDF.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.
 - [x] Titoli automatici delle chat dal primo scambio richiesta/risposta: fallback locale immediato + titolo LLM asincrono.
+- [x] Turni eseguiti dal server anche quando la chat non è aperta o il browser viene chiuso.
+- [x] Massimo 2 turni concorrenti con coda esplicita; una sola risposta attiva per sessione.
+- [x] Indicatori sidebar: giallo per risposta in corso in un’altra chat, verde per risposta completata non letta.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 
 ## 2. Memoria e Second Brain

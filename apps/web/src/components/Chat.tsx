@@ -11,8 +11,8 @@ import { useSSE } from '../hooks/useSSE';
 import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
-import type { ChatMessage, WebStatus } from '../lib/api';
-import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import type { ChatMessage, TurnStatus, WebStatus } from '../lib/api';
+import { attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -33,6 +33,8 @@ interface ChatProps {
   onTurnComplete?: () => void;
   /** Il server ha aggiornato il titolo automatico della sessione. */
   onSessionTitle?: () => void;
+  turnStatus?: TurnStatus | null;
+  onQueueTurn?: (text: string, timestamp: number, attachments: ChatAttachment[]) => void;
   onTruncateFromMessage?: (messageId: string) => void;
   project?: ProjectRecord | null;
   projects?: ProjectRecord[];
@@ -64,7 +66,7 @@ function shouldFinalizeAssistantMessage(payload: unknown): boolean {
   return !(Array.isArray(message.content) && message.content.some((block) => block && typeof block === 'object' && (block as { type?: unknown }).type === 'toolCall'));
 }
 
-export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
+export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, turnStatus = null, onQueueTurn, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
   const { t } = useI18n();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingContentRef = useRef('');
@@ -394,6 +396,21 @@ function messageTitle(content: string, html: string | null): string {
     if (sessionId) void deleteChatAttachment(sessionId, id).catch(() => undefined);
   }, [sessionId]);
 
+  const handleQueue = useCallback(async (text: string) => {
+    if (!sessionId) return;
+    const timestamp = Date.now();
+    const pendingAttachments = attachments;
+    setAttachments([]);
+    setAttachmentError(null);
+    onQueueTurn?.(text, timestamp, pendingAttachments);
+    try {
+      await startTurn(sessionId, text, pendingAttachments.map(attachment => attachment.id));
+    } catch (err) {
+      setAttachments(pendingAttachments);
+      setAttachmentError(err instanceof Error ? err.message : String(err));
+    }
+  }, [attachments, onQueueTurn, sessionId]);
+
   const handleSend = useCallback(async (text: string) => {
     const timestamp = Date.now();
     const assistantId = `stream-${timestamp}-${Math.random().toString(36).slice(2)}`;
@@ -524,10 +541,16 @@ function messageTitle(content: string, html: string | null): string {
         )}
         <div ref={messagesEndRef} />
       </div>
+      {(turnStatus === 'running' || turnStatus === 'queued') && !isStreaming && (
+        <div className="chat-notice is-remote-turn" role="status">
+          {t(turnStatus === 'queued' ? 'Risposta in coda per questa chat…' : 'Risposta in corso in un’altra scheda…')}
+        </div>
+      )}
       {pdfNotice && <div className={`chat-notice${pdfNotice.error ? ' is-error' : ''}`} role="status">{pdfNotice.text}</div>}
       {memoryNotice && <div className={`chat-notice${memoryNotice.error ? ' is-error' : ''}`} role="status">{memoryNotice.text}</div>}
       <Composer
         onSend={handleSend}
+        onQueue={isStreaming ? handleQueue : undefined}
         onAbort={handleAbort}
         disabled={!sessionId}
         isStreaming={isStreaming}
