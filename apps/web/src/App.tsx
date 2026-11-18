@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Chat, appendOptimisticTurn, updateStreamingPlaceholder, type DisplayChatMessage } from './components/Chat';
 import { ModelSelector } from './components/ModelSelector';
@@ -252,6 +252,16 @@ export default function App() {
     const timer = window.setInterval(() => { void refresh(); }, 2000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, [archivedView, load, loadMessages, selectedSessionId]);
+
+  const turnStatuses = useMemo(() => Object.fromEntries(
+    Object.values(turnsBySession).map(turn => [turn.sessionId, turn.status]),
+  ), [turnsBySession]);
+  const unreadSessions = useMemo(() => {
+    void turnReadRevision;
+    return new Set(Object.values(turnsBySession)
+      .filter(turn => turn.status === 'completed' && turnReadRef.current[turn.sessionId] !== turn.turnId)
+      .map(turn => turn.sessionId));
+  }, [turnReadRevision, turnsBySession]);
 
   const handleSelectProject = useCallback((projectId: string | null) => {
     setSelectedProjectId(projectId);
@@ -537,8 +547,8 @@ export default function App() {
         onLogout={() => void logout()}
         projects={projects}
         sections={sections}
-        turnStatuses={Object.fromEntries(Object.values(turnsBySession).map(turn => [turn.sessionId, turn.status]))}
-        unreadSessions={new Set(Object.values(turnsBySession).filter(turn => turnReadRevision >= 0 && turn.status === 'completed' && turnReadRef.current[turn.sessionId] !== turn.turnId).map(turn => turn.sessionId))}
+        turnStatuses={turnStatuses}
+        unreadSessions={unreadSessions}
         selectedProjectId={selectedProjectId}
         onSelectProject={handleSelectProject}
         onEditProject={handleEditProject}
