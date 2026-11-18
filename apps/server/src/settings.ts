@@ -33,7 +33,8 @@ type SettingKey =
   | 'curator.minSalience'
   | 'chat.provider'
   | 'chat.defaultModel'
-  | 'chat.reasoningLevel';
+  | 'chat.reasoningLevel'
+  | 'chat.autoTitleEnabled';
 
 interface SettingDefinition {
   env: string[];
@@ -158,6 +159,12 @@ const SETTING_DEFINITIONS: Record<SettingKey, SettingDefinition> = {
     requiresRestart: false,
     validate: (value) => typeof value === 'string' && safeModelId(value),
     parseEnv: (value) => value.trim(),
+  },
+  'chat.autoTitleEnabled': {
+    env: [],
+    requiresRestart: false,
+    validate: booleanValue,
+    parseEnv: (value) => parseBoolean(value),
   },
 };
 
@@ -306,6 +313,7 @@ export class AdminSettingsStore {
           provider: this.field<ChatProvider>('chat.provider'),
           defaultModel: this.field<string>('chat.defaultModel'),
           reasoningLevel: this.field<ReasoningLevel>('chat.reasoningLevel'),
+          autoTitleEnabled: this.field<boolean>('chat.autoTitleEnabled'),
         },
       },
     };

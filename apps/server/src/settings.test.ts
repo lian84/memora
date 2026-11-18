@@ -25,7 +25,7 @@ describe('AdminSettingsStore', () => {
     expect(settings.memory).toMatchObject({ searchMode: 'lexical', topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 });
     expect(settings.embeddings.enabled).toBe(false);
     expect(settings.curator).toMatchObject({ enabled: false, auto: true, provider: 'openrouter', reasoningLevel: 'low', minConfidence: 0.75, minSalience: 0.7 });
-    expect(settings.chat).toMatchObject({ provider: 'openrouter', reasoningLevel: 'medium' });
+    expect(settings.chat).toMatchObject({ provider: 'openrouter', reasoningLevel: 'medium', autoTitleEnabled: true });
     expect(store.getAdminSettings().settings.memory.searchMode).toMatchObject({ value: 'lexical', source: 'default', editable: true });
     await expect(fs.stat(filePath)).rejects.toMatchObject({ code: 'ENOENT' });
   });
@@ -149,6 +149,14 @@ describe('AdminSettingsStore', () => {
   });
 });
 
+
+  it('salva il toggle dei titoli automatici', async () => {
+    const { store } = await fixture();
+    const result = await store.patch({ chat: { autoTitleEnabled: false } });
+    expect(result.changed).toEqual(['chat.autoTitleEnabled']);
+    expect(store.getSettings().chat.autoTitleEnabled).toBe(false);
+    expect(store.getAdminSettings().settings.chat.autoTitleEnabled).toMatchObject({ value: false, source: 'file' });
+  });
 
   it('accepts provider-specific bare model ids and rejects unknown providers', async () => {
     const { store } = await fixture();

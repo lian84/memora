@@ -1283,8 +1283,9 @@ che è spesso lungo e poco leggibile.
   un titolo manuale.
 - La generazione avviene solo al primo turno completato, con timeout e fallback
   locale in caso di errore/provider non disponibile.
-- `MEMORA_AUTO_TITLE_ENABLED=false` disabilita il titolo LLM ma mantiene il
-  fallback locale.
+- Il titolo LLM si può disabilitare da **Amministrazione → Chat**
+  (`chat.autoTitleEnabled` in `settings.json`); il fallback locale resta attivo.
+  Non è una variabile d’ambiente.
 - Un evento SSE `session_title` aggiorna la sidebar senza polling.
 
 ### Conseguenze

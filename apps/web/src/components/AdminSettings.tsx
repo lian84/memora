@@ -114,6 +114,7 @@ export function settingsValues(settings: AdminSettingsData): RuntimeSettings {
       provider: settings.settings.chat.provider.value,
       defaultModel: settings.settings.chat.defaultModel.value,
       reasoningLevel: settings.settings.chat.reasoningLevel.value,
+      autoTitleEnabled: settings.settings.chat.autoTitleEnabled.value,
     },
   };
 }
@@ -481,7 +482,12 @@ export function AdminSettingsView({
           onSaveKey={onSaveKey}
           onTestKey={onTestKey}
         />
-        <p className="admin-card-description">Il modello Chat viene usato solo dalle nuove sessioni; quelle esistenti mantengono il modello già persistito.</p>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={draft.chat.autoTitleEnabled !== false} disabled={disabled('chat', 'autoTitleEnabled')} onChange={event => onDraftChange('chat', 'autoTitleEnabled', event.target.checked)} />
+          <span>{t('Titoli automatici delle chat')}</span>
+        </label>
+        <FieldLock field={field('chat', 'autoTitleEnabled')} />
+        <p className="admin-card-description">Il modello Chat viene usato solo dalle nuove sessioni; quelle esistenti mantengono il modello già persistito. I titoli automatici usano solo il primo messaggio della nuova chat; il titolo manuale non viene sovrascritto.</p>
       </section>
       </div>
 

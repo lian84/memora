@@ -282,7 +282,7 @@ export class AgentService {
   private defaultModelId: string;
   private defaultReasoningLevel: ReasoningLevel;
   private readonly providerApiKeys: Partial<Record<ChatProvider, string>>;
-  private readonly autoTitleEnabled: boolean;
+  private autoTitleEnabled: boolean;
 
   constructor(config: AgentServiceConfig) {
     this.config = config;
@@ -1173,6 +1173,11 @@ export class AgentService {
 
     await titlePromise;
     return { sourcesUsed, memoryCandidatesCreated, memoryWriterError };
+  }
+
+  /** Abilita/disabilita il titolo LLM per le nuove chat; il fallback locale resta attivo. */
+  setAutoTitleEnabled(enabled: boolean): void {
+    this.autoTitleEnabled = enabled;
   }
 
   /** Cambia provider/modello predefiniti per le nuove sessioni, senza alterare quelle attive. */

@@ -120,7 +120,7 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Segreti in environment o `config/secrets.json` con mode `0600`.
 - [x] Configurazione web in `config/web.json` con mode `0600`.
 - [x] Nessuna API key restituita dalle API.
-- [x] Provider/modello chat, Curator, embedding, retrieval, web e aspetto configurabili.
+- [x] Provider/modello chat, Curator, embedding, retrieval, web, titoli automatici e aspetto configurabili.
 - [x] Riavvio richiesto esplicitamente per le modifiche che non sono a caldo.
 - [x] Nessun `sudo` o `systemctl` eseguito dal processo web.
 

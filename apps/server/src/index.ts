@@ -183,7 +183,7 @@ const agentService = new AgentService({
   memoryWriter: memoryWriterQueue ?? memoryWriter,
   projectStore,
   webService,
-  autoTitleEnabled: memoraEnv('AUTO_TITLE_ENABLED') !== 'false',
+  autoTitleEnabled: initialSettings.chat.autoTitleEnabled !== false,
 });
 
 const catalog = new ModelCatalogService({
@@ -1016,11 +1016,12 @@ if (isProduction) {
     wildcard: false,
     index: ['index.html'],
     cacheControl: false,
+    // @fastify/static v10 passa la FastifyReply: si usano gli header API di Fastify.
     setHeaders(response, filePath) {
       if (path.basename(filePath) === 'index.html') {
-        response.setHeader('Cache-Control', 'no-cache');
+        response.header('Cache-Control', 'no-cache');
       } else {
-        response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        response.header('Cache-Control', 'public, max-age=31536000, immutable');
       }
     },
   });

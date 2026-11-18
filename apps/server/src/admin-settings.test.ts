@@ -37,7 +37,7 @@ async function deps(env: NodeJS.ProcessEnv = {}) {
     setRetrievalDefaults: vi.fn((next: { topK?: number; maxChars?: number; maxTokens?: number; diversity?: number }) => { Object.assign(defaults, next); }),
   };
   const curator = { updateRuntimeConfig: vi.fn() };
-  const agentService = { setDefaultChat: vi.fn(), setProviderApiKey: vi.fn(), setDefaultModel: vi.fn() };
+  const agentService = { setDefaultChat: vi.fn(), setProviderApiKey: vi.fn(), setDefaultModel: vi.fn(), setAutoTitleEnabled: vi.fn() };
   const reloadCurator = vi.fn();
   const catalog = {
     getCatalog: vi.fn(async (provider: 'openrouter' | 'opencode-go') => ({
@@ -53,6 +53,7 @@ async function deps(env: NodeJS.ProcessEnv = {}) {
     updateRuntimeConfig: typeof curator.updateRuntimeConfig;
     setDefaultChat: typeof agentService.setDefaultChat;
     setProviderApiKey: typeof agentService.setProviderApiKey;
+    setAutoTitleEnabled: typeof agentService.setAutoTitleEnabled;
     testConnection: typeof catalog.testConnection;
     reloadCurator: typeof reloadCurator;
   } = {
@@ -63,6 +64,7 @@ async function deps(env: NodeJS.ProcessEnv = {}) {
     updateRuntimeConfig: curator.updateRuntimeConfig,
     setDefaultChat: agentService.setDefaultChat,
     setProviderApiKey: agentService.setProviderApiKey,
+    setAutoTitleEnabled: agentService.setAutoTitleEnabled,
     testConnection: catalog.testConnection,
     reloadCurator,
   };
@@ -177,6 +179,30 @@ describe('admin settings API', () => {
     await app.close();
   });
 
+  it('applica il toggle dei titoli automatici a caldo', () => {
+    const agentService = { setDefaultChat: vi.fn(), setProviderApiKey: vi.fn(), setAutoTitleEnabled: vi.fn() };
+    const dependencies = {
+      memoryService: {
+        getConfiguredSearchMode: () => 'lexical' as const,
+        getActiveSearchMode: () => 'lexical' as const,
+        getRetrievalDefaults: () => ({ topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 }),
+        getEmbeddingStatus: () => ({ enabled: false, available: false, model: null, loaded: false, dimensions: null }),
+        getStats: () => ({ sourceCount: 0, chunkCount: 0, vectorCount: 0 }),
+        setSearchMode: vi.fn(),
+        setRetrievalDefaults: vi.fn(),
+      },
+      agentService,
+    };
+    const applied = applyLiveSettings(dependencies, ['chat.autoTitleEnabled'], {
+      memory: { searchMode: 'lexical', topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 },
+      embeddings: { enabled: false, model: 'Owner/model' },
+      curator: { enabled: false, auto: true, provider: 'openrouter', model: '', reasoningLevel: 'low', minConfidence: 0.75, minSalience: 0.7 },
+      chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium', autoTitleEnabled: false },
+    });
+    expect(applied).toEqual(['chat.autoTitleEnabled']);
+    expect(agentService.setAutoTitleEnabled).toHaveBeenCalledWith(false);
+  });
+
   it('applies curator thresholds and chat defaults live', () => {
     const dependencies = {
       memoryService: {
@@ -189,7 +215,7 @@ describe('admin settings API', () => {
         setRetrievalDefaults: vi.fn(),
       },
       curator: { updateRuntimeConfig: vi.fn() },
-      agentService: { setDefaultChat: vi.fn(), setProviderApiKey: vi.fn() },
+      agentService: { setDefaultChat: vi.fn(), setProviderApiKey: vi.fn(), setAutoTitleEnabled: vi.fn() },
     };
     const applied = applyLiveSettings(dependencies, ['curator.minConfidence', 'curator.minSalience', 'curator.auto', 'chat.provider', 'chat.defaultModel'], {
       memory: { searchMode: 'lexical', topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 },
@@ -198,6 +224,8 @@ describe('admin settings API', () => {
       chat: { provider: 'opencode-go', defaultModel: 'deepseek-v4.1-flash', reasoningLevel: 'medium' },
     });
     expect(applied).toEqual(['curator.minConfidence', 'curator.minSalience', 'curator.auto', 'chat.provider', 'chat.defaultModel']);
+    expect(dependencies.agentService.setDefaultChat).toHaveBeenCalledWith('opencode-go', 'deepseek-v4.1-flash', 'medium');
+    expect(dependencies.agentService.setAutoTitleEnabled).not.toHaveBeenCalled();
     expect(dependencies.curator.updateRuntimeConfig).toHaveBeenCalledWith({ auto: false, minConfidence: 0.82, minSalience: 0.65, reasoningLevel: 'high' });
     expect(dependencies.agentService.setDefaultChat).toHaveBeenCalledWith('opencode-go', 'deepseek-v4.1-flash', 'medium');
   });

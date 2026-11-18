@@ -94,7 +94,6 @@ Variabili d'ambiente (vedi `.env.example`). Tutte le variabili usano il prefisso
 - `MEMORA_MEMORY_QUEUE_MAX_ATTEMPTS` (default `3`) e `MEMORA_MEMORY_QUEUE_RETRY_DELAY_MS` (default `5000`): retry della coda Curator durevole.
 - `OPENCODE_API_KEY` e `OPENROUTER_API_KEY`: credenziali provider lette dal secret store locale o dall'environment.
 - `MEMORA_CHAT_PROVIDER`: `openrouter` o `opencode-go`; `OPENROUTER_MODEL` resta il nome storico della variabile per il modello chat predefinito. La UI Impostazioni permette di scegliere provider, modello, chiave e livello reasoning.
-- `MEMORA_AUTO_TITLE_ENABLED` (default `true`): titolo locale immediato e titolo LLM asincrono per le nuove chat; il titolo manuale non viene sovrascritto.
 - `MEMORA_CHAT_REASONING_LEVEL` (default `medium`) e `MEMORA_MEMORY_CURATOR_REASONING_LEVEL` (default `low`): livelli `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.
 
 Le variabili di configurazione runtime hanno precedenza su
@@ -203,13 +202,15 @@ GET   /api/admin/status
 La sezione **Chat** permette di scegliere OpenRouter o OpenCode Go, salvare la
 chiave nel secret store locale, testare la connessione, cercare e selezionare un
 modello dal catalogo reale. Il nuovo default vale per le nuove sessioni; le
-sessioni esistenti non vengono modificate. La sezione **Memory Curator** sceglie
+sessioni esistenti non vengono modificate. Da questa sezione si possono anche
+abilitare o disabilitare i titoli automatici delle nuove chat; il fallback
+locale resta sempre disponibile. La sezione **Memory Curator** sceglie
 provider e modello separati e riutilizza la stessa chiave del provider, senza
 chiederne una seconda. Il catalogo OpenRouter usa il catalogo Pi; OpenCode Go usa
 l'endpoint remoto con cache di 10 minuti e fallback al catalogo Pi.
 
-Retrieval mode, topK/maxChars, soglie Curator, reasoning, provider/modello Curator e
-default Chat si applicano a caldo; embeddings e abilitazione/disabilitazione del
+Retrieval mode, topK/maxChars, soglie Curator, reasoning, provider/modello Curator,
+default Chat e titoli automatici si applicano a caldo; embeddings e abilitazione/disabilitazione del
 Curator richiedono un riavvio esplicito. La UI
 mostra “Riavvio Memora necessario” e non esegue mai `systemctl` o comandi sudo.
 I preset Lite e Standard mostrano le modifiche prima dell'applicazione. Lite è

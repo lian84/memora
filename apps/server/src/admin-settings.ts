@@ -41,6 +41,7 @@ interface MetricsAdminService {
 
 interface AgentAdminService {
   setDefaultChat(provider: ProviderId, modelId: string, reasoningLevel?: ReasoningLevel): void;
+  setAutoTitleEnabled(enabled: boolean): void;
   setProviderApiKey(provider: ProviderId, apiKey: string): void;
 }
 
@@ -98,6 +99,10 @@ export function applyLiveSettings(
     deps.agentService.setDefaultChat(settings.chat.provider, settings.chat.defaultModel, settings.chat.reasoningLevel);
     applied.push(...changed.filter(key => key === 'chat.provider' || key === 'chat.defaultModel' || key === 'chat.reasoningLevel'));
   }
+  if (changed.includes('chat.autoTitleEnabled')) {
+    deps.agentService.setAutoTitleEnabled(settings.chat.autoTitleEnabled !== false);
+    applied.push('chat.autoTitleEnabled');
+  }
   return applied;
 }
 
@@ -127,6 +132,7 @@ export async function buildAdminStatus(deps: AdminRouteDependencies): Promise<Ad
       provider: settings.chat.provider,
       model: settings.chat.defaultModel,
       reasoningLevel: settings.chat.reasoningLevel,
+      autoTitleEnabled: settings.chat.autoTitleEnabled !== false,
       credential: deps.secrets.getStatus(settings.chat.provider),
     },
     embeddings: deps.memoryService.getEmbeddingStatus(),

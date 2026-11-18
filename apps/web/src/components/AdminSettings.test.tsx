@@ -46,6 +46,7 @@ function settings(overrides: Partial<AdminSettings['settings']['memory']> = {}):
         provider: field('openrouter'),
         defaultModel: field('openrouter/free'),
         reasoningLevel: field('medium'),
+        autoTitleEnabled: field(true),
       },
     },
   };
@@ -57,7 +58,7 @@ const status: AdminStatus = {
   uptimeSeconds: 12,
   dataDir: '/tmp/memora-data',
   memory: { configuredMode: 'lexical', effectiveMode: 'lexical', topK: 5, maxChars: 4000, maxTokens: 1000, diversity: 0.15 },
-  chat: { provider: 'openrouter', model: 'openrouter/free', reasoningLevel: 'medium', credential: { configured: true, source: 'environment', editable: false } },
+  chat: { provider: 'openrouter', model: 'openrouter/free', reasoningLevel: 'medium', autoTitleEnabled: true, credential: { configured: true, source: 'environment', editable: false } },
   embeddings: { enabled: false, available: false, model: null, loaded: false, dimensions: null },
   curator: { enabled: false, auto: true, provider: 'openrouter', model: '', reasoningLevel: 'low', credential: { configured: false, source: 'none', editable: true }, queueLength: null, queueFailed: 0, queueAttempts: 0 },
   metrics: { generatedAt: 1, retrieval: { searches: 3, errors: 0, averageLatencyMs: 12, maxLatencyMs: 20, results: 7, estimatedTokens: 100 }, curator: { invoked: 2, completed: 1, declined: 1, failed: 0, invalidJson: 0, timeouts: 0 }, alerts: [] },

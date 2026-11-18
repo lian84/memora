@@ -80,6 +80,7 @@ export const fr: Record<string, string> = {
   'Salvataggio contesto…': 'Enregistrement du contexte…',
   'Contesto': 'Contexte',
   'Artefatti': 'Artefacts',
+  'Titoli automatici delle chat': 'Titres automatiques des conversations',
   'Chat & Progetti': 'Conversations et projets',
   'Sezioni': 'Sections',
   'Nuova sezione': 'Nouvelle section',

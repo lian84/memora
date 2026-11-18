@@ -30,6 +30,8 @@ export interface RuntimeSettings {
     provider: ChatProvider;
     defaultModel: string;
     reasoningLevel: ReasoningLevel;
+    /** Titolo LLM automatico per le nuove chat; il fallback locale resta attivo. */
+    autoTitleEnabled?: boolean;
   };
 }
 
@@ -52,7 +54,7 @@ export const DEFAULT_RUNTIME_SETTINGS: RuntimeSettings = {
     minConfidence: 0.75,
     minSalience: 0.7,
   },
-  chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium' },
+  chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium', autoTitleEnabled: true },
 };
 
 export type SettingSource = 'default' | 'file' | 'environment';
@@ -92,6 +94,7 @@ export interface AdminSettings {
       provider: SettingField<ChatProvider>;
       defaultModel: SettingField<string>;
       reasoningLevel: SettingField<ReasoningLevel>;
+      autoTitleEnabled: SettingField<boolean>;
     };
   };
 }
@@ -148,6 +151,7 @@ export interface AdminStatus {
     provider: ChatProvider;
     model: string;
     reasoningLevel: ReasoningLevel;
+    autoTitleEnabled: boolean;
     credential: ProviderSecretStatus;
   };
   embeddings: EmbeddingRuntimeStatus;
