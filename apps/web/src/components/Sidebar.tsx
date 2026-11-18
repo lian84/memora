@@ -190,6 +190,7 @@ export function Sidebar({
     const turnStatus = turnStatuses[session.sessionId];
     const isGeneratingElsewhere = (turnStatus === 'running' || turnStatus === 'queued') && selectedSessionId !== session.sessionId;
     const isUnread = turnStatus === 'completed' && unreadSessions.has(session.sessionId);
+    const isError = turnStatus === 'failed' || turnStatus === 'interrupted';
     const title = displayTitle(session);
     return (
       <div
@@ -215,6 +216,7 @@ export function Sidebar({
             <span className="session-title">{title}</span>
             {isUnread && <span className="session-status-dot is-completed" title={t('Risposta non letta')} aria-label={t('Risposta non letta')} />}
             {isGeneratingElsewhere && <span className="session-status-dot is-running" title={t('Risposta in corso in un’altra chat')} aria-label={t('Risposta in corso in un’altra chat')} />}
+            {isError && <span className="session-status-dot is-error" title={t('Risposta interrotta o fallita')} aria-label={t('Risposta interrotta o fallita')} />}
             {isPinned && <span className="session-pin" title={t('In evidenza')}><PinIcon filled /></span>}
             <RowMenu
               label={`${t('Azioni chat')} ${title}`}

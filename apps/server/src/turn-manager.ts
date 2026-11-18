@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { ChatAttachmentContext, StreamEvent } from '@memora/shared';
 
-export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted';
+export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted' | 'interrupted';
 
 export interface TurnInfo {
   turnId: string;
@@ -43,6 +45,7 @@ export interface TurnAgentService {
 interface TurnManagerOptions {
   maxConcurrent?: number;
   maxBufferedEvents?: number;
+  persistencePath?: string;
   agentService: TurnAgentService;
 }
 
@@ -57,6 +60,8 @@ export class TurnManager {
   private readonly maxConcurrent: number;
   private readonly maxBufferedEvents: number;
   private readonly agentService: TurnAgentService;
+  private readonly persistencePath?: string;
+  private persistChain: Promise<void> = Promise.resolve();
   private readonly turns = new Map<string, Turn>();
   private readonly latestBySession = new Map<string, string>();
   private readonly queue: string[] = [];
@@ -65,8 +70,44 @@ export class TurnManager {
 
   constructor(options: TurnManagerOptions) {
     this.agentService = options.agentService;
+    this.persistencePath = options.persistencePath;
     this.maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
     this.maxBufferedEvents = Math.max(50, options.maxBufferedEvents ?? 2000);
+  }
+
+  async load(): Promise<void> {
+    if (!this.persistencePath) return;
+    try {
+      const parsed: unknown = JSON.parse(await fs.readFile(this.persistencePath, 'utf8'));
+      const value = parsed as { version?: unknown; turns?: unknown };
+      if (value.version !== 1 || !Array.isArray(value.turns)) return;
+      for (const raw of value.turns) {
+        if (!raw || typeof raw !== 'object') continue;
+        const item = raw as TurnInfo;
+        if (typeof item.turnId !== 'string' || typeof item.sessionId !== 'string') continue;
+        const interrupted = item.status === 'running' || item.status === 'queued';
+        const status: TurnStatus = interrupted ? 'interrupted' : item.status;
+        const turn: Turn = {
+          turnId: item.turnId,
+          sessionId: item.sessionId,
+          status,
+          createdAt: typeof item.createdAt === 'number' ? item.createdAt : Date.now(),
+          updatedAt: typeof item.updatedAt === 'number' ? item.updatedAt : Date.now(),
+          firstSeq: 1,
+          lastSeq: 0,
+          text: '',
+          attachments: [],
+          events: [],
+          subscribers: new Set(),
+          abortRequested: false,
+          ...(interrupted ? { error: 'server_restart' } : item.error ? { error: item.error } : {}),
+        };
+        this.turns.set(turn.turnId, turn);
+        this.latestBySession.set(turn.sessionId, turn.turnId);
+      }
+    } catch {
+      // Un file di stato assente o corrotto non deve impedire l'avvio.
+    }
   }
 
   start(sessionId: string, text: string, attachments: ChatAttachmentContext[] = [], editEntryId?: string): TurnInfo {
@@ -85,6 +126,7 @@ export class TurnManager {
       subscribers: new Set(),
       abortRequested: false,
     };
+    this.prune();
     this.turns.set(turn.turnId, turn);
     this.latestBySession.set(sessionId, turn.turnId);
     this.queue.push(turn.turnId);
@@ -95,6 +137,7 @@ export class TurnManager {
       payload: { turnId: turn.turnId, status: 'queued' },
     });
     this.schedule();
+    this.persist();
     return this.toInfo(turn);
   }
 
@@ -109,7 +152,10 @@ export class TurnManager {
   }
 
   list(): TurnInfo[] {
-    return [...this.turns.values()].map(turn => this.toInfo(turn));
+    return [...this.latestBySession.values()]
+      .map(turnId => this.turns.get(turnId))
+      .filter((turn): turn is Turn => Boolean(turn))
+      .map(turn => this.toInfo(turn));
   }
 
   subscribe(
@@ -122,7 +168,7 @@ export class TurnManager {
     for (const entry of turn.events) {
       if (entry.seq > after) listener(entry);
     }
-    if (turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted') return () => {};
+    if (turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted' || turn.status === 'interrupted') return () => {};
     turn.subscribers.add(listener);
     return () => turn.subscribers.delete(listener);
   }
@@ -195,6 +241,28 @@ export class TurnManager {
       timestamp: Date.now(),
       payload: { turnId: turn.turnId, status, ...(error ? { error } : {}) },
     });
+    this.prune();
+    this.persist();
+  }
+
+  private prune(): void {
+    for (const [turnId, turn] of this.turns) {
+      const terminal = turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted' || turn.status === 'interrupted';
+      if (terminal && this.latestBySession.get(turn.sessionId) !== turnId) this.turns.delete(turnId);
+    }
+  }
+
+  private persist(): void {
+    if (!this.persistencePath) return;
+    const snapshot = this.list();
+    this.persistChain = this.persistChain.then(async () => {
+      const directory = path.dirname(this.persistencePath!);
+      await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+      const target = this.persistencePath!;
+      const temp = `${target}.tmp-${process.pid}-${Date.now()}`;
+      await fs.writeFile(temp, `${JSON.stringify({ version: 1, turns: snapshot }, null, 2)}\n`, { mode: 0o600 });
+      await fs.rename(temp, target);
+    }).catch(() => undefined);
   }
 
   private schedule(): void {

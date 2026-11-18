@@ -83,7 +83,7 @@ export function registerTurnRoutes(app: FastifyInstance, deps: TurnRouteDeps): v
       return reply;
     }
     reply.raw.on('close', close);
-    if (turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted') {
+    if (turn.status === 'completed' || turn.status === 'failed' || turn.status === 'aborted' || turn.status === 'interrupted') {
       close();
       reply.raw.end();
     }

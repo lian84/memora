@@ -188,7 +188,12 @@ const agentService = new AgentService({
   autoTitleEnabled: initialSettings.chat.autoTitleEnabled !== false,
 });
 
-const turnManager = new TurnManager({ agentService, maxConcurrent: 2 });
+const turnManager = new TurnManager({
+  agentService,
+  maxConcurrent: 2,
+  persistencePath: path.join(dataDir, 'config', 'turns.json'),
+});
+await turnManager.load();
 
 const catalog = new ModelCatalogService({
   getPiModels: provider => agentService.getProviderModels(provider),
@@ -760,7 +765,7 @@ app.post<{ Params: { id: string }; Body: { text: string; attachmentIds?: string[
     }
     reply.raw.on('close', close);
     const current = turnManager.getTurn(turn.turnId);
-    if (current && (current.status === 'completed' || current.status === 'failed' || current.status === 'aborted')) {
+    if (current && (current.status === 'completed' || current.status === 'failed' || current.status === 'aborted' || current.status === 'interrupted')) {
       close();
       reply.raw.end();
     }

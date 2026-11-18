@@ -88,7 +88,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const turnStartedAtRef = useRef(0);
   const turnStream = useSessionTurn(sessionId, { onEvent: event => streamEventHandlerRef.current(event) });
   const isStreaming = turnStream.isActive || turnStatus === 'running' || turnStatus === 'queued';
-  const effectiveTurnStatus = turnStatus === 'running' || turnStatus === 'queued'
+  const effectiveTurnStatus = turnStatus === 'running' || turnStatus === 'queued' || turnStatus === 'failed' || turnStatus === 'interrupted'
     ? turnStatus
     : turnStream.turn?.status ?? turnStatus;
 
@@ -552,6 +552,16 @@ function messageTitle(content: string, html: string | null): string {
           {t(effectiveTurnStatus === 'queued' ? 'Risposta in coda per questa chat…' : 'Risposta in corso in un’altra scheda…')}
         </div>
       )}
+      {(() => {
+        const status = effectiveTurnStatus;
+        if (status !== 'failed' && status !== 'interrupted') return null;
+        const message = status === 'interrupted'
+          ? t('Risposta interrotta: Memora è stato riavviato durante la generazione.')
+          : turnStream.turn?.error
+            ? t('La generazione è fallita: {error}', { error: turnStream.turn.error })
+            : t('La generazione della risposta è fallita.');
+        return <div className="chat-notice is-error" role="alert">{message}</div>;
+      })()}
       {pdfNotice && <div className={`chat-notice${pdfNotice.error ? ' is-error' : ''}`} role="status">{pdfNotice.text}</div>}
       {memoryNotice && <div className={`chat-notice${memoryNotice.error ? ' is-error' : ''}`} role="status">{memoryNotice.text}</div>}
       <Composer

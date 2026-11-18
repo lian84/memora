@@ -106,3 +106,33 @@ describe('TurnManager', () => {
     await vi.waitFor(() => expect(manager.getTurn(running.turnId)?.status).toBe('aborted'));
   });
 });
+
+describe('TurnManager persistence', () => {
+  it('marca come interrotto un turno rimasto in esecuzione dopo un riavvio', async () => {
+    const fs = await import('node:fs/promises');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'memora-turns-'));
+    const persistencePath = path.join(root, 'config', 'turns.json');
+    const gate = deferred();
+    const first = new TurnManager({
+      persistencePath,
+      agentService: {
+        sendMessage: vi.fn(async () => { await gate.promise; }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    await first.load();
+    const turn = first.start('s1', 'risposta interrotta');
+    await vi.waitFor(() => expect(first.getTurn(turn.turnId)?.status).toBe('running'));
+    await vi.waitFor(async () => expect(await fs.readFile(persistencePath, 'utf8')).toContain('running'));
+    const second = new TurnManager({
+      persistencePath,
+      agentService: { sendMessage: vi.fn(), abort: vi.fn(async () => undefined) },
+    });
+    await second.load();
+    expect(second.getCurrent('s1')).toMatchObject({ turnId: turn.turnId, status: 'interrupted', error: 'server_restart' });
+    gate.resolve();
+    await fs.rm(root, { recursive: true, force: true });
+  });
+});

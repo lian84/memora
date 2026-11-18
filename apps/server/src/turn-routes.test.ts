@@ -56,7 +56,8 @@ describe('turn routes', () => {
     const second = await app.inject({ method: 'POST', url: '/api/sessions/s1/turns', payload: { text: 'seconda' } });
     expect(second.json().turn.status).toBe('queued');
     const list = await app.inject({ method: 'GET', url: '/api/turns' });
-    expect(list.json().turns).toEqual(expect.arrayContaining([expect.objectContaining({ turnId: first.json().turn.turnId, status: 'running' })]));
+    expect(list.json().turns).toEqual(expect.arrayContaining([expect.objectContaining({ turnId: second.json().turn.turnId, status: 'queued' })]));
+    expect(manager.getTurn(first.json().turn.turnId)?.status).toBe('running');
     release();
   });
 });

@@ -67,7 +67,7 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
   const attach = useCallback((nextTurn: TurnInfo, after = 0) => {
     if (typeof window === 'undefined') return;
     closeSource();
-    if (nextTurn.status === 'completed' || nextTurn.status === 'failed' || nextTurn.status === 'aborted') {
+    if (nextTurn.status === 'completed' || nextTurn.status === 'failed' || nextTurn.status === 'aborted' || nextTurn.status === 'interrupted') {
       setTurn(nextTurn);
       turnRef.current = nextTurn;
       return;
@@ -105,11 +105,14 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
       source.close();
       sourceRef.current = null;
       const current = turnRef.current;
-      if (!current || current.status === 'completed' || current.status === 'failed' || current.status === 'aborted') return;
+      if (!current || current.status === 'completed' || current.status === 'failed' || current.status === 'aborted' || current.status === 'interrupted') return;
       retryRef.current = window.setTimeout(() => {
         retryRef.current = null;
         void getCurrentTurn(nextTurn.sessionId).then(latest => {
-          if (latest && (latest.status === 'running' || latest.status === 'queued')) attach(latest, seqRef.current);
+          if (!latest) return;
+          turnRef.current = latest;
+          setTurn(latest);
+          if (latest.status === 'running' || latest.status === 'queued') attach(latest, seqRef.current);
         }).catch(() => undefined);
       }, 1500);
     };

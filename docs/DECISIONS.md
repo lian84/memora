@@ -1319,8 +1319,11 @@ esisteva uno stato condiviso tra sessioni o dispositivi.
 - `GET /api/turns` espone lo stato sintetico; la sidebar usa polling leggero e
   mostra giallo per turni in corso fuori dalla chat attiva e verde per risposte
   completate non ancora lette.
-- I turni in corso non vengono persistiti: dopo un riavvio sono considerati
-  interrotti.
+- Lo stato sintetico dei turni viene persistito in `config/turns.json`; al
+  riavvio i turni `running`/`queued` diventano `interrupted`. Il contenuto degli
+  eventi non viene persistito.
+- I turni completati sostituiti vengono rimossi dalla mappa in memoria; i
+  turni falliti/interrotti hanno un indicatore rosso nella sidebar.
 
 ### Conseguenze
 - L’utente può leggere una chat mentre un’altra lavora.

@@ -188,6 +188,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .session-status-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; }
 .session-status-dot.is-completed { background: var(--success); box-shadow: 0 0 0 2px var(--success-soft); }
 .session-status-dot.is-running { background: var(--warning-text); box-shadow: 0 0 0 2px var(--warning-soft-strong); animation: session-status-pulse 1.6s ease-in-out infinite; }
+.session-status-dot.is-error { background: var(--danger); box-shadow: 0 0 0 2px var(--danger-soft); }
 @keyframes session-status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .chat-notice.is-remote-turn { border-color: var(--warning-border); background: var(--warning-soft); color: var(--warning-text); }
 .session-pin svg { display: block; }

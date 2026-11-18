@@ -26,6 +26,8 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Massimo 2 turni concorrenti con coda esplicita; una sola risposta attiva per sessione.
 - [x] Indicatori sidebar: giallo per risposta in corso in un’altra chat, verde per risposta completata non letta.
 - [x] Client SSE riconnettibile: EventSource con replay `after` e ripresa del testo parziale su reload/cambio chat.
+- [x] Stato sintetico dei turni persistito in `$MEMORA_DATA_DIR/config/turns.json`; al riavvio i turni attivi diventano `interrupted`.
+- [x] Cleanup dei turni completati sostituiti e indicatore rosso per errore/interruzione.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 
 ## 2. Memoria e Second Brain

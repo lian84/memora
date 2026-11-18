@@ -116,7 +116,7 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
-export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted';
+export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted' | 'interrupted';
 
 export interface TurnInfo {
   turnId: string;

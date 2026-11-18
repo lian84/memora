@@ -35,7 +35,8 @@ contemporaneamente, gli altri vengono accodati. Chiudere il browser non
 interrompe il turno; un riavvio di Memora sì. La sidebar mostra un pallino
 giallo per una risposta in corso in un’altra chat e verde per una risposta
 completata non ancora letta. Tornando nella chat, il client si ricollega agli
-eventi già prodotti e riprende il testo parziale.
+eventi già prodotti e riprende il testo parziale. Dopo un riavvio del server i
+turni in corso vengono marcati come interrotti.
 
 ## MVP
 1. Web UI.
