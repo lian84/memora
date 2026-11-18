@@ -1235,3 +1235,28 @@ icone stabili per sezioni e progetti, senza caricare SVG arbitrari.
   backup della data directory.
 - Un progetto orfano da una sezione mancante resta visibile in **Senza sezione**.
 - Lo stato di apertura è locale al browser; non viene sincronizzato tra device.
+
+---
+## ADR-040 — Azioni contestuali e chat in evidenza
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+I pulsanti inline di rinomina, archiviazione ed eliminazione occupavano spazio
+nelle righe della sidebar e rendevano i nomi troppo corti. Serviva un modello
+più leggibile e un modo per tenere in evidenza le chat importanti.
+
+### Decisione
+- Le azioni delle righe sono in un menu verticale `⋮`, visibile solo su hover o
+  focus; il trigger non occupa larghezza nel layout del nome.
+- Sessioni: rinomina, archivia/ripristina, elimina e metti/rimuovi evidenza.
+- Sezioni: nuovo progetto, modifica, elimina.
+- Progetti: nuova chat, impostazioni progetto.
+- Le chat in evidenza sono locali al browser (`localStorage`) e vengono ordinate
+  prima delle altre nello stesso gruppo.
+- Il menu si chiude con click esterno o `Escape`.
+
+### Conseguenze
+- I nomi hanno più spazio e la sidebar è meno rumorosa.
+- L’evidenziazione non è sincronizzata tra browser o dispositivi.
+- Le azioni distruttive restano sempre a due passaggi (menu + conferma).

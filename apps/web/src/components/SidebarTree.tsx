@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { ProjectRecord, ProjectSection } from '@memora/shared';
 import type { SessionInfo } from '../lib/api';
 import { AppIcon } from './AppIcon';
+import { RowMenu } from './RowMenu';
 import { useI18n } from '../i18n';
 
 const SECTION_STATE_KEY = 'memora-sidebar-open-sections';
@@ -28,10 +29,6 @@ function persistSet(key: string, values: Set<string>): void {
 
 function Chevron({ open }: { open: boolean }) {
   return <svg className={`sidebar-tree-chevron${open ? ' is-open' : ''}`} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>;
-}
-
-function TreeAction({ label, title, onClick, danger = false, children }: { label: string; title: string; onClick: (event: React.MouseEvent<HTMLButtonElement>) => void; danger?: boolean; children: ReactNode }) {
-  return <button type="button" className={`sidebar-tree-action${danger ? ' is-danger' : ''}`} aria-label={label} title={title} onClick={onClick}>{children}</button>;
 }
 
 function PlusIcon() {
@@ -190,10 +187,13 @@ export function SidebarTree({
             <span className="sidebar-tree-name">{project.name}</span>
             {projectSessions.length > 0 && <span className="sidebar-tree-count">{projectSessions.length}</span>}
           </button>
-          <span className="sidebar-tree-actions">
-            <TreeAction label={`${t('Nuova chat in')} ${project.name}`} title={t('Nuova chat nel progetto')} onClick={event => { event.stopPropagation(); void onNewChatInProject(project.id); }}><PlusIcon /></TreeAction>
-            <TreeAction label={`${t('Impostazioni')} ${project.name}`} title={t('Impostazioni progetto')} onClick={event => { event.stopPropagation(); onEditProject(project.id); }}><SettingsIcon /></TreeAction>
-          </span>
+          <RowMenu
+            label={`${t('Azioni progetto')} ${project.name}`}
+            items={[
+              { label: t('Nuova chat nel progetto'), icon: <PlusIcon />, onSelect: () => { void onNewChatInProject(project.id); } },
+              { label: t('Impostazioni progetto'), icon: <SettingsIcon />, onSelect: () => onEditProject(project.id) },
+            ]}
+          />
         </div>
         {open && (
           <div className="sidebar-project-sessions">
@@ -230,11 +230,14 @@ export function SidebarTree({
                 <span className="sidebar-tree-name">{section.name}</span>
                 {sectionProjects.length > 0 && <span className="sidebar-tree-count">{sectionProjects.length}</span>}
               </button>
-              <span className="sidebar-tree-actions">
-                <TreeAction label={`${t('Nuovo progetto in')} ${section.name}`} title={t('Nuovo progetto nella sezione')} onClick={event => { event.stopPropagation(); onNewProject(section.id); }}><PlusIcon /></TreeAction>
-                <TreeAction label={`${t('Modifica')} ${section.name}`} title={t('Modifica sezione')} onClick={event => { event.stopPropagation(); onEditSection(section); }}><PencilIcon /></TreeAction>
-                <TreeAction label={`${t('Elimina')} ${section.name}`} title={t('Elimina sezione')} danger onClick={event => { event.stopPropagation(); onDeleteSection(section); }}><TrashIcon /></TreeAction>
-              </span>
+              <RowMenu
+                label={`${t('Azioni sezione')} ${section.name}`}
+                items={[
+                  { label: t('Nuovo progetto nella sezione'), icon: <PlusIcon />, onSelect: () => onNewProject(section.id) },
+                  { label: t('Modifica sezione'), icon: <PencilIcon />, onSelect: () => onEditSection(section) },
+                  { label: t('Elimina sezione'), icon: <TrashIcon />, danger: true, onSelect: () => onDeleteSection(section) },
+                ]}
+              />
             </div>
             {open && (
               <div className="sidebar-section-projects">

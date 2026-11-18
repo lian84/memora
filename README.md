@@ -444,7 +444,10 @@ Metriche, alert, backup, restore e degrado controllato sono in
 I progetti sono entità di prima classe. La sidebar è organizzata in **sezioni
 personalizzabili**; ogni sezione contiene progetti e ogni progetto contiene le
 proprie sessioni. Sezioni e progetti hanno un’icona e possono essere aperti o
-chiusi singolarmente; lo stato viene ricordato nel browser. Il modello completo
+chiusi singolarmente; lo stato viene ricordato nel browser. Le azioni delle
+righe sono raccolte nel menu verticale `⋮`, visibile solo su hover o focus. Le
+chat possono essere messe in evidenza localmente: restano in cima al proprio
+gruppo e sono ricordate nel browser. Il modello completo
 è in [`tasks/05.9-projects.md`](tasks/05.9-projects.md).
 
 Le sezioni sono salvate in `$MEMORA_DATA_DIR/config/project-sections.json`; ogni

@@ -51,7 +51,7 @@ test('una nuova chat in memoria compare subito come bozza eliminabile', () => {
   );
 
   expect(markup).toContain('Nuova chat');
-  expect(markup).toContain('Elimina definitivamente Nuova chat');
+  expect(markup).toContain('aria-label="Azioni chat Nuova chat"');
   expect(markup).not.toContain('title="Rinomina"');
   expect(markup).not.toContain('title="Archivia"');
 });
@@ -84,6 +84,6 @@ test('mostra le sezioni e i progetti annidati', () => {
   expect(markup).toContain('Sezioni');
   expect(markup).toContain('Lavoro');
   expect(markup).toContain('Orione');
-  expect(markup).toContain('Nuovo progetto nella sezione');
-  expect(markup).toContain('Nuova chat nel progetto');
+  expect(markup).toContain('aria-label="Azioni sezione Lavoro"');
+  expect(markup).toContain('aria-label="Azioni progetto Orione"');
 });

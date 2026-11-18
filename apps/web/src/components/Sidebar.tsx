@@ -1,10 +1,32 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { SessionInfo } from '../lib/api';
 import type { ProjectRecord, ProjectSection } from '@memora/shared';
 import { SidebarTree } from './SidebarTree';
+import { RowMenu } from './RowMenu';
 import { SessionActionIcon } from './SessionActionIcon';
 import { useI18n } from '../i18n';
+
+const PINNED_SESSIONS_KEY = 'memora-pinned-sessions';
+
+function readPinnedSessions(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(PINNED_SESSIONS_KEY) ?? '[]');
+    return Array.isArray(parsed) ? new Set(parsed.filter((value): value is string => typeof value === 'string')) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function persistPinnedSessions(values: Set<string>): void {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(PINNED_SESSIONS_KEY, JSON.stringify([...values])); } catch { /* storage may be unavailable */ }
+}
+
+function PinIcon({ filled = false }: { filled?: boolean }) {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m12 3 2.7 6.2 6.8.6-5.1 4.5 1.5 6.7-5.9-3.5-5.9 3.5 1.5-6.7L3.5 9.8l6.8-.6Z" /></svg>;
+}
 
 interface SidebarProps {
   sessions: SessionInfo[];
@@ -77,6 +99,7 @@ export function Sidebar({
   const [renameValue, setRenameValue] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<SessionInfo | null>(null);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [pinnedSessionIds, setPinnedSessionIds] = useState<Set<string>>(() => readPinnedSessions());
 
   const handleCreate = useCallback(async () => {
     await onCreate();
@@ -133,6 +156,24 @@ export function Sidebar({
     }
   }, [deleteTarget, deletingSessionId, onDelete]);
 
+  const orderedSessions = useMemo(() => {
+    if (pinnedSessionIds.size === 0) return sessions;
+    return [...sessions].sort((a, b) => {
+      const aPinned = pinnedSessionIds.has(a.sessionId) ? 1 : 0;
+      const bPinned = pinnedSessionIds.has(b.sessionId) ? 1 : 0;
+      return bPinned - aPinned;
+    });
+  }, [pinnedSessionIds, sessions]);
+
+  const togglePinned = useCallback((sessionId: string) => {
+    setPinnedSessionIds(current => {
+      const next = new Set(current);
+      if (next.has(sessionId)) next.delete(sessionId); else next.add(sessionId);
+      persistPinnedSessions(next);
+      return next;
+    });
+  }, []);
+
   const displayTitle = (session: SessionInfo) =>
     session.draft ? 'Nuova chat' : session.name ?? session.firstMessage ?? '(nessun messaggio)';
   const archiveViewLabel = t(archivedView ? 'Torna alle chat attive' : 'Mostra chat archiviate');
@@ -141,11 +182,12 @@ export function Sidebar({
   const renderSessionRows = (rows: SessionInfo[]): ReactNode => rows.map(session => {
     const isSelected = selectedSessionId === session.sessionId;
     const isRenaming = renameInput === session.sessionId;
+    const isPinned = pinnedSessionIds.has(session.sessionId);
     const title = displayTitle(session);
     return (
       <div
         key={session.sessionId}
-        className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}`}
+        className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}${isPinned ? ' is-pinned' : ''}`}
         onClick={() => { if (!isRenaming) onSelect(session.sessionId); }}
         title={title}
       >
@@ -164,39 +206,16 @@ export function Sidebar({
         ) : (
           <>
             <span className="session-title">{title}</span>
-            <span className="session-actions" aria-label={t('Azioni sessione')}>
-              {!session.draft && (
-                <button
-                  type="button"
-                  className="session-action-button"
-                  aria-label={`Rinomina ${title}`}
-                  title={t('Rinomina')}
-                  onClick={event => { event.stopPropagation(); handleRenameClick(session.sessionId, title); }}
-                >
-                  <SessionActionIcon name="rename" />
-                </button>
-              )}
-              {!session.draft && (
-                <button
-                  type="button"
-                  className="session-action-button"
-                  aria-label={session.archived ? `Ripristina ${title}` : `Archivia ${title}`}
-                  title={t(session.archived ? 'Ripristina' : 'Archivia')}
-                  onClick={event => { event.stopPropagation(); handleArchive(session.sessionId, !session.archived); }}
-                >
-                  <SessionActionIcon name={session.archived ? 'restore' : 'archive'} />
-                </button>
-              )}
-              <button
-                type="button"
-                className="session-action-button session-action-danger"
-                aria-label={`Elimina definitivamente ${title}`}
-                title={t('Elimina definitivamente')}
-                onClick={event => { event.stopPropagation(); setDeleteTarget(session); }}
-              >
-                <SessionActionIcon name="delete" />
-              </button>
-            </span>
+            {isPinned && <span className="session-pin" title={t('In evidenza')}><PinIcon filled /></span>}
+            <RowMenu
+              label={`${t('Azioni chat')} ${title}`}
+              items={[
+                ...(!session.draft ? [{ label: t('Rinomina'), icon: <SessionActionIcon name="rename" />, onSelect: () => handleRenameClick(session.sessionId, title) }] : []),
+                ...(!session.draft ? [{ label: t(session.archived ? 'Ripristina' : 'Archivia'), icon: <SessionActionIcon name={session.archived ? 'restore' : 'archive'} />, onSelect: () => handleArchive(session.sessionId, !session.archived) }] : []),
+                { label: t(isPinned ? 'Rimuovi evidenza' : 'Metti in evidenza'), icon: <PinIcon filled={isPinned} />, onSelect: () => togglePinned(session.sessionId) },
+                { label: t('Elimina definitivamente'), icon: <SessionActionIcon name="delete" />, danger: true, onSelect: () => setDeleteTarget(session) },
+              ]}
+            />
           </>
         )}
       </div>
@@ -239,7 +258,7 @@ export function Sidebar({
           <SidebarTree
             sections={sections}
             projects={projects}
-            sessions={sessions}
+            sessions={orderedSessions}
             selectedProjectId={selectedProjectId}
             onSelectProject={projectId => onSelectProject?.(projectId)}
             onEditProject={projectId => onEditProject?.(projectId)}
