@@ -17,6 +17,7 @@ export interface TurnInfo {
 interface Turn extends TurnInfo {
   text: string;
   attachments: ChatAttachmentContext[];
+  editEntryId?: string;
   events: Array<{ seq: number; event: StreamEvent }>;
   subscribers: Set<(event: { seq: number; event: StreamEvent }) => void>;
   abortRequested: boolean;
@@ -29,6 +30,12 @@ export interface TurnAgentService {
     text: string,
     onEvent: (event: StreamEvent) => void,
     attachments?: ChatAttachmentContext[],
+  ): Promise<unknown>;
+  editUserMessage?(
+    sessionId: string,
+    entryId: string,
+    text: string,
+    onEvent: (event: StreamEvent) => void,
   ): Promise<unknown>;
   abort(sessionId: string): Promise<unknown>;
 }
@@ -62,7 +69,7 @@ export class TurnManager {
     this.maxBufferedEvents = Math.max(50, options.maxBufferedEvents ?? 2000);
   }
 
-  start(sessionId: string, text: string, attachments: ChatAttachmentContext[] = []): TurnInfo {
+  start(sessionId: string, text: string, attachments: ChatAttachmentContext[] = [], editEntryId?: string): TurnInfo {
     const turn: Turn = {
       turnId: `turn-${randomUUID()}`,
       sessionId,
@@ -73,6 +80,7 @@ export class TurnManager {
       lastSeq: 0,
       text,
       attachments,
+      ...(editEntryId ? { editEntryId } : {}),
       events: [],
       subscribers: new Set(),
       abortRequested: false,
@@ -208,12 +216,11 @@ export class TurnManager {
     this.activeCount++;
     this.setStatus(turn, 'running');
     try {
-      const result = await this.agentService.sendMessage(
-        turn.sessionId,
-        turn.text,
-        event => this.append(turn, event),
-        turn.attachments,
-      );
+      const onEvent = (event: StreamEvent) => this.append(turn, event);
+      const result = turn.editEntryId
+        ? await this.agentService.editUserMessage?.(turn.sessionId, turn.editEntryId, turn.text, onEvent)
+        : await this.agentService.sendMessage(turn.sessionId, turn.text, onEvent, turn.attachments);
+      if (turn.editEntryId && !this.agentService.editUserMessage) throw new Error('edit_not_supported');
       if (result && typeof result === 'object') {
         const value = result as { sourcesUsed?: unknown; memoryCandidatesCreated?: unknown };
         if (Array.isArray(value.sourcesUsed) && value.sourcesUsed.length > 0) {

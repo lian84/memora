@@ -366,13 +366,17 @@ export async function getCurrentTurn(sessionId: string): Promise<TurnInfo | null
   return data.turn;
 }
 
-export async function startTurn(sessionId: string, text: string, attachmentIds: string[] = []): Promise<TurnInfo> {
+export async function startTurn(sessionId: string, text: string, attachmentIds: string[] = [], entryId?: string): Promise<TurnInfo> {
   const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/turns`, {
     method: 'POST',
-    body: JSON.stringify({ text, attachmentIds }),
+    body: JSON.stringify({ text, attachmentIds, ...(entryId ? { entryId } : {}) }),
   });
   const data = (await res.json()) as { turn: TurnInfo };
   return data.turn;
+}
+
+export async function startEditTurn(sessionId: string, entryId: string, text: string, attachmentIds: string[] = []): Promise<TurnInfo> {
+  return startTurn(sessionId, text, attachmentIds, entryId);
 }
 
 export async function abortTurn(sessionId: string, turnId: string): Promise<TurnInfo> {

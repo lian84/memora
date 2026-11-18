@@ -3,6 +3,7 @@ import { normalizePiContent } from '@memora/shared';
 import {
   abortTurn as abortTurnApi,
   getCurrentTurn,
+  startEditTurn,
   startTurn as startTurnApi,
   type SSEEvent,
   type TurnInfo,
@@ -161,6 +162,17 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     return next;
   }, [attach, sessionId]);
 
+  const startEdit = useCallback(async (entryId: string, text: string, attachmentIds: string[] = []) => {
+    if (!sessionId) throw new Error('Nessuna chat attiva');
+    const next = await startEditTurn(sessionId, entryId, text, attachmentIds);
+    turnRef.current = next;
+    seqRef.current = 0;
+    setContent('');
+    setTurn(next);
+    attach(next, 0);
+    return next;
+  }, [attach, sessionId]);
+
   const abort = useCallback(async () => {
     const current = turnRef.current;
     if (!sessionId || !current) return;
@@ -169,5 +181,5 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     setTurn(updated);
   }, [sessionId]);
 
-  return { turn, content, start, sync, abort, isActive: turn?.status === 'running' || turn?.status === 'queued' };
+  return { turn, content, start, startEdit, sync, abort, isActive: turn?.status === 'running' || turn?.status === 'queued' };
 }

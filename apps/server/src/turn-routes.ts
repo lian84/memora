@@ -17,7 +17,7 @@ function isTurnForSession(turns: TurnManager, turnId: string, sessionId: string)
 }
 
 export function registerTurnRoutes(app: FastifyInstance, deps: TurnRouteDeps): void {
-  app.post<{ Params: { id: string }; Body: { text?: unknown; attachmentIds?: unknown } }>('/api/sessions/:id/turns', async (request, reply) => {
+  app.post<{ Params: { id: string }; Body: { text?: unknown; attachmentIds?: unknown; entryId?: unknown } }>('/api/sessions/:id/turns', async (request, reply) => {
     const text = request.body?.text;
     if (typeof text !== 'string' || !text.trim()) return reply.status(400).send({ error: 'invalid_message' });
     const attachmentIds = Array.isArray(request.body?.attachmentIds)
@@ -28,7 +28,8 @@ export function registerTurnRoutes(app: FastifyInstance, deps: TurnRouteDeps): v
     try {
       const attachments = await Promise.all((await deps.chatAttachmentStore.loadMany(request.params.id, attachmentIds))
         .map(attachment => deps.chatAttachmentStore.toModelContext(attachment)));
-      const turn = deps.turns.start(request.params.id, text, attachments);
+      const entryId = typeof request.body?.entryId === 'string' && request.body.entryId ? request.body.entryId : undefined;
+      const turn = deps.turns.start(request.params.id, text, attachments, entryId);
       return reply.status(202).send({ turn });
     } catch (error) {
       app.log.error(error, 'turn_start_failed');
