@@ -21,7 +21,7 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Modello, provider e livello di reasoning configurabili per chat.
 - [x] Esportazione della risposta in PDF.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.
-- [x] Titoli automatici delle chat dal primo messaggio: fallback locale immediato + titolo LLM asincrono.
+- [x] Titoli automatici delle chat dal primo scambio richiesta/risposta: fallback locale immediato + titolo LLM asincrono.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 
 ## 2. Memoria e Second Brain

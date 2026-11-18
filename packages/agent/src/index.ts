@@ -1,4 +1,5 @@
 import { mkdir, realpath } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { dirname, join, resolve, sep } from 'node:path';
 import { Type } from 'typebox';
 import {
@@ -193,6 +194,14 @@ function getMessageTimestamp(message: unknown): number | undefined {
   if (typeof value === 'string') {
     const parsed = Date.parse(value);
     if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+/** Primo messaggio con il ruolo richiesto, per il titolo della sessione. */
+function findFirstMessage(messages: unknown[], role: 'user' | 'assistant'): unknown {
+  for (const message of messages) {
+    if (message && typeof message === 'object' && (message as { role?: unknown }).role === role) return message;
   }
   return undefined;
 }
@@ -664,12 +673,12 @@ export class AgentService {
   }
 
   /** Legge archivio e progetto dalle custom entry Pi senza aprire un database. */
-  private async readSessionMeta(sessionId: SessionId, knownSessionFile?: string): Promise<{ archived: boolean; projectId?: string; context: SessionContextSettings; webEnabled: boolean; webSources: WebSource[]; nextWebSourceNumber: number; titleSource?: 'auto' | 'manual' }> {
+  private async readSessionMeta(sessionId: SessionId, knownSessionFile?: string): Promise<{ archived: boolean; projectId?: string; context: SessionContextSettings; webEnabled: boolean; webSources: WebSource[]; nextWebSourceNumber: number; titleSource?: 'auto' | 'manual'; titleKind?: 'fallback' | 'llm'; titleAttempts?: number }> {
     const sessionFile = knownSessionFile ?? await this.findSessionFile(sessionId);
     if (!sessionFile) return { archived: false, context: { ...DEFAULT_SESSION_CONTEXT }, webEnabled: false, webSources: [], nextWebSourceNumber: 1 };
     const sessionManager = SessionManager.open(sessionFile, this.sessionDir);
     const entries = ((sessionManager as { getEntries?: () => unknown[] }).getEntries?.() ?? []) as Array<{
-      type?: string; customType?: string; data?: { archived?: boolean; projectId?: unknown; enabled?: unknown; sources?: unknown; nextNumber?: unknown; source?: unknown };
+      type?: string; customType?: string; data?: { archived?: boolean; projectId?: unknown; enabled?: unknown; sources?: unknown; nextNumber?: unknown; source?: unknown; kind?: unknown; attempts?: unknown };
     }>;
     let archived = false;
     let projectId: string | undefined;
@@ -678,6 +687,8 @@ export class AgentService {
     let webSources: WebSource[] = [];
     let nextWebSourceNumber = 1;
     let titleSource: 'auto' | 'manual' | undefined;
+    let titleKind: 'fallback' | 'llm' | undefined;
+    let titleAttempts: number | undefined;
     for (const entry of entries) {
       if (entry.type !== 'custom') continue;
       const customType = entry.customType;
@@ -690,6 +701,8 @@ export class AgentService {
       if (customType === 'memora.title') {
         const source = entry.data?.source;
         if (source === 'auto' || source === 'manual') titleSource = source;
+        if (entry.data?.kind === 'fallback' || entry.data?.kind === 'llm') titleKind = entry.data.kind;
+        if (typeof entry.data?.attempts === 'number' && entry.data.attempts >= 0) titleAttempts = entry.data.attempts;
       }
       if (customType === 'memora.web-sources' && Array.isArray(entry.data?.sources)) {
         webSources = entry.data.sources
@@ -709,7 +722,7 @@ export class AgentService {
         };
       }
     }
-    return { archived, projectId, context, webEnabled, webSources, nextWebSourceNumber, ...(titleSource ? { titleSource } : {}) };
+    return { archived, projectId, context, webEnabled, webSources, nextWebSourceNumber, ...(titleSource ? { titleSource } : {}), ...(titleKind ? { titleKind } : {}), ...(titleAttempts !== undefined ? { titleAttempts } : {}) };
   }
 
   /** Genera il titolo della prima richiesta: fallback locale + eventuale titolo LLM. */
@@ -718,6 +731,7 @@ export class AgentService {
     sessionFile: string,
     entry: { modelRuntime: ModelRuntime; provider: ChatProvider; modelId: string },
     text: string,
+    assistantText: string,
     onEvent: (event: StreamEvent) => void,
   ): Promise<void> {
     const manager = SessionManager.open(sessionFile, this.sessionDir);
@@ -731,7 +745,7 @@ export class AgentService {
     try {
       manager.appendSessionInfo(fallback);
       const withCustom = manager as unknown as { appendCustomEntry?: (customType: string, data: unknown) => void };
-      withCustom.appendCustomEntry?.('memora.title', { source: 'auto', kind: 'fallback', generatedAt: Date.now() });
+      withCustom.appendCustomEntry?.('memora.title', { source: 'auto', kind: 'fallback', attempts: 0, generatedAt: Date.now() });
     } catch {
       return;
     }
@@ -743,23 +757,53 @@ export class AgentService {
     try {
       const response = await entry.modelRuntime.completeSimple(model, {
         systemPrompt: TITLE_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: text.slice(0, 1200), timestamp: Date.now() }],
+        messages: [{
+          role: 'user',
+          content: `Prima richiesta:\n${text.slice(0, 1200)}\n\nRisposta dell'assistente:\n${assistantText.slice(0, 1200)}`,
+          timestamp: Date.now(),
+        }],
       }, {
-        maxTokens: 40,
+        maxTokens: 200,
         ...(model.reasoning ? { reasoning: 'low' as const } : {}),
+        ...(entry.provider === 'opencode-go' ? { headers: { 'x-opencode-session': randomUUID() } } : {}),
         signal: AbortSignal.timeout(8000),
       });
+      if (response.stopReason === 'error' || response.stopReason === 'aborted') {
+        throw new Error(response.errorMessage ?? 'title_generation_failed');
+      }
       const generated = sanitizeSessionTitle(normalizePiContent(response.content));
-      if (!generated || generated === fallback) return;
+      if (!generated || generated === fallback) {
+        await this.recordTitleFailure(sessionId, sessionFile);
+        return;
+      }
       const latest = await this.readSessionMeta(sessionId, sessionFile);
       if (latest.titleSource === 'manual') return;
       const currentManager = SessionManager.open(sessionFile, this.sessionDir);
       currentManager.appendSessionInfo(generated);
       const withCustom = currentManager as unknown as { appendCustomEntry?: (customType: string, data: unknown) => void };
-      withCustom.appendCustomEntry?.('memora.title', { source: 'auto', kind: 'llm', generatedAt: Date.now() });
+      withCustom.appendCustomEntry?.('memora.title', { source: 'auto', kind: 'llm', attempts: 0, generatedAt: Date.now() });
       onEvent({ type: 'session_title', sessionId, timestamp: Date.now(), payload: { title: generated, source: 'auto', kind: 'llm' } });
     } catch {
-      // Il fallback locale resta valido; un errore del titolo non interrompe la chat.
+      // Il fallback locale resta valido; registra un tentativo per evitare retry infiniti.
+      await this.recordTitleFailure(sessionId, sessionFile);
+    }
+  }
+
+  /** Registra un tentativo LLM fallito senza alterare il titolo di fallback. */
+  private async recordTitleFailure(sessionId: SessionId, sessionFile: string): Promise<void> {
+    try {
+      const latest = await this.readSessionMeta(sessionId, sessionFile);
+      if (latest.titleSource === 'manual') return;
+      const manager = SessionManager.open(sessionFile, this.sessionDir);
+      const withCustom = manager as unknown as { appendCustomEntry?: (customType: string, data: unknown) => void };
+      withCustom.appendCustomEntry?.('memora.title', {
+        source: 'auto',
+        kind: 'fallback',
+        attempts: (latest.titleAttempts ?? 0) + 1,
+        generatedAt: Date.now(),
+      });
+    } catch {
+      // Il fallback locale resta valido anche se il metadata non è scrivibile.
     }
   }
 
@@ -1052,9 +1096,25 @@ export class AgentService {
       if (!promptCompleted) this.pendingArtifactRequests.delete(sessionId);
     }
 
-    const titlePromise = firstUserTurn && promptCompleted && session.sessionFile
-      ? this.generateSessionTitle(sessionId, session.sessionFile, entry, text, onEvent).catch(() => undefined)
-      : Promise.resolve();
+    let titlePromise: Promise<void> = Promise.resolve();
+    if (promptCompleted && session.sessionFile) {
+      const titleSessionFile = session.sessionFile;
+      const titleMeta = await this.readSessionMeta(sessionId, titleSessionFile);
+      const retryFallback = this.autoTitleEnabled
+        && titleMeta.titleSource === 'auto'
+        && titleMeta.titleKind !== 'llm'
+        && (titleMeta.titleAttempts ?? 0) < 2;
+      if (firstUserTurn || retryFallback) {
+        const firstUser = firstUserTurn
+          ? text
+          : normalizePiContent((findFirstMessage(session.messages, 'user') as { content?: unknown } | undefined)?.content).trim() || text;
+        const firstAssistant = firstUserTurn
+          ? findLastMessage(session.messages, 'assistant')
+          : findFirstMessage(session.messages, 'assistant');
+        const assistantText = firstAssistant ? normalizePiContent((firstAssistant as { content?: unknown }).content).trim() : '';
+        titlePromise = this.generateSessionTitle(sessionId, titleSessionFile, entry, firstUser, assistantText, onEvent).catch(() => undefined);
+      }
+    }
 
     if (attachments.length > 0 && session.sessionFile) {
       try {

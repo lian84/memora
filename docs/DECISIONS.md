@@ -1274,9 +1274,9 @@ che è spesso lungo e poco leggibile.
 ### Decisione
 - Al primo turno viene salvato subito un titolo locale deterministico, con
   fallback `Nuova chat`.
-- Lo stesso turno avvia in background un titolo LLM usando solo il primo
-  messaggio utente (massimo 1200 caratteri), senza memoria, allegati o risposta
-  dell’assistente.
+- Lo stesso turno avvia in background un titolo LLM usando il primo messaggio
+  utente e la prima risposta dell’assistente (massimo 1200 caratteri ciascuno),
+  senza memoria o allegati.
 - Il titolo LLM viene salvato con `session_info` nativa e un metadata
   `memora.title` con `source: auto`.
 - `renameSession` scrive `source: manual`; la generazione non può sovrascrivere
@@ -1291,5 +1291,7 @@ che è spesso lungo e poco leggibile.
 ### Conseguenze
 - La sidebar mostra un titolo utile già dal primo turno.
 - Ogni nuova chat può produrre una piccola chiamata LLM aggiuntiva; il testo
-  inviato è solo la prima richiesta.
+  inviato è il primo scambio richiesta + risposta, senza memoria o allegati.
+- Se il primo titolo automatico resta il fallback, viene ritentato al turno
+  successivo fino a due tentativi.
 - Il nome manuale resta sempre prioritario.

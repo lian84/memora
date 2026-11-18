@@ -1,10 +1,10 @@
 const MAX_TITLE_CHARS = 60;
 
-export const TITLE_SYSTEM_PROMPT = `Genera un titolo breve per una chat, basandoti solo sul primo messaggio dell'utente.
+export const TITLE_SYSTEM_PROMPT = `Genera un titolo breve per una chat, basandoti sul tema della prima richiesta e della risposta dell'assistente.
 
 Regole:
 - usa la stessa lingua del messaggio;
-- descrivi l'argomento o l'obiettivo, non ripetere la domanda;
+- descrivi il tema della conversazione, non copiare la domanda;
 - 3-7 parole, massimo 60 caratteri;
 - niente virgolette, emoji, Markdown, prefissi come "Titolo:", URL o punto finale;
 - non includere dati personali non necessari;
