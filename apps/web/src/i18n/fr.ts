@@ -85,6 +85,7 @@ export const fr: Record<string, string> = {
   'Comprimi pannello': 'Réduire le panneau',
   'Pannello della chat': 'Panneau de la conversation',
   'Aree del pannello': 'Zones du panneau',
+  'Fonte {number}': 'Source {number}',
   'Fonti': 'Sources',
   '{count} elementi': '{count} éléments',
   'Radice': 'Racine',

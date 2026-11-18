@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChatAttachment } from '@memora/shared';
+import type { ChatAttachment, WebSource } from '@memora/shared';
 import { chatAttachmentUrl } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 import { useI18n } from '../i18n';
@@ -17,6 +17,7 @@ interface MessageProps {
   onEditText?: (text: string) => Promise<void> | void;
   exportingPdf?: boolean;
   hideHtmlCode?: boolean;
+  webSources?: WebSource[];
 }
 
 const roleLabel: Record<string, string> = {
@@ -25,7 +26,7 @@ const roleLabel: Record<string, string> = {
   assistant: 'Memo',
 };
 
-export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false }: MessageProps) {
+export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false, webSources = [] }: MessageProps) {
   const { t, language } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(content);
@@ -44,6 +45,10 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
   const htmlBlock = hideHtmlCode && role === 'assistant' ? content.match(/```(?:html|htm)?\s*\n([\s\S]*?)```/i) : null;
   const visibleContent = htmlBlock ? content.replace(htmlBlock[0], '').trim() : content;
   const copyText = role === 'user' ? content.replace(/<[^>]*>/g, '') : htmlBlock ? visibleContent : content;
+  const citationMap = new Map<number, string>();
+  for (const [index, source] of webSources.entries()) {
+    citationMap.set(source.number ?? index + 1, source.url);
+  }
   const time = new Date(timestamp).toLocaleTimeString(language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB', {
     hour: '2-digit',
     minute: '2-digit',
@@ -144,7 +149,7 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
           <div
             className="message-content"
             aria-live={streaming ? 'polite' : undefined}
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(streaming && !visibleContent ? t('Memo sta rispondendo…') : visibleContent) }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(streaming && !visibleContent ? t('Memo sta rispondendo…') : visibleContent, { citations: role === 'assistant' ? citationMap : undefined }) }}
           />
           {htmlBlock && <div className="message-html-artifact-note">{t('Documento generato · PDF disponibile nella scheda Artefatti.')}</div>}
         </>

@@ -870,6 +870,8 @@ body { font-size: calc(14px * var(--font-scale)); }
 .message-content pre { background: var(--code-bg); }
 .message-content code { border-color: var(--border); background: var(--code-bg); color: var(--code-text); }
 .message-content a { color: var(--accent); }
+.message-citation { display: inline-block; margin: 0 1px; padding: 0 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-size: .72em; font-weight: 750; line-height: 1.25; text-decoration: none; vertical-align: super; }
+.message-citation:hover { background: var(--accent); color: #fff; }
 
 .composer {
   padding-top: 10px;
@@ -1404,6 +1406,7 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
 .web-sources-list { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
 .web-source { padding: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
 .web-source-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.web-source-number { flex: 0 0 auto; min-width: 20px; padding: 1px 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8px; font-weight: 800; text-align: center; }
 .web-source-kind { padding: 1px 4px; border-radius: 3px; background: var(--accent-soft); color: var(--accent-strong); font-size: 8px; font-weight: 800; }
 .web-source-kind.is-pdf { background: var(--danger-soft-strong); color: var(--danger); }
 .web-source-domain { min-width: 0; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }

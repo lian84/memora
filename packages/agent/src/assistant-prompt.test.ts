@@ -88,6 +88,13 @@ describe('Personal Assistant memory conversation policy', () => {
     expect(buildTurnSystemPrompt(PERSONAL_ASSISTANT_SYSTEM_PROMPT, [])).toBe(PERSONAL_ASSISTANT_SYSTEM_PROMPT);
   });
 
+  it('H. impone citazioni web numeriche e fonti consultate', () => {
+    expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('## Web e citazioni');
+    expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('ogni fonte ha un numero stabile');
+    expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('Per ogni informazione ricavata dal web');
+    expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('non citare fonti che non hai consultato');
+  });
+
   it('C. non chiede conferma per registrare una decisione e indica una risposta naturale', () => {
     expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('Non chiedere conferma per annotare, registrare o salvare memorie');
     expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('Capito: per Orione avete scelto PostgreSQL come database.');

@@ -37,3 +37,19 @@ test('espone il salvataggio esplicito della risposta come memoria', () => {
   expect(markup).toContain('Memoria');
   expect(markup).toContain('Salva risposta come memoria');
 });
+
+test('collega le citazioni numeriche alle fonti web', () => {
+  const markup = renderToStaticMarkup(
+    <Message
+      role="assistant"
+      content="Il fatto è riportato [1]."
+      timestamp={1}
+      webSources={[
+        { id: 'https://example.com', number: 1, url: 'https://example.com', title: 'Example', domain: 'example.com', kind: 'search', fetchedAt: 1, status: 'ok' },
+      ]}
+    />,
+  );
+  expect(markup).toContain('class="message-citation"');
+  expect(markup).toContain('href="https://example.com"');
+  expect(markup).toContain('[1]');
+});

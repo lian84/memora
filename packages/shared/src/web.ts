@@ -19,6 +19,8 @@ export interface WebSettingsView extends WebSettings {
 
 export interface WebSource {
   id: string;
+  /** Numero stabile della fonte nella chat, usato per le citazioni [n]. */
+  number?: number;
   url: string;
   title: string;
   domain: string;

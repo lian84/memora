@@ -19,9 +19,10 @@ export function WebSourcesPanel({ sources, loading = false, error = null, onRefr
       {error && <div className="project-files-error" role="alert">{error}</div>}
       {!loading && !error && sources.length === 0 && <div className="project-files-empty">{t('Nessuna fonte web. Attiva Web nella chat e fai una ricerca.')}</div>}
       <div className="web-sources-list">
-        {sources.map(source => (
+        {sources.map((source, index) => (
           <article className="web-source" key={source.id}>
             <div className="web-source-head">
+              <span className="web-source-number" aria-label={t('Fonte {number}', { number: source.number ?? index + 1 })}>[{source.number ?? index + 1}]</span>
               <span className={`web-source-kind is-${source.kind}`}>{source.kind === 'pdf' ? 'PDF' : source.kind === 'search' ? 'WEB' : 'HTML'}</span>
               <span className="web-source-domain">{source.domain}</span>
             </div>

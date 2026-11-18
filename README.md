@@ -291,13 +291,19 @@ Sono supportiti:
 - ricerca di pagine;
 - lettura del testo HTML con Readability;
 - estrazione testo da PDF;
-- citazione degli URL;
+- fonti numerate con citazioni `[n]` nel testo, cliccabili verso la fonte;
 - blocco di URL privati/locali, redirect limitati, timeout e limiti di
   dimensione.
 
 Il contenuto web è trattato come **dato non fidato**: non viene mai eseguito e
 non può modificare istruzioni, permessi o strumenti. `web_fetch` non usa
 JavaScript, cookie o sessioni.
+
+Ogni fonte riceve un numero stabile, mostrato come `[1]`, `[2]` nella scheda
+Fonti. Memo deve inserire il riferimento subito dopo ogni informazione ricavata
+dal web; se una frase usa più fonti può scrivere `[1][3]`. I riferimenti nella
+risposta sono cliccabili e aprono la fonte corrispondente. I numeri non vengono
+riutilizzati quando la cronologia supera le 50 fonti.
 
 ## Development
 

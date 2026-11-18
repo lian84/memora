@@ -65,7 +65,9 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Abilitazione per singola chat con pulsante Web.
 - [x] Tool `web_search` e `web_fetch`.
 - [x] Estrazione HTML con Readability e testo da PDF.
-- [x] Fonti persistenti nella sessione e visibili nella scheda Fonti.
+- [x] Fonti persistenti nella sessione, numerate in modo stabile e visibili nella scheda Fonti.
+- [x] Citazioni numeriche `[n]` per ogni informazione, cliccabili nella risposta.
+- [x] I numeri non vengono riutilizzati quando la cronologia supera il limite delle fonti.
 - [x] Blocco SSRF, URL privati/metadata, credenziali negli URL e redirect eccessivi.
 - [x] Contenuto web trattato come dato non fidato.
 - [ ] Installer SearXNG nativo con opzione `--web=...` (prossimo milestone).

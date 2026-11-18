@@ -2,7 +2,12 @@
  * Renderer Markdown minimale, senza dipendenze esterne.
  * Supporta: titoli, grassetto, corsivo, codice inline, blocchi codice, elenchi puntati, paragrafi.
  */
-export function renderMarkdown(text: string): string {
+export interface MarkdownOptions {
+  /** Mappa numero fonte → URL, usata per rendere cliccabili le citazioni [n]. */
+  citations?: Map<number, string>;
+}
+
+export function renderMarkdown(text: string, options: MarkdownOptions = {}): string {
   const escapeHtml = (s: string): string =>
     s
       .replace(/&/g, '&amp;')
@@ -18,12 +23,38 @@ export function renderMarkdown(text: string): string {
 
   const flushParagraph = (buf: string[]): void => {
     if (buf.length === 0) return;
-    let p = escapeHtml(buf.join(' '));
-    p = p.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    p = p.replace(/\*(.+?)\*/g, '<em>$1</em>');
-    p = p.replace(/`(.+?)`/g, '<code>$1</code>');
-    htmlParts.push(`<p>${p}</p>`);
+    htmlParts.push(`<p>${formatInline(buf.join(' '))}</p>`);
     buf.length = 0;
+  };
+
+  const citationUrl = (value: string): string | null => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'http:' || url.protocol === 'https:' ? value : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const formatInline = (value: string): string => {
+    const placeholders: string[] = [];
+    let inline = escapeHtml(value).replace(/`(.+?)`/g, (_match, code: string) => {
+      const index = placeholders.push(`<code>${code}</code>`) - 1;
+      return `\u0000${index}\u0000`;
+    });
+    inline = inline.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    inline = inline.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    if (options.citations) {
+      inline = inline.replace(/\[(\d{1,3})\]/g, (match, raw: string) => {
+        const number = Number(raw);
+        const url = options.citations?.get(number);
+        const href = url ? citationUrl(url) : null;
+        return href
+          ? `<a class="message-citation" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" title="Fonte ${number}">[${number}]</a>`
+          : match;
+      });
+    }
+    return inline.replace(/\u0000(\d+)\u0000/g, (_match, index: string) => placeholders[Number(index)] ?? '');
   };
 
   let paraBuf: string[] = [];
@@ -55,10 +86,7 @@ export function renderMarkdown(text: string): string {
     if (hMatch) {
       flushParagraph(paraBuf);
       const level = hMatch[1].length;
-      const headingText = escapeHtml(hMatch[2])
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`(.+?)`/g, '<code>$1</code>');
+      const headingText = formatInline(hMatch[2]);
       htmlParts.push(`<h${level}>${headingText}</h${level}>`);
       i++;
       continue;
@@ -72,11 +100,7 @@ export function renderMarkdown(text: string): string {
       while (i < lines.length) {
         const m = lines[i].match(/^[-*+]\s+(.+)$/);
         if (!m) break;
-        let itemText = escapeHtml(m[1])
-          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.+?)\*/g, '<em>$1</em>')
-          .replace(/`(.+?)`/g, '<code>$1</code>');
-        listItems.push(`<li>${itemText}</li>`);
+        listItems.push(`<li>${formatInline(m[1])}</li>`);
         i++;
       }
       htmlParts.push(`<ul>${listItems.join('')}</ul>`);

@@ -1142,3 +1142,32 @@ web non si aggiornavano dopo una ricerca.
 - Le fonti web sono sempre raggiungibili, anche nei progetti.
 - Il pannello richiede che il client interpreti i dettagli dei tool; se un
   evento non contiene dettagli, il refresh di fine turno resta la fallback.
+
+---
+## ADR-036 — Fonti web numerate e citazioni
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+Le fonti web erano mostrate senza un identificatore stabile e il modello poteva
+citare URL o omettere la provenienza. Le citazioni dovevano restare coerenti tra
+ricerche successive e dopo il limite delle 50 fonti.
+
+### Decisione
+- Ogni `WebSource` ha un `number` opzionale, assegnato alla prima acquisizione.
+- Il numero viene persistito in `memora.web-sources` insieme a `nextNumber`;
+  una fonte ritrovata mantiene il proprio numero e i numeri non vengono
+  riutilizzati quando le fonti più vecchie escono dal limite.
+- Le fonti legacy senza numero vengono normalizzate in lettura.
+- `web_search` e `web_fetch` restituiscono al modello fonti con `number`;
+  il system prompt impone di citare ogni informazione con `[n]` e di usare più
+  riferimenti quando una frase combina fonti.
+- La UI mostra `[n]` nella scheda Fonti e trasforma `[n]` in link cliccabili
+  nella risposta, solo per URL HTTP/HTTPS.
+- Le citazioni dentro il codice non vengono trasformate in link.
+
+### Conseguenze
+- Le citazioni restano coerenti tra turni e fonti.
+- Il modello deve seguire il formato; se non lo fa, la risposta non viene
+  modificata artificialmente con fonti inventate.
+- Il limite di 50 fonti resta, ma i numeri non collassano.
