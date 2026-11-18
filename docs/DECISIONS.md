@@ -1260,3 +1260,35 @@ più leggibile e un modo per tenere in evidenza le chat importanti.
 - I nomi hanno più spazio e la sidebar è meno rumorosa.
 - L’evidenziazione non è sincronizzata tra browser o dispositivi.
 - Le azioni distruttive restano sempre a due passaggi (menu + conferma).
+
+---
+## ADR-041 — Titoli automatici delle sessioni
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+Pi usa `session_info` per il nome visualizzato, ma una nuova chat non ha un
+nome finché l’utente non la rinomina; la sidebar ricade sul primo messaggio,
+che è spesso lungo e poco leggibile.
+
+### Decisione
+- Al primo turno viene salvato subito un titolo locale deterministico, con
+  fallback `Nuova chat`.
+- Lo stesso turno avvia in background un titolo LLM usando solo il primo
+  messaggio utente (massimo 1200 caratteri), senza memoria, allegati o risposta
+  dell’assistente.
+- Il titolo LLM viene salvato con `session_info` nativa e un metadata
+  `memora.title` con `source: auto`.
+- `renameSession` scrive `source: manual`; la generazione non può sovrascrivere
+  un titolo manuale.
+- La generazione avviene solo al primo turno completato, con timeout e fallback
+  locale in caso di errore/provider non disponibile.
+- `MEMORA_AUTO_TITLE_ENABLED=false` disabilita il titolo LLM ma mantiene il
+  fallback locale.
+- Un evento SSE `session_title` aggiorna la sidebar senza polling.
+
+### Conseguenze
+- La sidebar mostra un titolo utile già dal primo turno.
+- Ogni nuova chat può produrre una piccola chiamata LLM aggiuntiva; il testo
+  inviato è solo la prima richiesta.
+- Il nome manuale resta sempre prioritario.

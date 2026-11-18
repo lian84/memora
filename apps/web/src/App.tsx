@@ -585,6 +585,7 @@ export default function App() {
               onStartTurn={handleStartTurn}
               onStreamingUpdate={handleStreamingUpdate}
               onTurnComplete={handleTurnComplete}
+              onSessionTitle={() => void load(archivedView)}
               onTruncateFromMessage={handleTruncateFromMessage}
               project={chatProject}
               projects={projects}

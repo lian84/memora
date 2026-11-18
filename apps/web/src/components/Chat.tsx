@@ -31,6 +31,8 @@ interface ChatProps {
   onStreamingUpdate: (assistantId: string, content: string, streaming: boolean) => void;
   /** Notifica la fine del turno per riallineare la lista sessioni persistite. */
   onTurnComplete?: () => void;
+  /** Il server ha aggiornato il titolo automatico della sessione. */
+  onSessionTitle?: () => void;
   onTruncateFromMessage?: (messageId: string) => void;
   project?: ProjectRecord | null;
   projects?: ProjectRecord[];
@@ -62,7 +64,7 @@ function shouldFinalizeAssistantMessage(payload: unknown): boolean {
   return !(Array.isArray(message.content) && message.content.some((block) => block && typeof block === 'object' && (block as { type?: unknown }).type === 'toolCall'));
 }
 
-export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
+export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
   const { t } = useI18n();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingContentRef = useRef('');
@@ -413,6 +415,7 @@ function messageTitle(content: string, html: string | null): string {
           onStreamingUpdate(assistantId, streamingContentRef.current, true);
         }
         if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+        if (event.type === 'session_title') onSessionTitle?.();
         if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
         if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
         if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
@@ -428,7 +431,7 @@ function messageTitle(content: string, html: string | null): string {
       void refreshArtifacts({ autoOpen: true });
       void refreshWeb({ autoOpen: true });
     }
-  }, [attachments, finalizeStreaming, handleToolExecutionEnd, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, sendMessage, onTurnComplete]);
+  }, [attachments, finalizeStreaming, handleToolExecutionEnd, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, sendMessage, onTurnComplete, onSessionTitle]);
 
   const handleEditMessage = useCallback(async (message: DisplayChatMessage, text: string) => {
     if (!sessionId || !message.entryId || !text.trim()) return;
@@ -451,6 +454,7 @@ function messageTitle(content: string, html: string | null): string {
           onStreamingUpdate(assistantId, streamingContentRef.current, true);
         }
         if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+        if (event.type === 'session_title') onSessionTitle?.();
         if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
         if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
         if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
@@ -465,7 +469,7 @@ function messageTitle(content: string, html: string | null): string {
       void refreshArtifacts({ autoOpen: true });
       void refreshWeb({ autoOpen: true });
     }
-  }, [sessionId, editMessage, finalizeStreaming, handleToolExecutionEnd, onTruncateFromMessage, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, onTurnComplete]);
+  }, [sessionId, editMessage, finalizeStreaming, handleToolExecutionEnd, onTruncateFromMessage, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, onTurnComplete, onSessionTitle]);
 
   const handleRegenerate = useCallback((message: DisplayChatMessage) => {
     if (!sessionId || !message.content.trim()) return;

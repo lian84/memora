@@ -208,6 +208,62 @@ describe('AgentService', () => {
       service.disposeAll();
     });
 
+    it('salva un titolo di fallback dal primo messaggio', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      const appendCustomEntry = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [],
+        getSessionName: () => undefined,
+        appendSessionInfo,
+        appendCustomEntry,
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      const service = new AgentService({ ...baseConfig, autoTitleEnabled: false });
+      await service.createSession();
+      const events: StreamEvent[] = [];
+      await service.sendMessage('test-session-123', 'Ciao mondo', event => events.push(event));
+      expect(events.some(event => event.type === 'session_title')).toBe(true);
+      expect(appendSessionInfo).toHaveBeenCalledWith('Ciao mondo');
+      expect(appendCustomEntry).toHaveBeenCalledWith('memora.title', expect.objectContaining({ source: 'auto', kind: 'fallback' }));
+      service.disposeAll();
+    });
+
+    it('sostituisce il fallback con un titolo LLM e protegge il rename manuale', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      const appendCustomEntry = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [],
+        getSessionName: () => undefined,
+        appendSessionInfo,
+        appendCustomEntry,
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      (mockModelRuntimeObj as unknown as { completeSimple: ReturnType<typeof vi.fn> }).completeSimple = vi.fn(async () => ({ content: [{ type: 'text', text: 'Notizie di oggi' }] }));
+      const service = new AgentService(baseConfig);
+      await service.createSession();
+      await service.sendMessage('test-session-123', 'Mi trovi le notizie di oggi?', () => undefined);
+      expect(appendSessionInfo).toHaveBeenNthCalledWith(1, 'Mi trovi le notizie di oggi');
+      expect(appendSessionInfo).toHaveBeenNthCalledWith(2, 'Notizie di oggi');
+      expect(appendCustomEntry).toHaveBeenCalledWith('memora.title', expect.objectContaining({ kind: 'llm' }));
+      service.disposeAll();
+    });
+
+    it('non sovrascrive un titolo manuale già presente', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [{ type: 'custom', customType: 'memora.title', data: { source: 'manual' } }],
+        getSessionName: () => 'Titolo scelto',
+        appendSessionInfo,
+        appendCustomEntry: vi.fn(),
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      const service = new AgentService(baseConfig);
+      await service.createSession();
+      await service.sendMessage('test-session-123', 'Ciao', () => undefined);
+      expect(appendSessionInfo).not.toHaveBeenCalled();
+      service.disposeAll();
+    });
+
     it('dovrebbe lanciare errore se sessione non trovata', async () => {
       const service = new AgentService(baseConfig);
       await expect(
@@ -261,6 +317,62 @@ describe('AgentService', () => {
       await service.abort('test-session-123');
       expect(mockAbort).toHaveBeenCalled();
 
+      service.disposeAll();
+    });
+
+    it('salva un titolo di fallback dal primo messaggio', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      const appendCustomEntry = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [],
+        getSessionName: () => undefined,
+        appendSessionInfo,
+        appendCustomEntry,
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      const service = new AgentService({ ...baseConfig, autoTitleEnabled: false });
+      await service.createSession();
+      const events: StreamEvent[] = [];
+      await service.sendMessage('test-session-123', 'Ciao mondo', event => events.push(event));
+      expect(events.some(event => event.type === 'session_title')).toBe(true);
+      expect(appendSessionInfo).toHaveBeenCalledWith('Ciao mondo');
+      expect(appendCustomEntry).toHaveBeenCalledWith('memora.title', expect.objectContaining({ source: 'auto', kind: 'fallback' }));
+      service.disposeAll();
+    });
+
+    it('sostituisce il fallback con un titolo LLM e protegge il rename manuale', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      const appendCustomEntry = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [],
+        getSessionName: () => undefined,
+        appendSessionInfo,
+        appendCustomEntry,
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      (mockModelRuntimeObj as unknown as { completeSimple: ReturnType<typeof vi.fn> }).completeSimple = vi.fn(async () => ({ content: [{ type: 'text', text: 'Notizie di oggi' }] }));
+      const service = new AgentService(baseConfig);
+      await service.createSession();
+      await service.sendMessage('test-session-123', 'Mi trovi le notizie di oggi?', () => undefined);
+      expect(appendSessionInfo).toHaveBeenNthCalledWith(1, 'Mi trovi le notizie di oggi');
+      expect(appendSessionInfo).toHaveBeenNthCalledWith(2, 'Notizie di oggi');
+      expect(appendCustomEntry).toHaveBeenCalledWith('memora.title', expect.objectContaining({ kind: 'llm' }));
+      service.disposeAll();
+    });
+
+    it('non sovrascrive un titolo manuale già presente', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [{ type: 'custom', customType: 'memora.title', data: { source: 'manual' } }],
+        getSessionName: () => 'Titolo scelto',
+        appendSessionInfo,
+        appendCustomEntry: vi.fn(),
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      const service = new AgentService(baseConfig);
+      await service.createSession();
+      await service.sendMessage('test-session-123', 'Ciao', () => undefined);
+      expect(appendSessionInfo).not.toHaveBeenCalled();
       service.disposeAll();
     });
 
@@ -500,6 +612,62 @@ describe('AgentService', () => {
       );
       expect(result.modelId).toBe('openrouter/auto');
 
+      service.disposeAll();
+    });
+
+    it('salva un titolo di fallback dal primo messaggio', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      const appendCustomEntry = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [],
+        getSessionName: () => undefined,
+        appendSessionInfo,
+        appendCustomEntry,
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      const service = new AgentService({ ...baseConfig, autoTitleEnabled: false });
+      await service.createSession();
+      const events: StreamEvent[] = [];
+      await service.sendMessage('test-session-123', 'Ciao mondo', event => events.push(event));
+      expect(events.some(event => event.type === 'session_title')).toBe(true);
+      expect(appendSessionInfo).toHaveBeenCalledWith('Ciao mondo');
+      expect(appendCustomEntry).toHaveBeenCalledWith('memora.title', expect.objectContaining({ source: 'auto', kind: 'fallback' }));
+      service.disposeAll();
+    });
+
+    it('sostituisce il fallback con un titolo LLM e protegge il rename manuale', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      const appendCustomEntry = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [],
+        getSessionName: () => undefined,
+        appendSessionInfo,
+        appendCustomEntry,
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      (mockModelRuntimeObj as unknown as { completeSimple: ReturnType<typeof vi.fn> }).completeSimple = vi.fn(async () => ({ content: [{ type: 'text', text: 'Notizie di oggi' }] }));
+      const service = new AgentService(baseConfig);
+      await service.createSession();
+      await service.sendMessage('test-session-123', 'Mi trovi le notizie di oggi?', () => undefined);
+      expect(appendSessionInfo).toHaveBeenNthCalledWith(1, 'Mi trovi le notizie di oggi');
+      expect(appendSessionInfo).toHaveBeenNthCalledWith(2, 'Notizie di oggi');
+      expect(appendCustomEntry).toHaveBeenCalledWith('memora.title', expect.objectContaining({ kind: 'llm' }));
+      service.disposeAll();
+    });
+
+    it('non sovrascrive un titolo manuale già presente', async () => {
+      (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+      const appendSessionInfo = vi.fn();
+      mockSessionManagerOpen.mockReturnValue({
+        getEntries: () => [{ type: 'custom', customType: 'memora.title', data: { source: 'manual' } }],
+        getSessionName: () => 'Titolo scelto',
+        appendSessionInfo,
+        appendCustomEntry: vi.fn(),
+      } as unknown as ReturnType<typeof SessionManager.open>);
+      const service = new AgentService(baseConfig);
+      await service.createSession();
+      await service.sendMessage('test-session-123', 'Ciao', () => undefined);
+      expect(appendSessionInfo).not.toHaveBeenCalled();
       service.disposeAll();
     });
 

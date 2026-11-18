@@ -182,6 +182,8 @@ export interface AgentServiceConfig {
   projectStore?: ProjectStoreLike;
   /** Servizio web opzionale (ricerca e lettura pagine). */
   webService?: WebServiceLike;
+  /** Generazione automatica del titolo dal primo messaggio (default true). */
+  autoTitleEnabled?: boolean;
 }
 
 /** Interfaccia minimale per il servizio memoria (evita dipendenze circolari). */

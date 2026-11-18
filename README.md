@@ -94,6 +94,7 @@ Variabili d'ambiente (vedi `.env.example`). Tutte le variabili usano il prefisso
 - `MEMORA_MEMORY_QUEUE_MAX_ATTEMPTS` (default `3`) e `MEMORA_MEMORY_QUEUE_RETRY_DELAY_MS` (default `5000`): retry della coda Curator durevole.
 - `OPENCODE_API_KEY` e `OPENROUTER_API_KEY`: credenziali provider lette dal secret store locale o dall'environment.
 - `MEMORA_CHAT_PROVIDER`: `openrouter` o `opencode-go`; `OPENROUTER_MODEL` resta il nome storico della variabile per il modello chat predefinito. La UI Impostazioni permette di scegliere provider, modello, chiave e livello reasoning.
+- `MEMORA_AUTO_TITLE_ENABLED` (default `true`): titolo locale immediato e titolo LLM asincrono per le nuove chat; il titolo manuale non viene sovrascritto.
 - `MEMORA_CHAT_REASONING_LEVEL` (default `medium`) e `MEMORA_MEMORY_CURATOR_REASONING_LEVEL` (default `low`): livelli `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.
 
 Le variabili di configurazione runtime hanno precedenza su

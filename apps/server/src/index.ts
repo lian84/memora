@@ -183,6 +183,7 @@ const agentService = new AgentService({
   memoryWriter: memoryWriterQueue ?? memoryWriter,
   projectStore,
   webService,
+  autoTitleEnabled: memoraEnv('AUTO_TITLE_ENABLED') !== 'false',
 });
 
 const catalog = new ModelCatalogService({
@@ -675,7 +676,7 @@ app.post<{ Params: { id: string; entryId: string }; Body: { text: string } }>(
     let settled = false;
     try {
       const { sourcesUsed, memoryCandidatesCreated, memoryWriterError } = await agentService.editUserMessage(sessionId, req.params.entryId, text, (event) => {
-        if (settled) return;
+        if (settled && event.type !== 'session_title') return;
         sendEvent(event.type, event.payload);
         if (event.type === 'agent_settled' || event.type === 'agent_end') settled = true;
       });
@@ -727,7 +728,7 @@ app.post<{ Params: { id: string }; Body: { text: string; attachmentIds?: string[
     try {
       const attachmentContexts = await Promise.all((await chatAttachmentStore.loadMany(sessionId, attachmentIds)).map(attachment => chatAttachmentStore.toModelContext(attachment)));
       const { sourcesUsed, memoryCandidatesCreated, memoryWriterError } = await agentService.sendMessage(sessionId, text, (event) => {
-          if (settled) return;
+          if (settled && event.type !== 'session_title') return;
           sendEvent(event.type, event.payload);
 
           if (event.type === 'agent_settled' || event.type === 'agent_end') {
