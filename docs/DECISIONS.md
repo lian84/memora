@@ -1101,3 +1101,44 @@ necessario un confine di autenticazione prima dell’uso reale.
   raggiunge la pagina di setup per primo può sceglierla.
 - Se `auth.json` viene perso, serve un reset da shell o un ripristino backup.
 - Non è ancora multiutente, OAuth, 2FA o gestione permessi.
+
+---
+## ADR-035 — Pannello laterale unificato della chat
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+Le chat di progetto e quelle senza progetto usavano due pannelli diversi:
+il primo con tab File/Contesto/Artefatti, il secondo con contesto, artefatti e
+fonti web impilati. La scheda Fonti non era raggiungibile nelle chat di
+progetto, il pannello si apriva automaticamente solo in alcuni casi e le fonti
+web non si aggiornavano dopo una ricerca.
+
+### Decisione
+- Un solo `ChatSidePanel` con header e tab fissi: File, Contesto, Artefatti,
+  Fonti.
+- File esiste solo nelle chat di progetto; senza progetto restano Contesto,
+  Artefatti e Fonti.
+- Fonti indica le fonti web; le fonti indicizzate del progetto restano
+  un’opzione del Contesto.
+- Il pannello è collassato per default in ogni chat.
+- Su desktop (> 900 px) si apre automaticamente su Fonti quando arriva una
+  nuova fonte web e su Artefatti, con il dettaglio del nuovo artefatto, quando
+  viene creato un artefatto. Su mobile non si apre automaticamente.
+- Gli aggiornamenti immediati usano gli eventi `tool_execution_end` di Pi;
+  un refresh completo a fine turno recupera gli artefatti generati dopo la
+  risposta (PDF, DOCX, XLSX, PPTX).
+- La selezione dell’artefatto è controllata dall’esterno per aprire il nuovo
+  artefatto e viene consumata una sola volta.
+- Ogni area ha contatore, refresh e stato vuoto; il refresh è disponibile
+  anche manualmente.
+- La tab attiva e lo stato aperto/chiuso non vengono persistiti tra sessioni
+  diverse: una nuova chat parte sempre collassata.
+
+### Conseguenze
+- Il pannello è coerente tra chat con e senza progetto.
+- L’auto-apertura è volutamente limitata al desktop per non coprire la chat
+  su schermi piccoli.
+- Le fonti web sono sempre raggiungibili, anche nei progetti.
+- Il pannello richiede che il client interpreti i dettagli dei tool; se un
+  evento non contiene dettagli, il refresh di fine turno resta la fallback.

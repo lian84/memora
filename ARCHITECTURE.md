@@ -432,6 +432,18 @@ esterna o same-origin. Excel è esposto come modello JSON limitato e renderizzat
 con una tabella React. I PPTX caricati dall'utente sono scaricabili ma non hanno
 anteprima; quelli generati da Memora usano l'HTML sidecar.
 
+## Pannello laterale della chat
+
+Il pannello destro è unico (`ChatSidePanel`) e usa una shell con header e tab
+fissi. Le aree sono File, Contesto, Artefatti e Fonti; File compare solo nelle
+chat di progetto. Il pannello parte collassato e conserva solo la larghezza nel
+browser. Su desktop può aprirsi automaticamente su Fonti o Artefatti quando
+arriva nuovo contenuto; su mobile resta chiuso. Gli eventi
+`tool_execution_end` aggiornano subito artefatti e fonti, mentre il refresh di
+fine turno recupera i file generati dopo la risposta (PDF, DOCX, XLSX, PPTX).
+La selezione dell’artefatto è controllata da `Chat` per aprire il nuovo file
+una sola volta. Vedi ADR-035.
+
 ## API MVP
 - `GET /api/health`
 - `GET /api/sessions`

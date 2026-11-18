@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { isOfficeArtifactKind, type ArtifactVersion, type ChatArtifact } from '@memora/shared';
 import { artifactPreviewUrl, artifactUrl, artifactVersionUrl, createArtifactPdf, deleteArtifact, listArtifactVersions } from '../lib/api';
@@ -18,6 +18,9 @@ interface ArtifactsPanelProps {
   onRefresh?: () => void;
   onAttachArtifact?: (artifact: ChatArtifact) => Promise<void> | void;
   onAddArtifactToProject?: (artifact: ChatArtifact) => Promise<{ destination: 'source' | 'file'; relativePath: string; indexed: boolean }>;
+  /** Artefatto da aprire automaticamente (es. appena creato da Memo). */
+  focusArtifactId?: string | null;
+  onFocusHandled?: (artifactId: string) => void;
 }
 
 function formatSize(bytes: number): string {
@@ -28,9 +31,10 @@ function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = null, onRefresh, onAttachArtifact, onAddArtifactToProject }: ArtifactsPanelProps) {
+export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = null, onRefresh, onAttachArtifact, onAddArtifactToProject, focusArtifactId = null, onFocusHandled }: ArtifactsPanelProps) {
   const { t } = useI18n();
   const [selected, setSelected] = useState<ChatArtifact | null>(null);
+  const handledFocusRef = useRef<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -46,6 +50,16 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => { setSelected(null); setContent(null); setPreviewError(null); setPdfNotice(null); setVersions([]); setArtifactNotice(null); setDeleteTarget(null); setDeleteError(null); }, [sessionId]);
+  useEffect(() => { handledFocusRef.current = null; }, [sessionId]);
+  useEffect(() => {
+    if (!focusArtifactId || handledFocusRef.current === focusArtifactId) return;
+    const target = artifacts.find(artifact => artifact.id === focusArtifactId);
+    if (!target) return;
+    handledFocusRef.current = focusArtifactId;
+    setArtifactNotice(null);
+    setSelected(target);
+    onFocusHandled?.(focusArtifactId);
+  }, [artifacts, focusArtifactId, onFocusHandled]);
   useEffect(() => {
     if (selected) setSelected(current => artifacts.find(artifact => artifact.id === current?.id) ?? current);
   }, [artifacts]);

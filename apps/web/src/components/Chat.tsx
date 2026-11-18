@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Message } from './Message';
 import { Composer } from './Composer';
-import { ProjectFilesPanel } from './ProjectFilesPanel';
+import { ChatSidePanel, type ChatSidePanelTab } from './ChatSidePanel';
+import { ProjectFilesView } from './ProjectFilesView';
 import { SessionContextPanel } from './SessionContextPanel';
+import { ArtifactsPanel } from './ArtifactsPanel';
+import { WebSourcesPanel } from './WebSourcesPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { useSSE } from '../hooks/useSSE';
+import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, normalizePiContent, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
 import type { ChatMessage, WebStatus } from '../lib/api';
@@ -68,8 +72,10 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
-  const [filesOpen, setFilesOpen] = useState(() => typeof window === 'undefined' || (Boolean(project) && window.innerWidth > 900));
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<ChatSidePanelTab>(() => project ? 'files' : 'context');
   const [panelExpanded, setPanelExpanded] = useState(false);
+  const [focusArtifactId, setFocusArtifactId] = useState<string | null>(null);
   const [projectFilesRevision, setProjectFilesRevision] = useState(0);
   const [context, setContext] = useState<SessionContextSettings | null>(null);
   const [contextSaving, setContextSaving] = useState(false);
@@ -87,40 +93,99 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [webSources, setWebSources] = useState<WebSource[]>([]);
   const [webSourcesLoading, setWebSourcesLoading] = useState(false);
   const [webSourcesError, setWebSourcesError] = useState<string | null>(null);
+  const webSourcesRef = useRef<WebSource[]>([]);
+  const artifactsRef = useRef<ChatArtifact[]>([]);
+  const autoOpenedArtifactsRef = useRef<Set<string>>(new Set());
+  const turnStartedAtRef = useRef(0);
   const { sendMessage, editMessage, abort, isStreaming } = useSSE(sessionId);
 
-  const refreshArtifacts = useCallback(async () => {
-    if (!sessionId) return;
+  const openPanelTab = useCallback((tab: ChatSidePanelTab, artifactId: string | null = null) => {
+    setPanelTab(tab);
+    setPanelOpen(true);
+    if (artifactId) setFocusArtifactId(artifactId);
+  }, []);
+  const clearFocusArtifact = useCallback(() => setFocusArtifactId(null), []);
+
+  const refreshArtifacts = useCallback(async (options: { autoOpen?: boolean } = {}): Promise<ChatArtifact[]> => {
+    if (!sessionId) return [];
     setArtifactsLoading(true);
     setArtifactsError(null);
     try {
-      setArtifacts(await listSessionArtifacts(sessionId));
+      const next = await listSessionArtifacts(sessionId);
+      artifactsRef.current = next;
+      setArtifacts(next);
+      if (options.autoOpen) {
+        const candidate = next.find(artifact => artifact.updatedAt >= turnStartedAtRef.current && !autoOpenedArtifactsRef.current.has(artifact.id));
+        if (candidate) {
+          autoOpenedArtifactsRef.current.add(candidate.id);
+          if (canAutoOpenSidePanel()) openPanelTab('artifacts', candidate.id);
+        }
+      }
+      return next;
     } catch (err) {
       setArtifactsError(err instanceof Error ? err.message : String(err));
+      return [];
     } finally {
       setArtifactsLoading(false);
     }
-  }, [sessionId]);
+  }, [openPanelTab, sessionId]);
 
   useEffect(() => { void refreshArtifacts(); }, [refreshArtifacts]);
 
-  const refreshWeb = useCallback(async () => {
-    if (!sessionId) return;
+  const ingestWebSources = useCallback((incoming: WebSource[]) => {
+    const current = webSourcesRef.current;
+    const merged = mergeWebSources(current, incoming);
+    if (merged === current) return;
+    webSourcesRef.current = merged;
+    setWebSources(merged);
+    if (canAutoOpenSidePanel()) openPanelTab('web');
+  }, [openPanelTab]);
+
+  const ingestArtifacts = useCallback((incoming: ChatArtifact[]) => {
+    const current = artifactsRef.current;
+    const known = new Set(current.map(artifact => artifact.id));
+    const first = incoming.find(artifact => !known.has(artifact.id));
+    const merged = mergeArtifacts(current, incoming);
+    if (!first || merged === current) return;
+    artifactsRef.current = merged;
+    setArtifacts(merged);
+    autoOpenedArtifactsRef.current.add(first.id);
+    if (canAutoOpenSidePanel()) openPanelTab('artifacts', first.id);
+  }, [openPanelTab]);
+
+  const handleToolExecutionEnd = useCallback((payload: unknown) => {
+    const update = readPanelToolUpdate(payload);
+    if (update.artifacts.length > 0) ingestArtifacts(update.artifacts);
+    if (update.webSources.length > 0) ingestWebSources(update.webSources);
+  }, [ingestArtifacts, ingestWebSources]);
+
+  const refreshWeb = useCallback(async (options: { autoOpen?: boolean } = {}): Promise<WebSource[]> => {
+    if (!sessionId) return [];
     setWebSourcesLoading(true);
     setWebSourcesError(null);
     try {
       const [status, sessionWeb, sources] = await Promise.all([getWebStatus(), getSessionWeb(sessionId), listWebSources(sessionId)]);
+      const known = new Set(webSourcesRef.current.map(source => source.id));
+      const added = sources.filter(source => !known.has(source.id));
       setWebStatus(status);
       setWebEnabled(sessionWeb.enabled);
+      webSourcesRef.current = sources;
       setWebSources(sources);
+      if (options.autoOpen && added.length > 0 && canAutoOpenSidePanel()) openPanelTab('web');
+      return sources;
     } catch (err) {
       setWebSourcesError(err instanceof Error ? err.message : String(err));
+      return [];
     } finally {
       setWebSourcesLoading(false);
     }
-  }, [sessionId]);
+  }, [openPanelTab, sessionId]);
 
   useEffect(() => { void refreshWeb(); }, [refreshWeb]);
+
+  useEffect(() => {
+    if (!project && panelTab === 'files') setPanelTab('context');
+  }, [panelTab, project]);
 
   const toggleWeb = useCallback(async () => {
     if (!sessionId) return;
@@ -136,15 +201,21 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   useEffect(() => {
     setAttachments([]);
     setAttachmentError(null);
-    setFilesOpen(typeof window === 'undefined' || (Boolean(project) && window.innerWidth > 900));
+    setPanelOpen(false);
+    setPanelTab(project ? 'files' : 'context');
     setPanelExpanded(false);
+    setFocusArtifactId(null);
     setContext(null);
     setContextError(null);
     setArtifacts([]);
+    artifactsRef.current = [];
     setArtifactsError(null);
     setWebEnabled(false);
     setWebSources([]);
+    webSourcesRef.current = [];
     setWebSourcesError(null);
+    autoOpenedArtifactsRef.current = new Set();
+    turnStartedAtRef.current = 0;
     if (!sessionId) return;
     let cancelled = false;
     void getSessionContext(sessionId)
@@ -327,6 +398,8 @@ function messageTitle(content: string, html: string | null): string {
     streamingAssistantIdRef.current = assistantId;
     streamingContentRef.current = '';
     finalizedRef.current = false;
+    turnStartedAtRef.current = timestamp;
+    autoOpenedArtifactsRef.current = new Set();
     setMemorySources([]);
     const pendingAttachments = attachments;
     setAttachments([]);
@@ -340,6 +413,7 @@ function messageTitle(content: string, html: string | null): string {
           onStreamingUpdate(assistantId, streamingContentRef.current, true);
         }
         if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+        if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
         if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
         if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
         if (event.type === 'agent_end' || event.type === 'agent_settled') finalizeStreaming();
@@ -351,9 +425,10 @@ function messageTitle(content: string, html: string | null): string {
       finalizeStreaming();
       onTurnComplete?.();
       setComposerFocus(value => value + 1);
-      void refreshArtifacts();
+      void refreshArtifacts({ autoOpen: true });
+      void refreshWeb({ autoOpen: true });
     }
-  }, [attachments, finalizeStreaming, onStartTurn, onStreamingUpdate, sendMessage, onTurnComplete, refreshArtifacts]);
+  }, [attachments, finalizeStreaming, handleToolExecutionEnd, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, sendMessage, onTurnComplete]);
 
   const handleEditMessage = useCallback(async (message: DisplayChatMessage, text: string) => {
     if (!sessionId || !message.entryId || !text.trim()) return;
@@ -362,6 +437,8 @@ function messageTitle(content: string, html: string | null): string {
     streamingAssistantIdRef.current = assistantId;
     streamingContentRef.current = '';
     finalizedRef.current = false;
+    turnStartedAtRef.current = timestamp;
+    autoOpenedArtifactsRef.current = new Set();
     setMemorySources([]);
     setAttachmentError(null);
     onTruncateFromMessage?.(message.id);
@@ -374,6 +451,7 @@ function messageTitle(content: string, html: string | null): string {
           onStreamingUpdate(assistantId, streamingContentRef.current, true);
         }
         if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
+        if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
         if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
         if ((event.type === 'message_end' || event.type === 'turn_end') && shouldFinalizeAssistantMessage(event.payload)) finalizeStreaming();
         if (event.type === 'agent_end' || event.type === 'agent_settled') finalizeStreaming();
@@ -384,8 +462,10 @@ function messageTitle(content: string, html: string | null): string {
       finalizeStreaming();
       onTurnComplete?.();
       setComposerFocus(value => value + 1);
+      void refreshArtifacts({ autoOpen: true });
+      void refreshWeb({ autoOpen: true });
     }
-  }, [sessionId, editMessage, onTruncateFromMessage, onStartTurn, onStreamingUpdate, finalizeStreaming, onTurnComplete]);
+  }, [sessionId, editMessage, finalizeStreaming, handleToolExecutionEnd, onTruncateFromMessage, onStartTurn, onStreamingUpdate, refreshArtifacts, refreshWeb, onTurnComplete]);
 
   const handleRegenerate = useCallback((message: DisplayChatMessage) => {
     if (!sessionId || !message.content.trim()) return;
@@ -395,12 +475,12 @@ function messageTitle(content: string, html: string | null): string {
   const handleAbort = useCallback(() => { abort(); finalizeStreaming(); setComposerFocus(value => value + 1); }, [abort, finalizeStreaming]);
 
   return (
-    <div className={`chat-layout${project || context ? ' has-side-panel' : ''}`}>
+    <div className={`chat-layout${panelOpen ? ' has-side-panel' : ''}`}>
       <div className="chat-area">
-      {(project || context) && !filesOpen && (
-        <button type="button" className="project-files-reopen" onClick={() => setFilesOpen(true)} title={t(project ? 'Apri file del progetto' : 'Apri contesto chat')}>
+      {!panelOpen && (
+        <button type="button" className="project-files-reopen" onClick={() => setPanelOpen(true)} title={t('Apri pannello')}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></svg>
-          <span>{t(project ? 'File progetto' : 'Contesto')}</span>
+          <span>{t('Pannello')}</span>
         </button>
       )}
       <div className="messages-container">
@@ -458,31 +538,6 @@ function messageTitle(content: string, html: string | null): string {
         onToggleWeb={() => void toggleWeb()}
       />
       </div>
-      {project && filesOpen && (
-        <ProjectFilesPanel
-          project={project}
-          onClose={() => setFilesOpen(false)}
-          onAttach={handleAttachProjectFile}
-          context={context ?? DEFAULT_SESSION_CONTEXT}
-          contextSaving={contextSaving}
-          contextError={contextError}
-          onContextChange={handleContextChange}
-          refreshKey={projectFilesRevision}
-          expanded={panelExpanded}
-          onToggleExpanded={() => setPanelExpanded(value => !value)}
-          sessionId={sessionId}
-          artifacts={artifacts}
-          artifactsLoading={artifactsLoading}
-          artifactsError={artifactsError}
-          onRefreshArtifacts={() => void refreshArtifacts()}
-          onAttachArtifact={handleAttachArtifact}
-          onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
-          webSources={webSources}
-          webSourcesLoading={webSourcesLoading}
-          webSourcesError={webSourcesError}
-          onRefreshWebSources={() => void refreshWeb()}
-        />
-      )}
       {memoryDialogMessage && sessionId && (() => {
         const index = messages.findIndex(item => item.id === memoryDialogMessage.id);
         const question = index > 0 ? [...messages.slice(0, index)].reverse().find(item => item.role === 'user')?.content : undefined;
@@ -506,27 +561,50 @@ function messageTitle(content: string, html: string | null): string {
         />
         );
       })()}
-      {!project && filesOpen && (
-        <SessionContextPanel
-          context={context}
-          saving={contextSaving}
-          error={contextError}
-          onClose={() => setFilesOpen(false)}
+      {panelOpen && (
+        <ChatSidePanel
+          title={project ? project.name : t('Chat')}
+          eyebrow={project ? t('Progetto') : t('Chat')}
+          ariaLabel={t('Pannello della chat')}
+          hasFiles={Boolean(project)}
+          activeTab={panelTab}
+          onTabChange={setPanelTab}
+          artifactsCount={artifacts.length}
+          webSourcesCount={webSources.length}
           expanded={panelExpanded}
           onToggleExpanded={() => setPanelExpanded(value => !value)}
-          onChange={handleContextChange}
-          sessionId={sessionId}
-          artifacts={artifacts}
-          artifactsLoading={artifactsLoading}
-          artifactsError={artifactsError}
-          onRefreshArtifacts={() => void refreshArtifacts()}
-          onAttachArtifact={handleAttachArtifact}
-          onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
-          webSources={webSources}
-          webSourcesLoading={webSourcesLoading}
-          webSourcesError={webSourcesError}
-          onRefreshWebSources={() => void refreshWeb()}
-        />
+          onClose={() => setPanelOpen(false)}
+        >
+          {panelTab === 'files' && project ? (
+            <ProjectFilesView
+              project={project}
+              onAttach={handleAttachProjectFile}
+              refreshKey={projectFilesRevision}
+            />
+          ) : panelTab === 'context' || (panelTab === 'files' && !project) ? (
+            <SessionContextPanel
+              context={context}
+              saving={contextSaving}
+              error={contextError}
+              hasProject={Boolean(project)}
+              onChange={handleContextChange}
+            />
+          ) : panelTab === 'artifacts' ? (
+            <ArtifactsPanel
+              sessionId={sessionId}
+              artifacts={artifacts}
+              loading={artifactsLoading}
+              error={artifactsError}
+              onRefresh={() => void refreshArtifacts()}
+              onAttachArtifact={handleAttachArtifact}
+              onAddArtifactToProject={project ? handleAddArtifactToProject : undefined}
+              focusArtifactId={focusArtifactId}
+              onFocusHandled={clearFocusArtifact}
+            />
+          ) : (
+            <WebSourcesPanel sources={webSources} loading={webSourcesLoading} error={webSourcesError} onRefresh={() => void refreshWeb()} />
+          )}
+        </ChatSidePanel>
       )}
     </div>
   );

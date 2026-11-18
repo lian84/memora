@@ -2,6 +2,10 @@
 
 Memora è un assistente personale self-hosted costruito sopra Pi.
 
+Il registro completo delle funzionalità implementate, con stato e limiti noti,
+è in [`docs/FEATURES.md`](docs/FEATURES.md); il README resta la panoramica di
+primo livello.
+
 ## Obiettivo
 Pi resta il motore agentico. Memora aggiunge:
 - Web UI / PWA
@@ -258,8 +262,8 @@ Français
 ```
 
 La lingua viene rilevata dal browser, salvata in `localStorage` con la chiave
-`memora-language` e può essere cambiata dal selettore nella topbar, nella
-schermata di login e in **Impostazioni → Aspetto**. Il fallback è l’inglese.
+`memora-language` e può essere cambiata dal selettore in
+**Amministrazione → Aspetto**. Il fallback è l’inglese.
 
 Il dizionario è in `apps/web/src/i18n/`: `it` è la lingua sorgente, mentre
 `en.ts` e `fr.ts` contengono le traduzioni. Per aggiungere una lingua si copia
@@ -276,8 +280,11 @@ resta in `$MEMORA_DATA_DIR/config/web.json` con permessi `0600` e non viene mai
 restituita dall’API.
 
 Nella chat il pulsante **Web**, accanto agli allegati, abilita la ricerca per
-quella sessione. Le fonti consultate compaiono nella scheda **Web** del pannello
-laterale destro, insieme a File, Contesto e Artefatti.
+quella sessione. Le fonti consultate compaiono nella scheda **Fonti** del
+pannello laterale destro, insieme a File (solo nei progetti), Contesto e
+Artefatti. Il pannello è chiuso per default; su desktop si apre automaticamente
+sulla scheda pertinente quando arriva una nuova ricerca o viene creato un
+artefatto.
 
 Sono supportiti:
 
@@ -433,8 +440,16 @@ La pianificazione per anteprime HTML evolute e artefatti Office leggeri
 
 ### File progetto e allegati chat
 
-Quando la chat appartiene a un progetto, il pannello laterale **a destra** mostra
-File, Contesto e Artefatti. La scheda File espone il contenuto della directory
+Il pannello laterale **a destra** è unico, chiuso per default e organizzato in
+quattro aree fisse: **File**, **Contesto**, **Artefatti** e **Fonti**. La scheda
+File compare solo quando la chat appartiene a un progetto; le fonti web sono in
+Fonti, mentre le fonti del progetto restano nel Contesto. I contatori delle aree
+si aggiornano durante il turno. Su desktop il pannello si apre automaticamente
+sulla scheda Fonti quando arriva una nuova ricerca e sulla scheda Artefatti,
+con il dettaglio del nuovo file, quando viene creato un artefatto. Su mobile
+l’auto-apertura è disabilitata.
+
+La scheda File espone il contenuto della directory
 `projects/<id>/`, con ricerca, metadati e anteprima per:
 
 - Markdown e testo;
