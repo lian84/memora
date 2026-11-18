@@ -40,6 +40,9 @@ Ultimo aggiornamento: 2026-11-18.
 ## 3. Progetti
 
 - [x] Progetti con `project.json`, `memory.md`, `sources/` e `files/`.
+- [x] Sezioni personalizzabili della sidebar, con nome, icona e ordine.
+- [x] Progetti assegnabili a una sezione e spostabili tra sezioni.
+- [x] Icone selezionabili per sezioni e progetti.
 - [x] Creazione, configurazione, cambio progetto e cancellazione con conferma tipizzata.
 - [x] `sources/` indicizzate; `files/` archivio non indicizzato.
 - [x] File di progetto con anteprima Markdown, testo, HTML, PDF, immagini, DOCX e XLSX.
@@ -78,6 +81,8 @@ Ultimo aggiornamento: 2026-11-18.
 
 ## 6. Pannello laterale della chat
 
+- [x] Sidebar ad albero: sezioni espandibili, progetti e sessioni annidate.
+- [x] Stato aperto/chiuso di sezioni e progetti persistito nel browser.
 - [x] Pannello unico a destra, collassato per default.
 - [x] Aree fisse in alto: **File**, **Contesto**, **Artefatti**, **Fonti**.
 - [x] **File** presente solo nelle chat di progetto.

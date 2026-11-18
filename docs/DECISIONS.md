@@ -1201,3 +1201,37 @@ risultato di ricerca e una pagina letta.
   statica.
 - Il tooltip è informativo ma non sostituisce l’apertura della fonte.
 - I vecchi riferimenti senza metadati restano testo `[n]`.
+
+---
+## ADR-039 — Sezioni personalizzabili e sidebar ad albero
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+La sidebar usava un selettore progetto e una lista piatta di sessioni. Il modello
+mentale più familiare è invece: sezioni → progetti → sessioni. Servono inoltre
+icone stabili per sezioni e progetti, senza caricare SVG arbitrari.
+
+### Decisione
+- Le sezioni sono entità persistenti in
+  `$MEMORA_DATA_DIR/config/project-sections.json`, con `id`, `name`, `icon`,
+  `order` e timestamp.
+- `project.json` accetta `sectionId` e `icon` opzionali; un progetto senza
+  sezione finisce in **Senza sezione**.
+- Le icone sono un elenco chiuso e validato lato server; non vengono caricati
+  SVG o file esterni.
+- La sidebar mostra un albero con sezioni, progetti e sessioni. Sezioni e
+  progetti hanno stato aperto/chiuso indipendente, persistito in `localStorage`.
+- Selezionare una sezione la apre; selezionare un progetto lo apre e mostra le
+  sue sessioni. Il progetto selezionato non filtra più l’intera lista.
+- Le chat senza progetto sono raggruppate sotto **Chat senza progetto**.
+- La creazione di un progetto può partire dalla sezione (`+`), e le impostazioni
+  del progetto permettono di cambiare sezione e icona.
+- L’eliminazione di una sezione è consentita solo se non contiene progetti.
+
+### Conseguenze
+- La sidebar è più familiare ma richiede un caricamento separato delle sezioni.
+- I dati delle sezioni non sono contenuti nei `project.json`: vanno inclusi nei
+  backup della data directory.
+- Un progetto orfano da una sezione mancante resta visibile in **Senza sezione**.
+- Lo stato di apertura è locale al browser; non viene sincronizzato tra device.

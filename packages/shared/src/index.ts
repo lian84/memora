@@ -320,6 +320,8 @@ export * from './providers.js';
 export type {
   ProjectConfig,
   ProjectDefaults,
+  ProjectIcon,
+  ProjectSection,
   ProjectRecord,
   ProjectRetrievalConfig,
   ProjectSourcesConfig,
@@ -340,4 +342,5 @@ export type {
   SpreadsheetPreview,
 } from './projects.js';
 export { DEFAULT_SESSION_CONTEXT } from './projects.js';
+export { PROJECT_ICON_NAMES, isProjectIcon } from './projects.js';
 export { classifyProjectFile, isOfficeArtifactKind } from './projects.js';

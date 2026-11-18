@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import type { ProjectConfig, ProjectRecord, ProjectStatus } from '@memora/shared';
+import { isProjectIcon, type ProjectConfig, type ProjectRecord, type ProjectStatus } from '@memora/shared';
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const REASONING_LEVELS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
@@ -140,9 +140,15 @@ export class ProjectStore {
     const name = typeof input.name === 'string' && input.name.trim() ? input.name.trim() : id;
     const description = typeof input.description === 'string' ? input.description : '';
     const prompt = typeof input.prompt === 'string' ? input.prompt : '';
+    if (input.sectionId !== undefined && input.sectionId !== null && (typeof input.sectionId !== 'string' || !SLUG_PATTERN.test(input.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
+    if (input.icon !== undefined && input.icon !== null && !isProjectIcon(input.icon)) throw new ProjectError('invalid_project_icon', 'Icona progetto non valida');
+    const sectionId = typeof input.sectionId === 'string' && input.sectionId.trim() ? input.sectionId.trim() : undefined;
+    const icon = isProjectIcon(input.icon) ? input.icon : undefined;
     const now = Date.now();
     const config: ProjectConfig = {
       version: 1, id, name, description, status: 'active', prompt, defaults: {},
+      ...(sectionId ? { sectionId } : {}),
+      ...(icon ? { icon } : {}),
       retrieval: { includeGlobal: true, includeProjectMemory: true, includeProjectSources: true },
       sources: { include: ['memory.md', 'sources/**/*.md', 'sources/**/*.txt'], exclude: [] },
       createdAt: now, updatedAt: now,
@@ -166,9 +172,11 @@ export class ProjectStore {
     const current = await this.get(id);
     if (!current) throw new ProjectError('project_not_found', 'Progetto non trovato', 404);
     if (!isRecord(patch)) throw new ProjectError('invalid_project_patch', 'Patch progetto non valida');
-    const allowed = new Set(['name', 'description', 'prompt', 'status', 'defaults', 'retrieval', 'sources']);
+    const allowed = new Set(['name', 'description', 'prompt', 'status', 'defaults', 'retrieval', 'sources', 'sectionId', 'icon']);
     for (const key of Object.keys(patch)) if (!allowed.has(key)) throw new ProjectError('unknown_project_field', `Campo progetto non modificabile: ${key}`);
     if (containsSecretKey(patch)) throw new ProjectError('project_secret_forbidden', 'La patch non può contenere segreti');
+    if (patch.sectionId !== undefined && patch.sectionId !== null && (typeof patch.sectionId !== 'string' || !SLUG_PATTERN.test(patch.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
+    if (patch.icon !== undefined && patch.icon !== null && !isProjectIcon(patch.icon)) throw new ProjectError('invalid_project_icon', 'Icona progetto non valida');
     const { source, warning, ...currentConfig } = current;
     void source;
     void warning;
@@ -181,6 +189,8 @@ export class ProjectStore {
       ...(isRecord(patch.defaults) ? { defaults: { ...current.defaults, ...patch.defaults } } : {}),
       ...(isRecord(patch.retrieval) ? { retrieval: { ...current.retrieval, ...patch.retrieval } } : {}),
       ...(isRecord(patch.sources) ? { sources: { ...current.sources, ...patch.sources } } : {}),
+      ...(patch.sectionId === null ? { sectionId: undefined } : typeof patch.sectionId === 'string' ? { sectionId: patch.sectionId.trim() || undefined } : {}),
+      ...(patch.icon === null ? { icon: undefined } : isProjectIcon(patch.icon) ? { icon: patch.icon } : {}),
       updatedAt: Date.now(),
     };
     const config = this.validate(merged, id);
@@ -235,6 +245,8 @@ export class ProjectStore {
     if (typeof value.description !== 'string' || value.description.length > 500) throw new ProjectError('invalid_project_description', 'Descrizione progetto non valida');
     if (value.status !== 'active' && value.status !== 'archived') throw new ProjectError('invalid_project_status', 'Stato progetto non valido');
     if (typeof value.prompt !== 'string' || value.prompt.length > 8000) throw new ProjectError('invalid_project_prompt', 'Prompt progetto non valido');
+    if (value.sectionId !== undefined && (typeof value.sectionId !== 'string' || !SLUG_PATTERN.test(value.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
+    if (value.icon !== undefined && !isProjectIcon(value.icon)) throw new ProjectError('invalid_project_icon', 'Icona progetto non valida');
 
     const defaults = isRecord(value.defaults) ? value.defaults : {};
     if (defaults.provider !== undefined && (typeof defaults.provider !== 'string' || !PROVIDERS.has(defaults.provider))) throw new ProjectError('invalid_project_provider', 'Provider progetto non valido');
@@ -266,6 +278,8 @@ export class ProjectStore {
       description: value.description.trim(),
       status: value.status as ProjectStatus,
       prompt: value.prompt,
+      ...(typeof value.sectionId === 'string' ? { sectionId: value.sectionId } : {}),
+      ...(isProjectIcon(value.icon) ? { icon: value.icon } : {}),
       defaults: {
         ...(typeof defaults.provider === 'string' ? { provider: defaults.provider as ProjectConfig['defaults']['provider'] } : {}),
         ...(typeof defaults.model === 'string' ? { model: defaults.model } : {}),
@@ -328,7 +342,12 @@ export class ProjectStore {
   }
 }
 
-export function registerProjectRoutes(app: FastifyInstance, deps: { projects: ProjectStore }): void {
+export function registerProjectRoutes(app: FastifyInstance, deps: { projects: ProjectStore; sections?: { get(id: string): Promise<unknown | null> } }): void {
+  const assertSection = async (value: unknown): Promise<void> => {
+    if (value === undefined || value === null || value === '') return;
+    if (typeof value !== 'string' || !deps.sections) return;
+    if (!(await deps.sections.get(value))) throw new ProjectError('project_section_not_found', 'Sezione del progetto non trovata');
+  };
   app.get('/api/projects', async (_request, reply) => {
     try {
       return reply.send({ projects: await deps.projects.list() });
@@ -339,6 +358,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: { projects: Pr
 
   app.post<{ Body: unknown }>('/api/projects', async (request, reply) => {
     try {
+      if (isRecord(request.body)) await assertSection(request.body.sectionId);
       return reply.status(201).send({ project: await deps.projects.create(request.body) });
     } catch (error) {
       if (error instanceof ProjectError) return reply.status(error.statusCode).send({ error: error.code, message: error.message });
@@ -348,6 +368,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: { projects: Pr
 
   app.patch<{ Params: { id: string }; Body: unknown }>('/api/projects/:id', async (request, reply) => {
     try {
+      if (isRecord(request.body)) await assertSection(request.body.sectionId);
       return reply.send({ project: await deps.projects.update(request.params.id, request.body) });
     } catch (error) {
       if (error instanceof ProjectError) return reply.status(error.statusCode).send({ error: error.code, message: error.message });

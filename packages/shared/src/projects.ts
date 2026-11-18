@@ -2,6 +2,40 @@ import type { ProviderId, ReasoningLevel } from './providers.js';
 
 export type ProjectStatus = 'active' | 'archived';
 
+export const PROJECT_ICON_NAMES = [
+  'folder',
+  'briefcase',
+  'home',
+  'book',
+  'rocket',
+  'code',
+  'flask',
+  'palette',
+  'globe',
+  'heart',
+  'users',
+  'star',
+  'music',
+  'camera',
+  'gamepad',
+  'leaf',
+] as const;
+
+export type ProjectIcon = typeof PROJECT_ICON_NAMES[number];
+
+export function isProjectIcon(value: unknown): value is ProjectIcon {
+  return typeof value === 'string' && (PROJECT_ICON_NAMES as readonly string[]).includes(value);
+}
+
+export interface ProjectSection {
+  id: string;
+  name: string;
+  icon: ProjectIcon;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface ProjectDefaults {
   provider?: ProviderId;
   model?: string;
@@ -27,6 +61,9 @@ export interface ProjectConfig {
   status: ProjectStatus;
   prompt: string;
   defaults: ProjectDefaults;
+  /** Sezione della sidebar; assente = Senza sezione. */
+  sectionId?: string;
+  icon?: ProjectIcon;
   retrieval: ProjectRetrievalConfig;
   sources: ProjectSourcesConfig;
   createdAt: number;

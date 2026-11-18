@@ -9,6 +9,7 @@ import { MemoryWriterQueue } from './memory-writer-queue.js';
 import { AdminSettingsStore } from './settings.js';
 import { RuntimeMetrics } from './metrics.js';
 import { ProjectStore, registerProjectRoutes } from './projects.js';
+import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
 import { ChatAttachmentStore } from './chat-attachments.js';
@@ -97,6 +98,7 @@ const embeddingsEnabled = initialSettings.embeddings.enabled;
 const embeddingDimensions = Number(memoraEnv('EMBEDDING_DIMENSIONS') ?? DEFAULT_EMBEDDING_DIMENSIONS);
 const embeddingModel = initialSettings.embeddings.model;
 const projectStore = new ProjectStore(dataDir, message => app.log.warn(message));
+const projectSectionStore = new ProjectSectionStore(dataDir, message => app.log.warn(message));
 const chatAttachmentStore = new ChatAttachmentStore(dataDir);
 const runtimeMetrics = new RuntimeMetrics();
 const memoryService = new MemoryService(dataDir, {
@@ -205,7 +207,8 @@ registerAdminRoutes(app, {
 });
 
 // --- Health ---
-registerProjectRoutes(app, { projects: projectStore });
+registerProjectRoutes(app, { projects: projectStore, sections: projectSectionStore });
+registerProjectSectionRoutes(app, { sections: projectSectionStore, projects: projectStore });
 registerProjectSourceRoutes(app, { projects: projectStore, memory: memoryService, writer: memoryWriter, agentService, dataDir });
 registerProjectFileRoutes(app, { dataDir, projects: projectStore });
 registerChatAttachmentRoutes(app, { store: chatAttachmentStore, agentService, dataDir, projects: projectStore });

@@ -441,12 +441,16 @@ sono descritti in [`docs/MEMORY-CURATOR-ROBUSTNESS.md`](docs/MEMORY-CURATOR-ROBU
 Metriche, alert, backup, restore e degrado controllato sono in
 [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
-I progetti sono entità di prima classe: selettore nella sidebar, pagina progetto,
-prompt, fonti dedicate `.md`/`.txt`, sessioni filtrate, export e archiviazione. Il
-menu progetto permette di selezionare, creare, modificare ed eliminare un progetto;
-l’eliminazione richiede la conferma dell’ID e sposta la directory nel cestino
-(`.trash/projects/`). Il modello completo è in
-[`tasks/05.9-projects.md`](tasks/05.9-projects.md).
+I progetti sono entità di prima classe. La sidebar è organizzata in **sezioni
+personalizzabili**; ogni sezione contiene progetti e ogni progetto contiene le
+proprie sessioni. Sezioni e progetti hanno un’icona e possono essere aperti o
+chiusi singolarmente; lo stato viene ricordato nel browser. Il modello completo
+è in [`tasks/05.9-projects.md`](tasks/05.9-projects.md).
+
+Le sezioni sono salvate in `$MEMORA_DATA_DIR/config/project-sections.json`; ogni
+`project.json` può contenere `sectionId` e `icon`. I progetti senza sezione
+finiscono in **Senza sezione** e possono essere spostati dalle impostazioni del
+progetto.
 
 La pianificazione per anteprime HTML evolute e artefatti Office leggeri
 (DOCX, XLSX, PPTX HTML-first) è in

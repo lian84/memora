@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { SessionInfo } from '../lib/api';
-import type { ProjectRecord } from '@memora/shared';
-import { ProjectPicker } from './ProjectPicker';
+import type { ProjectRecord, ProjectSection } from '@memora/shared';
+import { SidebarTree } from './SidebarTree';
+import { SessionActionIcon } from './SessionActionIcon';
 import { useI18n } from '../i18n';
 
 interface SidebarProps {
@@ -22,43 +24,21 @@ interface SidebarProps {
   onOpenSettings?: () => void;
   settingsActive?: boolean;
   projects?: ProjectRecord[];
+  sections?: ProjectSection[];
   selectedProjectId?: string | null;
   onSelectProject?: (projectId: string | null) => void;
   onEditProject?: (projectId: string) => void;
   onDeleteProject?: (project: ProjectRecord) => void;
-  onNewProject?: () => void;
+  onNewProject?: (sectionId?: string | null) => void;
+  onCreateInProject?: (projectId: string) => Promise<unknown> | void;
+  onNewSection?: () => void;
+  onEditSection?: (section: ProjectSection) => void;
+  onDeleteSection?: (section: ProjectSection) => void;
   projectSettingsActive?: boolean;
   onOpenSecondBrain?: () => void;
   secondBrainActive?: boolean;
   onLogout?: () => void;
   collapsed?: boolean;
-}
-
-type IconName = 'rename' | 'archive' | 'restore' | 'delete';
-
-function SessionIcon({ name }: { name: IconName }) {
-  const common = {
-    width: 15,
-    height: 15,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-
-  if (name === 'rename') {
-    return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
-  }
-  if (name === 'archive') {
-    return <svg {...common}><path d="M21 8v13H3V8" /><path d="M1 3h22v5H1z" /><path d="M10 12h4" /></svg>;
-  }
-  if (name === 'restore') {
-    return <svg {...common}><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 8v4l3 2" /></svg>;
-  }
-  return <svg {...common}><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 15H6L5 6" /><path d="M10 11v6M14 11v6" /></svg>;
 }
 
 export function Sidebar({
@@ -78,12 +58,15 @@ export function Sidebar({
   onOpenSettings,
   settingsActive = false,
   projects = [],
+  sections = [],
   selectedProjectId = null,
   onSelectProject,
   onEditProject,
-  onDeleteProject,
   onNewProject,
-  projectSettingsActive = false,
+  onCreateInProject,
+  onNewSection,
+  onEditSection,
+  onDeleteSection,
   onOpenSecondBrain,
   secondBrainActive = false,
   onLogout,
@@ -121,7 +104,6 @@ export function Sidebar({
       setRenameValue('');
       return;
     }
-
     try {
       await onRename(sessionId, renameValue.trim());
       setRenameInput(null);
@@ -139,12 +121,9 @@ export function Sidebar({
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget || deletingSessionId) return;
-
     const sessionId = deleteTarget.sessionId;
     setDeletingSessionId(sessionId);
     try {
-      // Il dialog si chiude solo dopo un DELETE valido. In caso di errore
-      // onDelete aggiorna error e la sessione resta visibile.
       await onDelete(sessionId);
       setDeleteTarget(null);
     } catch {
@@ -159,12 +138,77 @@ export function Sidebar({
   const archiveViewLabel = t(archivedView ? 'Torna alle chat attive' : 'Mostra chat archiviate');
   const archiveViewTitle = t(archivedView ? 'Torna alle chat attive' : 'Chat archiviate');
 
+  const renderSessionRows = (rows: SessionInfo[]): ReactNode => rows.map(session => {
+    const isSelected = selectedSessionId === session.sessionId;
+    const isRenaming = renameInput === session.sessionId;
+    const title = displayTitle(session);
+    return (
+      <div
+        key={session.sessionId}
+        className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}`}
+        onClick={() => { if (!isRenaming) onSelect(session.sessionId); }}
+        title={title}
+      >
+        {isRenaming ? (
+          <input
+            className="session-rename-input"
+            autoFocus
+            value={renameValue}
+            onChange={event => setRenameValue(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === 'Enter') void handleRenameSubmit(session.sessionId);
+              if (event.key === 'Escape') { setRenameInput(null); setRenameValue(''); }
+            }}
+            onBlur={() => void handleRenameSubmit(session.sessionId)}
+          />
+        ) : (
+          <>
+            <span className="session-title">{title}</span>
+            <span className="session-actions" aria-label={t('Azioni sessione')}>
+              {!session.draft && (
+                <button
+                  type="button"
+                  className="session-action-button"
+                  aria-label={`Rinomina ${title}`}
+                  title={t('Rinomina')}
+                  onClick={event => { event.stopPropagation(); handleRenameClick(session.sessionId, title); }}
+                >
+                  <SessionActionIcon name="rename" />
+                </button>
+              )}
+              {!session.draft && (
+                <button
+                  type="button"
+                  className="session-action-button"
+                  aria-label={session.archived ? `Ripristina ${title}` : `Archivia ${title}`}
+                  title={t(session.archived ? 'Ripristina' : 'Archivia')}
+                  onClick={event => { event.stopPropagation(); handleArchive(session.sessionId, !session.archived); }}
+                >
+                  <SessionActionIcon name={session.archived ? 'restore' : 'archive'} />
+                </button>
+              )}
+              <button
+                type="button"
+                className="session-action-button session-action-danger"
+                aria-label={`Elimina definitivamente ${title}`}
+                title={t('Elimina definitivamente')}
+                onClick={event => { event.stopPropagation(); setDeleteTarget(session); }}
+              >
+                <SessionActionIcon name="delete" />
+              </button>
+            </span>
+          </>
+        )}
+      </div>
+    );
+  });
+
   return (
     <aside className={`sidebar${mobileOpen ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label={t('Barra chat e sessioni')}>
       <header className="sidebar-header">
         <div>
           <h1>{t('Memora')}</h1>
-          <p>{t('Chat &amp; Sessioni')}</p>
+          <p>{t('Chat & Progetti')}</p>
         </div>
         {onClose && (
           <button type="button" className="sidebar-close" aria-label={t('Chiudi pannello sessioni')} onClick={onClose}>
@@ -174,17 +218,6 @@ export function Sidebar({
           </button>
         )}
       </header>
-      {onSelectProject && (
-        <ProjectPicker
-          projects={projects}
-          selectedProjectId={selectedProjectId}
-          onSelect={onSelectProject}
-          onNew={() => onNewProject?.()}
-          onEdit={projectId => onEditProject?.(projectId)}
-          onDelete={project => onDeleteProject?.(project)}
-          settingsActive={projectSettingsActive}
-        />
-      )}
       <div className="sidebar-toolbar">
         <button type="button" className="new-chat-button" onClick={handleCreate} disabled={loading}>{t('Nuova chat')}</button>
         <button
@@ -195,77 +228,29 @@ export function Sidebar({
           title={archiveViewTitle}
           onClick={handleToggleView}
         >
-          <SessionIcon name="archive" />
+          <SessionActionIcon name="archive" />
         </button>
       </div>
       {error && <div role="alert" className="sidebar-error">{error}</div>}
       <div className="session-list">
         {loading && sessions.length === 0 && <div className="session-list-empty">{t('Caricamento sessioni...')}</div>}
-        {!loading && sessions.length === 0 && <div className="session-list-empty">{t(archivedView ? 'Nessuna sessione archiviata.' : 'Nessuna sessione. Clicca “Nuova chat” per iniziare.')}</div>}
-        {sessions.map((session) => {
-          const isSelected = selectedSessionId === session.sessionId;
-          const isRenaming = renameInput === session.sessionId;
-          const title = displayTitle(session);
-          return (
-            <div
-              key={session.sessionId}
-              className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}`}
-              onClick={() => { if (!isRenaming) onSelect(session.sessionId); }}
-              title={title}
-            >
-              {isRenaming ? (
-                <input
-                  className="session-rename-input"
-                  autoFocus
-                  value={renameValue}
-                  onChange={(event) => setRenameValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void handleRenameSubmit(session.sessionId);
-                    if (event.key === 'Escape') { setRenameInput(null); setRenameValue(''); }
-                  }}
-                  onBlur={() => void handleRenameSubmit(session.sessionId)}
-                />
-              ) : (
-                <>
-                  <span className="session-title">{title}</span>
-                  <span className="session-actions" aria-label={t('Azioni sessione')}>
-                    {!session.draft && (
-                      <button
-                        type="button"
-                        className="session-action-button"
-                        aria-label={`Rinomina ${title}`}
-                        title={t('Rinomina')}
-                        onClick={(event) => { event.stopPropagation(); handleRenameClick(session.sessionId, title); }}
-                      >
-                        <SessionIcon name="rename" />
-                      </button>
-                    )}
-                    {!session.draft && (
-                      <button
-                        type="button"
-                        className="session-action-button"
-                        aria-label={session.archived ? `Ripristina ${title}` : `Archivia ${title}`}
-                        title={t(session.archived ? 'Ripristina' : 'Archivia')}
-                        onClick={(event) => { event.stopPropagation(); handleArchive(session.sessionId, !session.archived); }}
-                      >
-                        <SessionIcon name={session.archived ? 'restore' : 'archive'} />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="session-action-button session-action-danger"
-                      aria-label={`Elimina definitivamente ${title}`}
-                      title={t('Elimina definitivamente')}
-                      onClick={(event) => { event.stopPropagation(); setDeleteTarget(session); }}
-                    >
-                      <SessionIcon name="delete" />
-                    </button>
-                  </span>
-                </>
-              )}
-            </div>
-          );
-        })}
+        {!loading && error && <div className="session-list-empty">{t('Errore nel caricamento delle sessioni.')}</div>}
+        {!loading && !error && (
+          <SidebarTree
+            sections={sections}
+            projects={projects}
+            sessions={sessions}
+            selectedProjectId={selectedProjectId}
+            onSelectProject={projectId => onSelectProject?.(projectId)}
+            onEditProject={projectId => onEditProject?.(projectId)}
+            onNewProject={sectionId => onNewProject?.(sectionId)}
+            onNewSection={() => onNewSection?.()}
+            onEditSection={section => onEditSection?.(section)}
+            onDeleteSection={section => onDeleteSection?.(section)}
+            onNewChatInProject={projectId => onCreateInProject?.(projectId)}
+            renderSessions={renderSessionRows}
+          />
+        )}
       </div>
       {(onOpenSecondBrain || onOpenSettings) && (
         <div className="sidebar-footer-actions">
@@ -321,7 +306,7 @@ export function Sidebar({
           className="dialog-backdrop"
           onClick={() => { if (!deletingSessionId) setDeleteTarget(null); }}
         >
-          <div role="dialog" aria-modal="true" aria-labelledby="delete-session-title" className="delete-dialog" onClick={(event) => event.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-session-title" className="delete-dialog" onClick={event => event.stopPropagation()}>
             <h2 id="delete-session-title">{t('Eliminare definitivamente questa chat?')}</h2>
             <p>{t('Questa operazione non può essere annullata.')}</p>
             {error && <p role="alert" className="delete-dialog-error">{error}</p>}

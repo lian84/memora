@@ -9,14 +9,16 @@ import { AdminSettings } from './components/AdminSettings';
 import { ProjectSettings } from './components/ProjectSettings';
 import { NewProjectDialog } from './components/NewProjectDialog';
 import { ProjectDeleteDialog } from './components/ProjectDeleteDialog';
+import { SectionDialog } from './components/SectionDialog';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { useAuth } from './components/AuthGate';
 import { useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
-import { getAdminStatus, listProjects, setSessionReasoningLevel } from './lib/api';
+import { deleteProjectSection, getAdminStatus, listProjectSections, listProjects, setSessionReasoningLevel } from './lib/api';
 import { initAppearance, updateAppearance, useAppearance } from './lib/appearance';
-import type { ChatAttachment, ProjectRecord, ProviderId, ReasoningLevel } from '@memora/shared';
+import type { ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
 
 const SESSION_STORAGE_KEY = 'memora-selected-session';
 const PROJECT_STORAGE_KEY = 'memora-selected-project';
@@ -68,6 +70,13 @@ export default function App() {
   const [secondBrainOpen, setSecondBrainOpen] = useState(false);
   const [secondBrainScope, setSecondBrainScope] = useState('all');
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [sections, setSections] = useState<ProjectSection[]>([]);
+  const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
+  const [sectionEditTarget, setSectionEditTarget] = useState<ProjectSection | null>(null);
+  const [sectionDeleteTarget, setSectionDeleteTarget] = useState<ProjectSection | null>(null);
+  const [sectionDeleteBusy, setSectionDeleteBusy] = useState(false);
+  const [sectionDeleteError, setSectionDeleteError] = useState<string | null>(null);
+  const [newProjectSectionId, setNewProjectSectionId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => typeof window === 'undefined' ? null : localStorage.getItem(PROJECT_STORAGE_KEY));
   const [projectOpen, setProjectOpen] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
@@ -114,6 +123,13 @@ export default function App() {
   }, []);
 
   useEffect(() => { void loadProjects(); }, [loadProjects]);
+  const loadProjectSections = useCallback(async () => {
+    try { setSections(await listProjectSections()); }
+    catch { setSections([]); }
+  }, []);
+
+  useEffect(() => { void loadProjectSections(); }, [loadProjectSections]);
+
 
   useEffect(() => {
     const onDefaultChanged = (event: Event) => {
@@ -130,10 +146,10 @@ export default function App() {
   }, []);
 
   const selectedProject = projects.find(project => project.id === selectedProjectId) ?? null;
-  const visibleSessions = selectedProjectId ? sessions.filter(session => session.projectId === selectedProjectId) : sessions;
   const selectedSession = sessions.find((session) => session.sessionId === selectedSessionId);
-  const chatProject = selectedProject
-    ?? (selectedSession?.projectId ? projects.find(project => project.id === selectedSession.projectId) ?? null : null);
+  const chatProject = selectedSession?.projectId
+    ? projects.find(project => project.id === selectedSession.projectId) ?? null
+    : selectedProject;
   const selectedSessionTitle = adminOpen
     ? t('Amministrazione')
     : secondBrainOpen
@@ -179,13 +195,7 @@ export default function App() {
     setSecondBrainOpen(false);
     if (projectId) localStorage.setItem(PROJECT_STORAGE_KEY, projectId);
     else localStorage.removeItem(PROJECT_STORAGE_KEY);
-    if (projectId && selectedSession && selectedSession.projectId !== projectId) {
-      setSelectedSessionId(null);
-      setMessages([]);
-      setSessionInUrl(null);
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-    }
-  }, [selectedSession]);
+  }, []);
 
   const handleOpenSecondBrain = useCallback((scope = 'all') => {
     setSecondBrainScope(scope);
@@ -281,6 +291,9 @@ export default function App() {
     async (sessionId: string) => {
       setAdminOpen(false);
       setSecondBrainOpen(false);
+      const sessionProjectId = sessions.find(session => session.sessionId === sessionId)?.projectId ?? null;
+      setSelectedProjectId(sessionProjectId);
+      if (sessionProjectId) localStorage.setItem(PROJECT_STORAGE_KEY, sessionProjectId); else localStorage.removeItem(PROJECT_STORAGE_KEY);
       setSelectedSessionId(sessionId);
       setSessionInUrl(sessionId);
       localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
@@ -295,11 +308,12 @@ export default function App() {
       }
       await loadMessages(sessionId);
     },
-    [resume, loadMessages],
+    [resume, loadMessages, sessions],
   );
 
-  const handleNewSession = useCallback(async (): Promise<string> => {
-    const result = await create(selectedModelId || undefined, selectedProvider, selectedReasoningLevel, selectedProjectId ?? undefined);
+  const handleNewSession = useCallback(async (projectId?: string | null): Promise<string> => {
+    const targetProjectId = projectId === undefined ? selectedProjectId : projectId;
+    const result = await create(selectedModelId || undefined, selectedProvider, selectedReasoningLevel, targetProjectId ?? undefined);
     const id = result.sessionId;
     explicitModelSelection.current = true;
     if (result.modelId) setSelectedModelId(result.modelId);
@@ -307,6 +321,8 @@ export default function App() {
     setAdminOpen(false);
     setProjectOpen(false);
     setSecondBrainOpen(false);
+    setSelectedProjectId(targetProjectId ?? null);
+    if (targetProjectId) localStorage.setItem(PROJECT_STORAGE_KEY, targetProjectId); else localStorage.removeItem(PROJECT_STORAGE_KEY);
     setSelectedSessionId(id);
     setSessionInUrl(id);
     localStorage.setItem(SESSION_STORAGE_KEY, id);
@@ -337,6 +353,51 @@ export default function App() {
       localStorage.removeItem(SESSION_STORAGE_KEY);
     }
   }, [remove, selectedSessionId]);
+
+  const handleNewSessionInProject = useCallback(async (projectId: string) => {
+    return handleNewSession(projectId);
+  }, [handleNewSession]);
+
+  const handleNewProject = useCallback((sectionId?: string | null) => {
+    setNewProjectSectionId(sectionId ?? selectedProject?.sectionId ?? null);
+    setNewProjectOpen(true);
+  }, [selectedProject?.sectionId]);
+
+  const openNewSection = useCallback(() => {
+    setSectionEditTarget(null);
+    setSectionDialogOpen(true);
+  }, []);
+
+  const openEditSection = useCallback((section: ProjectSection) => {
+    setSectionEditTarget(section);
+    setSectionDialogOpen(true);
+  }, []);
+
+  const handleSectionSaved = useCallback((section: ProjectSection) => {
+    setSections(current => {
+      const next = current.some(item => item.id === section.id)
+        ? current.map(item => item.id === section.id ? section : item)
+        : [...current, section];
+      return next.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'it'));
+    });
+    setSectionDialogOpen(false);
+    setSectionEditTarget(null);
+  }, []);
+
+  const handleDeleteSection = useCallback(async () => {
+    if (!sectionDeleteTarget) return;
+    setSectionDeleteBusy(true);
+    setSectionDeleteError(null);
+    try {
+      await deleteProjectSection(sectionDeleteTarget.id);
+      setSections(current => current.filter(section => section.id !== sectionDeleteTarget.id));
+      setSectionDeleteTarget(null);
+    } catch (err) {
+      setSectionDeleteError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSectionDeleteBusy(false);
+    }
+  }, [sectionDeleteTarget]);
 
   const handleRecoverSession = useCallback(async (): Promise<string> => {
     return handleNewSession();
@@ -376,7 +437,7 @@ export default function App() {
         onClick={() => setSidebarOpen(false)}
       />
       <Sidebar
-        sessions={visibleSessions}
+        sessions={sessions}
         onSelect={handleSelectSession}
         onCreate={handleNewSession}
         onRename={rename}
@@ -400,11 +461,16 @@ export default function App() {
         secondBrainActive={secondBrainOpen}
         onLogout={() => void logout()}
         projects={projects}
+        sections={sections}
         selectedProjectId={selectedProjectId}
         onSelectProject={handleSelectProject}
         onEditProject={handleEditProject}
         onDeleteProject={project => setProjectDeleteTarget(project)}
-        onNewProject={() => setNewProjectOpen(true)}
+        onNewProject={handleNewProject}
+        onCreateInProject={handleNewSessionInProject}
+        onNewSection={openNewSection}
+        onEditSection={openEditSection}
+        onDeleteSection={section => { setSectionDeleteError(null); setSectionDeleteTarget(section); }}
         projectSettingsActive={projectOpen}
         collapsed={appearance.sidebarCollapsed}
       />
@@ -476,6 +542,7 @@ export default function App() {
               onSaved={handleProjectSaved}
               onSourcesChanged={() => setMemoryRevision(revision => revision + 1)}
               onRequestDelete={project => setProjectDeleteTarget(project)}
+              sections={sections}
             />
           )}
 
@@ -535,7 +602,20 @@ export default function App() {
           />
         )}
       </main>
-      {newProjectOpen && <NewProjectDialog onClose={() => setNewProjectOpen(false)} onCreated={handleProjectCreated} />}
+      {newProjectOpen && <NewProjectDialog sections={sections} initialSectionId={newProjectSectionId} onClose={() => { setNewProjectOpen(false); setNewProjectSectionId(null); }} onCreated={handleProjectCreated} />}
+      {sectionDialogOpen && <SectionDialog section={sectionEditTarget} onClose={() => { setSectionDialogOpen(false); setSectionEditTarget(null); }} onSaved={handleSectionSaved} />}
+      {sectionDeleteTarget && (
+        <ConfirmDialog
+          title={`${t('Elimina sezione')}: “${sectionDeleteTarget.name}”?`}
+          confirmLabel={t('Elimina sezione')}
+          busy={sectionDeleteBusy}
+          error={sectionDeleteError}
+          onClose={() => { if (!sectionDeleteBusy) { setSectionDeleteTarget(null); setSectionDeleteError(null); } }}
+          onConfirm={() => void handleDeleteSection()}
+        >
+          <p>{t('La sezione può essere eliminata solo se non contiene progetti.')}</p>
+        </ConfirmDialog>
+      )}
       {projectDeleteTarget && (
         <ProjectDeleteDialog
           project={projectDeleteTarget}

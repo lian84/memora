@@ -1,18 +1,23 @@
 import { useState } from 'react';
-import type { ProjectRecord } from '@memora/shared';
+import type { ProjectIcon, ProjectRecord, ProjectSection } from '@memora/shared';
 import { createProject, reindexMemory } from '../lib/api';
 import { useI18n } from '../i18n';
+import { IconPicker } from './IconPicker';
 
 interface NewProjectDialogProps {
   onClose: () => void;
   onCreated: (project: ProjectRecord) => void;
+  sections?: ProjectSection[];
+  initialSectionId?: string | null;
 }
 
-export function NewProjectDialog({ onClose, onCreated }: NewProjectDialogProps) {
+export function NewProjectDialog({ onClose, onCreated, sections = [], initialSectionId = null }: NewProjectDialogProps) {
   const { t } = useI18n();
   const [id, setId] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [sectionId, setSectionId] = useState(initialSectionId ?? sections[0]?.id ?? '');
+  const [icon, setIcon] = useState<ProjectIcon>('folder');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +25,7 @@ export function NewProjectDialog({ onClose, onCreated }: NewProjectDialogProps) 
     setSaving(true);
     setError(null);
     try {
-      const project = await createProject({ id: id.trim(), name: name.trim() || id.trim(), description: description.trim() });
+      const project = await createProject({ id: id.trim(), name: name.trim() || id.trim(), description: description.trim(), ...(sectionId ? { sectionId } : {}), icon });
       await reindexMemory().catch(() => undefined);
       onCreated(project);
     } catch (err) {
@@ -45,6 +50,16 @@ export function NewProjectDialog({ onClose, onCreated }: NewProjectDialogProps) 
         </label>
         <label className="admin-label">{t('Descrizione')}
           <textarea rows={2} value={description} onChange={event => setDescription(event.target.value)} />
+        </label>
+        <label className="admin-label">{t('Sezione')}
+          <select value={sectionId} onChange={event => setSectionId(event.target.value)}>
+            <option value="">{t('Senza sezione')}</option>
+            {sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}
+          </select>
+          {sections.length === 0 && <small>{t('Crea prima una sezione dalla barra laterale.')}</small>}
+        </label>
+        <label className="admin-label">{t('Icona')}
+          <IconPicker value={icon} onChange={setIcon} />
         </label>
         <div className="dialog-actions">
           <button type="button" onClick={onClose} disabled={saving}>{t('Annulla')}</button>

@@ -12,6 +12,8 @@ import {
   type ReasoningLevel,
   type MemoryCandidateStatus,
   type ProjectRecord,
+  type ProjectIcon,
+  type ProjectSection,
   type RuntimeSettingsPatch,
   type ChatAttachment,
   type ProjectFileList,
@@ -66,7 +68,7 @@ export interface SessionInfo {
   draft?: boolean;
 }
 
-export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'defaults' | 'retrieval' | 'sources'>>;
+export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'defaults' | 'retrieval' | 'sources'>> & { sectionId?: string | null; icon?: ProjectIcon | null };
 
 export interface MemorySource {
   id: string;
@@ -351,10 +353,33 @@ export async function getProject(id: string): Promise<ProjectRecord> {
   return data.project;
 }
 
-export async function createProject(input: { id: string; name: string; description?: string; prompt?: string }): Promise<ProjectRecord> {
+export async function createProject(input: { id: string; name: string; description?: string; prompt?: string; sectionId?: string; icon?: ProjectIcon }): Promise<ProjectRecord> {
   const res = await request('/api/projects', { method: 'POST', body: JSON.stringify(input) });
   const data = (await res.json()) as { project: ProjectRecord };
   return data.project;
+}
+
+export async function listProjectSections(): Promise<ProjectSection[]> {
+  const res = await request('/api/project-sections');
+  const data = (await res.json()) as { sections: ProjectSection[] };
+  return data.sections;
+}
+
+export async function createProjectSection(input: { name: string; icon?: ProjectIcon }): Promise<ProjectSection> {
+  const res = await request('/api/project-sections', { method: 'POST', body: JSON.stringify(input) });
+  const data = (await res.json()) as { section: ProjectSection };
+  return data.section;
+}
+
+export async function updateProjectSection(id: string, patch: { name?: string; icon?: ProjectIcon }): Promise<ProjectSection> {
+  const res = await request(`/api/project-sections/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  const data = (await res.json()) as { section: ProjectSection };
+  return data.section;
+}
+
+export async function deleteProjectSection(id: string): Promise<{ id: string; deleted: boolean }> {
+  const res = await request(`/api/project-sections/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  return res.json();
 }
 
 export async function exportProject(id: string): Promise<{ schemaVersion: 1; project: ProjectRecord; sources: Array<{ relativePath: string; content: string }> }> {

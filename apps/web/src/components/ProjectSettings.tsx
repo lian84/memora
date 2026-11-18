@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ProjectRecord } from '@memora/shared';
+import type { ProjectIcon, ProjectRecord, ProjectSection } from '@memora/shared';
 import {
   createProjectSource,
   deleteProjectSource,
@@ -13,6 +13,7 @@ import {
 import { renderMarkdown } from '../lib/markdown';
 import { ConfirmDialog } from './ConfirmDialog';
 import { useI18n } from '../i18n';
+import { IconPicker } from './IconPicker';
 
 interface ProjectSettingsProps {
   project: ProjectRecord;
@@ -20,13 +21,16 @@ interface ProjectSettingsProps {
   onSaved: (project: ProjectRecord) => void;
   onSourcesChanged: () => void;
   onRequestDelete?: (project: ProjectRecord) => void;
+  sections?: ProjectSection[];
 }
 
-export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, onRequestDelete }: ProjectSettingsProps) {
+export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, onRequestDelete, sections = [] }: ProjectSettingsProps) {
   const { t } = useI18n();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [prompt, setPrompt] = useState(project.prompt);
+  const [sectionId, setSectionId] = useState(project.sectionId ?? '');
+  const [icon, setIcon] = useState<ProjectIcon>(project.icon ?? 'folder');
   const [includeGlobal, setIncludeGlobal] = useState(project.retrieval.includeGlobal);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +65,8 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         name: name.trim(),
         description: description.trim(),
         prompt,
+        sectionId: sectionId || null,
+        icon,
         retrieval: { ...project.retrieval, includeGlobal },
       });
       onSaved(updated);
@@ -220,6 +226,15 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         </label>
         <label className="admin-label">{t('Descrizione')}
           <textarea rows={2} value={description} onChange={event => setDescription(event.target.value)} />
+        </label>
+        <label className="admin-label">{t('Sezione')}
+          <select value={sectionId} onChange={event => setSectionId(event.target.value)}>
+            <option value="">{t('Senza sezione')}</option>
+            {sections.map(section => <option key={section.id} value={section.id}>{section.name}</option>)}
+          </select>
+        </label>
+        <label className="admin-label">{t('Icona')}
+          <IconPicker value={icon} onChange={setIcon} />
         </label>
         <label className="admin-label">{t('Prompt di progetto')}
           <textarea rows={6} value={prompt} onChange={event => setPrompt(event.target.value)} />

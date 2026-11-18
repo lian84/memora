@@ -67,3 +67,23 @@ test('le azioni finali sono icone accessibili', () => {
   expect(markup).toContain('aria-label="Impostazioni"');
   expect(markup).not.toContain('>Impostazioni<');
 });
+
+test('mostra le sezioni e i progetti annidati', () => {
+  const markup = renderToStaticMarkup(
+    <Sidebar
+      {...baseProps}
+      sections={[{ id: 'lavoro', name: 'Lavoro', icon: 'briefcase', order: 0, createdAt: 1, updatedAt: 1 }]}
+      projects={[{
+        version: 1, id: 'orione', name: 'Orione', description: '', status: 'active', prompt: '',
+        defaults: {}, retrieval: { includeGlobal: true, includeProjectMemory: true, includeProjectSources: true },
+        sources: { include: ['**/*.md'], exclude: [] }, createdAt: 1, updatedAt: 1, source: 'file', sectionId: 'lavoro', icon: 'rocket',
+      }]}
+      sessions={[{ ...session, projectId: 'orione' }]}
+    />,
+  );
+  expect(markup).toContain('Sezioni');
+  expect(markup).toContain('Lavoro');
+  expect(markup).toContain('Orione');
+  expect(markup).toContain('Nuovo progetto nella sezione');
+  expect(markup).toContain('Nuova chat nel progetto');
+});
