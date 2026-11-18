@@ -85,6 +85,7 @@ Ultimo aggiornamento: 2026-11-18.
 - [x] Stato aperto/chiuso di sezioni e progetti persistito nel browser.
 - [x] Azioni delle righe (rinomina, archivia/ripristina, elimina) in un menu contestuale a tre puntini, visibile solo su hover/focus.
 - [x] Evidenziazione locale delle chat, con ordinamento in cima al gruppo.
+- [x] Hover di sezioni, progetti e chat con contrasto dedicato per tema chiaro e scuro.
 - [x] Pannello unico a destra, collassato per default.
 - [x] Aree fisse in alto: **File**, **Contesto**, **Artefatti**, **Fonti**.
 - [x] **File** presente solo nelle chat di progetto.

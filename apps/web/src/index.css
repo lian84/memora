@@ -4,6 +4,8 @@
   --surface: #ffffff;
   --surface-muted: #f7f9fc;
   --surface-elevated: #ffffff;
+  --sidebar-hover: #e6f0fd;
+  --sidebar-hover-border: #b9d3f5;
   --surface-translucent: rgba(255, 255, 255, .88);
   --border: #e2e9f2;
   --border-strong: #cfdae8;
@@ -51,6 +53,8 @@ html[data-theme="dark"] {
   --surface: #0e1624;
   --surface-muted: #0a1220;
   --surface-elevated: #131e2f;
+  --sidebar-hover: #1b2b44;
+  --sidebar-hover-border: #3d5f88;
   --surface-translucent: rgba(14, 22, 36, .9);
   --border: #1e2b3d;
   --border-strong: #304159;
@@ -164,9 +168,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   position: relative;
   min-width: 0;
   height: 42px;
-  padding-right: 28px;
   margin: 1px 0;
-  padding: 0 6px 0 10px;
+  padding: 0 28px 0 10px;
   border: 1px solid transparent;
   border-radius: 8px;
   display: flex;
@@ -175,11 +178,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   color: var(--text-soft);
   cursor: pointer;
   font-size: 13px;
-  transition: background .14s ease, border-color .14s ease;
+  transition: background .14s ease, border-color .14s ease, box-shadow .14s ease;
 }
-.session-row:hover { background: var(--surface-muted); }
+.session-row:hover, .session-row:focus-visible { border-color: var(--sidebar-hover-border); background: var(--sidebar-hover); }
 .session-row.is-selected { border-color: var(--accent-border); border-left: 3px solid var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 .session-row.is-pinned { background: color-mix(in srgb, var(--accent-soft) 58%, transparent); }
+.session-row.is-pinned:hover { border-color: var(--sidebar-hover-border); background: color-mix(in srgb, var(--sidebar-hover) 72%, var(--accent-soft)); }
 .session-pin { flex: 0 0 auto; color: var(--accent-strong); }
 .session-pin svg { display: block; }
 .session-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -195,8 +199,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .sidebar-tree-heading-action { width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
 .sidebar-tree-heading-action:hover { border-color: var(--border); background: var(--surface); color: var(--accent-strong); }
 .sidebar-section { display: flex; flex-direction: column; }
-.sidebar-tree-row { position: relative; min-width: 0; min-height: 32px; display: flex; align-items: center; gap: 1px; padding-right: 26px; border-radius: 8px; }
-.sidebar-tree-row:hover { background: var(--surface-muted); }
+.sidebar-tree-row { position: relative; min-width: 0; min-height: 32px; display: flex; align-items: center; gap: 1px; padding-right: 26px; border-radius: 8px; transition: background .14s ease, box-shadow .14s ease; }
+.sidebar-tree-row:hover { background: var(--sidebar-hover); box-shadow: inset 0 0 0 1px var(--sidebar-hover-border); }
 .sidebar-tree-toggle { width: 22px; height: 28px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; }
 .sidebar-tree-toggle:hover { color: var(--text); }
 .sidebar-tree-chevron { transition: transform .15s ease; }
