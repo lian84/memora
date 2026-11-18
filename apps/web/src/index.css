@@ -221,7 +221,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .sidebar-tree-action.is-danger:hover { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
 .sidebar-section-projects { margin-left: 11px; padding-left: 5px; border-left: 1px solid var(--border); }
 .sidebar-project-sessions { margin-left: 23px; padding-left: 3px; border-left: 1px dashed var(--border); }
-.sidebar-project-sessions .session-row { height: 36px; padding-left: 7px; border-radius: 7px; font-size: 12px; }
+.sidebar-project-sessions .session-row { height: 32px; margin: 0; padding-top: 0; padding-bottom: 0; padding-left: 7px; border-radius: 7px; font-size: 12px; }
 .sidebar-project.is-active > .sidebar-tree-row { background: var(--accent-soft); }
 .sidebar-project.is-active > .sidebar-tree-row .sidebar-project-icon { border-color: var(--accent-border); color: var(--accent-strong); }
 .sidebar-tree-empty { padding: 8px 12px; color: var(--muted); font-size: 10px; line-height: 1.4; }
@@ -1034,6 +1034,7 @@ body { font-size: calc(14px * var(--font-scale)); }
 
 /* Density */
 html[data-density="compact"] .session-row { height: 36px; }
+html[data-density="compact"] .sidebar-project-sessions .session-row { height: 30px; margin: 0; }
 html[data-density="compact"] .message-row { margin-bottom: 14px; }
 html[data-density="compact"] .messages-container { padding-top: 18px; }
 html[data-density="compact"] .admin-card { padding: 12px; margin-bottom: 10px; }
