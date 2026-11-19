@@ -27,11 +27,14 @@ export function PdfPreview({ url, title, zoom = 1 }: PdfPreviewProps) {
         const pdfjs = await import('pdfjs-dist');
         const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        const loaded = await pdfjs.getDocument({
+        // pdfjs-dist v6 rimuove `PDFDocumentProxy.destroy()`: il ciclo di vita
+        // del documento si chiude distruggendo il loading task.
+        const task = pdfjs.getDocument({
           url,
           standardFontDataUrl: `${import.meta.env.BASE_URL}pdfjs/standard_fonts/`,
-        }).promise;
-        if (cancelled) { void loaded.destroy(); return; }
+        });
+        const loaded = await task.promise;
+        if (cancelled) { void task.destroy(); return; }
         setDocument(loaded);
         setPages(loaded.numPages);
       } catch (err) {

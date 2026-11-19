@@ -10,7 +10,7 @@
     "build": "tsc --build"
   },
   "devDependencies": {
-    "typescript": "~5.6.0"
+    "typescript": "~5.6.3"
   },
   "dependencies": {}
 }

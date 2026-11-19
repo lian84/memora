@@ -91,7 +91,6 @@ export async function renderMarkdownPdf(input: PdfRenderInput): Promise<PdfRende
   const lines = markdown.split('\n');
   let inCode = false;
   const codeLines: string[] = [];
-  let tableHeader: string[] | null = null;
 
   const flushCode = () => {
     if (codeLines.length === 0) return;
@@ -111,7 +110,7 @@ export async function renderMarkdownPdf(input: PdfRenderInput): Promise<PdfRende
     if (inCode) { codeLines.push(raw); continue; }
 
     if (isTableRow(raw) && index + 1 < lines.length && isSeparatorRow(lines[index + 1]!)) {
-      tableHeader = tableCells(raw);
+      const tableHeader = tableCells(raw);
       index++;
       const rows: string[][] = [];
       while (index + 1 < lines.length && isTableRow(lines[index + 1]!)) rows.push(tableCells(lines[++index]!));
@@ -120,7 +119,6 @@ export async function renderMarkdownPdf(input: PdfRenderInput): Promise<PdfRende
       doc.font('Helvetica').fontSize(8.5).fillColor('#334155');
       for (const row of rows) doc.text(row.join('   ·   '), { indent: 0, lineGap: 2 });
       doc.moveDown(0.55);
-      tableHeader = null;
       continue;
     }
 

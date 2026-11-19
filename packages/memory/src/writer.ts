@@ -686,7 +686,7 @@ export class MemoryWriter {
     const query = text.trim();
     if (!query) return { status: 'pending' };
 
-    let results: MemorySearchResultLike[] = [];
+    let results: MemorySearchResultLike[];
     try {
       results = projectId && this.memoryService.searchScoped
         ? await this.memoryService.searchScoped(query, { topK: 8, maxChars: 6000, projectId, includeGlobal: true })

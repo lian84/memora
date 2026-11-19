@@ -354,7 +354,7 @@ Return one JSON object with schemaVersion:1 and memories array, maximum 3 items,
       if (error instanceof CuratorProviderError) emit(error.event, error.stage, { errorCode: error.errorCode, httpStatus: error.httpStatus, jsonValid: error.event === 'curator_invalid_json' ? false : undefined });
       else if (stage === 'validation') emit('curator_validation_failure', 'validation', { errorCode: error instanceof CuratorValidationError ? error.errorCode : 'invalid_schema', validationPassed: false });
       else emit('curator_provider_failure', 'request', { errorCode: 'provider_error' });
-      throw new Error('Memory curator failed');
+      throw new Error('Memory curator failed', { cause: error });
     }
   }
 }

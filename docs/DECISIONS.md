@@ -1173,6 +1173,71 @@ ricerche successive e dopo il limite delle 50 fonti.
 - Il limite di 50 fonti resta, ma i numeri non collassano.
 
 ---
+## ADR-037 — Aggiornamento toolchain e dipendenze (novembre 2026)
+**Data:** 2026-11-18
+**Stato:** accepted
+
+### Contesto
+La toolchain era ferma alle versioni risolte alla creazione del monorepo
+(TypeScript 5.6, ESLint 9, Vitest 2, Vite 5, React 18, better-sqlite3 11,
+pnpm 12.18). Si voleva riallineare tutto senza rompere la DoD
+(`tsc --build`, `eslint`, `vitest run`, `pnpm build`) e senza toccare i pin
+intenzionali.
+
+### Decisione
+Aggiornati (con verifica a ogni stadio):
+
+| Pacchetto | Da | A |
+|---|---|---|
+| pnpm (`packageManager`) | 12.18.0 | 12.21.0 |
+| ESLint / `@eslint/js` | 9.39.5 | 10.15.0 / 10.0.1 |
+| typescript-eslint | 8.72.2 | 8.73.0 |
+| Prettier | 3.9.10 | 3.10.1 |
+| Vitest | 2.1.9 | 5.1.0 |
+| Vite | 5.4.21 | 8.3.8 |
+| `@vitejs/plugin-react` | 4.7.0 | 6.3.0 |
+| React / React DOM (+ tipi) | 18.3.1 | 19.3.1 |
+| pdfjs-dist | 5.4.296 | 6.5.438 |
+| better-sqlite3 (+ tipi) | 11.10.0 | 13.2.0 / 9.6.0 |
+| `@fastify/static` | 8.3.0 | 10.1.11 |
+| Fastify | 5.0.0 | 5.12.8 |
+| `@types/node` | 24.19.2 | 26.6.6 |
+| TypeScript | 5.6.0 range | 5.6.3 (range invariata) |
+
+Adattamenti al codice resi necessari dagli aggiornamenti:
+- ESLint 10 abilita `no-useless-assignment` e `preserve-caught-error`: risolti
+  i 7 rilievi nel codice (inizializzazioni ridondanti rimosse,
+  `new Error(..., { cause })` sul curator error). Nessuna regola disabilitata.
+- `@fastify/static` v10 passa la `FastifyReply` a `setHeaders`: sostituito
+  `response.setHeader(...)` con `response.header(...)` (stessa semantica di
+  cache-control sugli asset).
+- pdfjs-dist v6 rimuove `PDFDocumentProxy.destroy()`: `PdfPreview` chiude il
+  documento distruggendo il loading task (`task.destroy()`).
+- `apps/web` dichiara `"type": "module"` (Vite 8 carica la config come ESM) e
+  `vitest.config.ts` usa `import.meta.dirname` invece di `__dirname`.
+- `pnpm-workspace.yaml`: `allowBuilds` allineato a `better-sqlite3@13.2.0`
+  (senza questo il binding nativo non verrebbe costruito).
+
+### Pin mantenuti volutamente
+- `typebox` resta **1.3.27 esatto**: è la stessa identica versione dipendenza di
+  `@earendil-works/pi-coding-agent@1.5.2`. Un bump disallineerebbe gli schemi
+  dei tool rispetto al runtime Pi.
+- TypeScript resta **5.6.x**: `typescript-eslint@8.73` dichiara supporto
+  `typescript >=4.8.4 <6.1.0` e va in hard error con TS 7; con TS 7.0.2 anche
+  `tsc --build` fallisce sulla risoluzione dei tipi `@types/pdfmake`. Il major
+  verrà ripreso quando typescript-eslint supporterà TS 7.
+- `pdfjs-dist`, `@huggingface/transformers`, `sqlite-vec`, `typebox` restano
+  versioni esatte (riproducibilità degli artefatti e allineamento al runtime).
+
+### Conseguenze
+- `pnpm outdated -r` resta con solo i due pin intenzionali (`typebox`,
+  TypeScript).
+- Verifica riproducibile: `pnpm install && pnpm typecheck && pnpm lint &&
+  pnpm test && pnpm build` (72 file di test, 373 test verdi), `pnpm peers check`
+  senza problemi, `pnpm smoke:dist` verde.
+- Il binding `better-sqlite3@13.2.0` funziona su Node 24 (SQLite 3.54.1).
+
+---
 ## ADR-038 — Metadati e tooltip delle fonti web
 **Data:** 2026-11-18
 **Stato:** accepted

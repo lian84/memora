@@ -7,9 +7,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@memora/shared': path.resolve(__dirname, './packages/shared/src/index.ts'),
-      '@memora/agent': path.resolve(__dirname, './packages/agent/src/index.ts'),
-      '@memora/memory': path.resolve(__dirname, './packages/memory/src/index.ts'),
+      '@memora/shared': path.resolve(import.meta.dirname, './packages/shared/src/index.ts'),
+      '@memora/agent': path.resolve(import.meta.dirname, './packages/agent/src/index.ts'),
+      '@memora/memory': path.resolve(import.meta.dirname, './packages/memory/src/index.ts'),
     },
   },
 });

@@ -100,9 +100,7 @@ export class ArtifactStore {
     const name = safeName(input.name, input.kind);
     const directory = this.directory(sessionId);
     await fs.mkdir(directory, { recursive: true, mode: 0o700 });
-    let entries: import('node:fs').Dirent[] = [];
-    try { entries = await fs.readdir(directory, { withFileTypes: true }); }
-    catch { entries = []; }
+    const entries = await fs.readdir(directory, { withFileTypes: true }).catch((): import('node:fs').Dirent[] => []);
     const existing = entries.find(entry => entry.isFile() && entry.name.endsWith(`__${name}`));
     if (existing) {
       const absolutePath = path.join(directory, existing.name);
@@ -111,9 +109,7 @@ export class ArtifactStore {
       const id = existing.name.split('__')[0]!;
       const versionsDir = path.join(directory, '.versions', id);
       await fs.mkdir(versionsDir, { recursive: true, mode: 0o700 });
-      let archived: string[] = [];
-      try { archived = await fs.readdir(versionsDir); }
-      catch { archived = []; }
+      const archived = await fs.readdir(versionsDir).catch((): string[] => []);
       const nextVersion = archived.filter(item => item.startsWith('v')).length + 1;
       await fs.copyFile(absolutePath, path.join(versionsDir, `v${nextVersion}__${name}`));
       const temporary = `${absolutePath}.tmp-${crypto.randomUUID()}`;
