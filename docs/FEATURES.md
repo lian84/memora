@@ -142,6 +142,7 @@ Last updated: 2026-11-19.
 - [x] UI language separate from the language used by Memo's answer.
 - [x] Visible focus, accessible dialogs, `aria-*` for tabs and panels.
 - [x] HTML/SVG previews always sandboxed and without JavaScript.
+- [x] Light/dark agent logos, favicon, Apple/PWA icons and agent avatar.
 
 ## 8. Administration and security
 
