@@ -123,6 +123,7 @@ Ultimo aggiornamento: 2026-11-19.
 - [x] Lingua UI separata dalla lingua della risposta di Memo.
 - [x] Focus visibile, dialoghi accessibili, `aria-*` per tab e pannelli.
 - [x] Anteprime HTML/SVG sempre sandboxed e senza JavaScript.
+- [x] Logo dell’agente per tema chiaro/scuro, favicon, icone Apple/PWA e avatar dell’agente.
 
 ## 8. Amministrazione e sicurezza
 
