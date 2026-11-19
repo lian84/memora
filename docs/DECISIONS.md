@@ -1,1193 +1,1363 @@
 # Architecture Decision Log
 
-Formato:
+**English** | [Italiano](DECISIONS.it.md)
 
-## ADR-000 — Titolo
-**Data:** YYYY-MM-DD
-**Stato:** proposed | accepted | superseded
+Format:
 
-### Contesto
-### Decisione
-### Conseguenze
+## ADR-000 — Title
+**Date:** YYYY-MM-DD
+**Status:** proposed | accepted | superseded
 
----
-## ADR-005.5d — UPDATE come stato finale canonico
-**Stato:** accepted
-
-Un UPDATE non può essere un delta: l'approvazione sostituisce un bullet, quindi
-il Curator riceve i bullet esistenti e restituisce uno stato finale autonomo.
-L'intento è `augment`, `replace`, `remove` o `correct`. Per AUGMENT il backend
-verifica che i token informativi della memoria precedente siano conservati e
-rifiuta proposte incomplete; per le altre intenzioni la rimozione è ammessa
-solo perché l'utente l'ha dichiarata. Sono rifiutate proposte non autonome o
-prive dell'entità di progetto. La validazione è conservativa e basata su token:
-non comprende equivalenze semantiche perfette. La risposta del provider può
-essere piatta o contenere un singolo oggetto in `memories`; più memorie sono
-rifiutate perché il flusso MVP produce un candidato per turno.
+### Context
+### Decision
+### Consequences
 
 ---
-## ADR-005.5c — Curator fuori dal percorso SSE e diagnostica sicura
-**Stato:** accepted
+## ADR-005.5d — UPDATE as the canonical final state
+**Status:** accepted
 
-Con Curator abilitato, i turni sono messi in una coda seriale limitata e
-volatile, avviata dopo l'invio della risposta SSE. Gli errori della coda sono
-osservabili senza contenuti; lo shutdown regolare attende il completamento prima
-di chiudere SQLite. Crash o riavvii forzati possono perdere turni in attesa;
-non si introduce un broker né persistenza che replichi la cronologia. La Inbox
-ricontrolla il candidate store ogni tre secondi.
-
-I log strutturati distinguono gli stage senza registrare prompt o risposta.
-Nel test reale Nemotron ha consumato 700 token in reasoning e restituito
-contenuto nullo; il provider richiede ora `reasoning.enabled=false`. Il modello
-può non rispettare o supportare questa opzione: i casi di troncamento e timeout
-restano espliciti nei log. Le soglie di confidence e salience sono ora separate
-(default 0,75 e 0,70): la confidence resta invariata, mentre una salience 0,74
-per un aggiornamento rilevante era stata scartata dalla soglia condivisa 0,75.
-I valori sono parametri iniziali configurabili, non soglie calibrate.
+An UPDATE cannot be a delta: approval replaces a bullet, so the Curator receives
+the existing bullets and returns a self-contained final state. The intent is
+`augment`, `replace`, `remove` or `correct`. For AUGMENT, the backend verifies
+that informative tokens from the previous memory survive and rejects incomplete
+proposals; for other intents, removal is allowed only because the user declared
+it. Proposals that are not self-contained or lack the project entity are
+rejected. Validation is conservative and token-based; it does not understand
+perfect semantic equivalence. The provider response may be flat or contain a
+single object in `memories`; multiple memories are rejected because the MVP flow
+produces one candidate per turn.
 
 ---
-## ADR-005.5b — Curator LLM opt-in con revisione umana
-**Stato:** proposed — in attesa dell'E2E con provider reale
+## ADR-005.5c — Curator outside the SSE path and safe diagnostics
+**Status:** accepted
 
-Un provider sostituibile analizza solo l'ultimo turno utente, una breve finestra
-di precedenti messaggi utente e fino a cinque chunk correlati. Il provider reale
-usa una singola chiamata al provider configurato (OpenRouter o OpenCode Go),
-separata dalla chat e spenta per default; questa scelta invia dati al provider ed è documentata. Un
-prefilter leggero evita turni triviali. I controlli segreti sono euristici.
+With the Curator enabled, turns are placed in a limited, volatile serial queue
+started after the SSE response is sent. Queue errors are observable without
+content; graceful shutdown waits for completion before closing SQLite. Crashes or
+forced restarts may lose pending turns; no broker or history-replicating
+persistence is introduced. The Inbox rechecks the candidate store every three
+seconds.
 
-La risposta JSON viene validata; il routing è deciso dal backend. La salience
-è la media non calibrata dei cinque score; confidence e salience sotto le
-rispettive soglie escludono il candidato automatico. I duplicati ad alta confidence sono
-saltati. UPDATE richiede corrispondenza esatta di un bullet correlato e nuova
-verifica all'approvazione; altrimenti diventa conflitto. I candidate continuano
-a richiedere approvazione umana. Errori del provider non bloccano la chat e le
-richieste esplicite ricadono nel Writer precedente.
-
----
-## ADR-005.5a — Granularità dei bullet nella memoria strutturata
-**Stato:** accepted
-
-Per rendere ricercabili fatti indipendenti, le sezioni composte esclusivamente
-da almeno due bullet autonomi su una riga in `memory/` e `projects/` vengono
-indicizzate un bullet per chunk, con heading e line range. Liste complesse,
-prosa e documenti mantengono il chunking precedente. Il reindex confronta anche
-i chunk di file invariati, aggiornando l'indice derivato senza toccare Markdown.
-Questa decisione non implementa né attiva il Memory Curator.
+Structured logs distinguish stages without recording prompts or answers. In a
+real test Nemotron consumed 700 reasoning tokens and returned null content; the
+provider now requires `reasoning.enabled=false`. A model may ignore or not
+support this option: truncation and timeout cases remain explicit in logs.
+Confidence and salience thresholds are now separate (defaults 0.75 and 0.70):
+confidence is unchanged, while a salience of 0.74 for a relevant update had been
+discarded by the shared 0.75 threshold. These are initial configurable
+parameters, not calibrated thresholds.
 
 ---
-## ADR-005.4.1 — Modalità retrieval esplicita
-**Stato:** accepted
+## ADR-005.5b — Opt-in LLM Curator with human review
+**Status:** proposed — awaiting end-to-end testing with a real provider
 
-`MEMORA_MEMORY_SEARCH_MODE` seleziona lexical, semantic o hybrid; default lexical.
-La variabile esplicita prevale sulla flag legacy hybrid, che è considerata solo
-se la modalità non è impostata. Un valore invalido, embeddings disabilitati o
-un provider non disponibile producono warning e fallback lexical. Le sessioni
-nuove e riprese continuano a usare lo stesso MemoryService. RRF non cambia.
+A replaceable provider analyses only the latest user turn, a short window of
+previous user messages and up to five relevant chunks. The real provider uses a
+single call to the configured provider (OpenRouter or OpenCode Go), separate from
+chat and disabled by default; this choice sends data to the provider and is
+documented. A lightweight prefilter skips trivial turns. Secret checks are
+heuristic.
 
----
-## ADR-005.4 — Retrieval ibrido locale opt-in
-**Stato:** accepted
-
-Markdown resta autorevole e SQLite ricostruibile. FTS5 è mantenuto per nomi e
-codici; sqlite-vec 0.1.9 sulla stessa connessione contiene vettori Float32
-cosine con metadati hash/modello/dimensioni. Transformers.js 4.3.2 esegue
-localmente l'ONNX q8; il download esplicito usa `$MEMORA_DATA_DIR/models`, il
-runtime non scarica. L'API provider è sostituibile; errori del modello non
-impediscono l'uso di FTS. RRF con k=60 fonde rank anziché score eterogenei.
-
-Il benchmark sintetico N95 mostra un miglioramento recall/MRR rispetto a FTS,
-ma non giustifica un default automatico: lexical rimane il default e
-l'abilitazione richiede setup e reindex espliciti. La memoria aggiuntiva è
-significativa (~780 MiB nel test); l'indice vec0 viene interrogato con overfetch
-per rispettare il filtro categoria, scelta semplice ma non ottimale su corpora
-molto grandi. Cambio di modello rilevato dal suo identificativo: sostituire i
-pesi mantenendo lo stesso identificativo richiede rebuild esplicito dell'indice.
+The JSON response is validated; routing is decided by the backend. Salience is
+the uncalibrated average of five scores; confidence and salience below their
+thresholds exclude an automatic candidate. High-confidence duplicates are
+skipped. UPDATE requires an exact match with a related bullet and revalidation at
+approval time; otherwise it becomes a conflict. Candidates still require human
+approval. Provider errors do not block chat, and explicit requests fall back to
+the previous Writer.
 
 ---
-## ADR-001 — Monorepo pnpm, TypeScript strict, Fastify health
-**Data:** 2026-11-10
-**Stato:** accepted
+## ADR-005.5a — Bullet granularity in structured memory
+**Status:** accepted
 
-### Contesto
-Task 00 richiede una base minima e riproducibile: monorepo, TypeScript strict, pnpm, lint/test, health endpoint. Senza integrare ancora il Pi SDK.
+To make independent facts searchable, sections composed exclusively of at least
+two standalone one-line bullets under `memory/` and `projects/` are indexed one
+bullet per chunk, with heading and line range. Complex lists, prose and documents
+keep the previous chunking. Reindexing also compares chunks of unchanged files,
+updating the derived index without touching Markdown. This decision neither
+implements nor enables the Memory Curator.
 
-### Decisione
-- Struttura monorepo con `pnpm-workspace.yaml`: `apps/*` (server, web) e `packages/*` (agent, memory, shared).
-- Root `tsconfig.json` con riferimenti composite; ogni workspace estende `tsconfig.base.json` (strict, ESNext, moduleResolution bundler).
-- Server: Fastify con `GET /api/health` (bind `127.0.0.1` default).
-- Web: Vite + React (placeholder).
+---
+## ADR-005.4.1 — Explicit retrieval mode
+**Status:** accepted
+
+`MEMORA_MEMORY_SEARCH_MODE` selects lexical, semantic or hybrid; the default is
+lexical. The explicit variable wins over the legacy hybrid flag, which is only
+considered when the mode is unset. An invalid value, disabled embeddings or an
+unavailable provider produce a warning and lexical fallback. New and resumed
+sessions keep using the same MemoryService. RRF is unchanged.
+
+---
+## ADR-005.4 — Opt-in local hybrid retrieval
+**Status:** accepted
+
+Markdown remains authoritative and SQLite rebuildable. FTS5 is kept for names
+and codes; sqlite-vec 0.1.9 on the same connection stores Float32 cosine vectors
+with hash/model/dimension metadata. Transformers.js 4.3.2 runs the ONNX q8 model
+locally; explicit download uses `$MEMORA_DATA_DIR/models`, while runtime never
+downloads. The provider API is replaceable; model errors do not prevent FTS use.
+RRF with k=60 fuses ranks rather than heterogeneous scores.
+
+The synthetic N95 benchmark shows better recall/MRR than FTS, but does not
+justify an automatic default: lexical remains the default and enabling it
+requires explicit setup and reindexing. Additional memory use is significant
+(~780 MiB in the test); the vec0 index is queried with overfetch to respect the
+category filter, a simple but non-optimal choice for very large corpora. A model
+change is detected by its identifier: replacing weights while keeping the same
+identifier requires an explicit index rebuild.
+
+---
+## ADR-001 — pnpm monorepo, strict TypeScript, Fastify health
+**Date:** 2026-11-10
+**Status:** accepted
+
+### Context
+Task 00 requires a minimal, reproducible base: monorepo, strict TypeScript, pnpm,
+lint/test and a health endpoint, without integrating the Pi SDK yet.
+
+### Decision
+- Monorepo layout via `pnpm-workspace.yaml`: `apps/*` (server, web) and
+  `packages/*` (agent, memory, shared).
+- Root `tsconfig.json` with composite references; each workspace extends
+  `tsconfig.base.json` (strict, ESNext, bundler module resolution).
+- Server: Fastify with `GET /api/health` (default bind `127.0.0.1`).
+- Web: Vite + React placeholder.
 - Testing: Vitest.
 - Lint: ESLint flat config + Prettier.
-- `shamefully-hoist=true` in `.npmrc` per risoluzione moduli affidabile sotto pnpm.
-- Pi SDK deliberatamente NON integrato (rimandato a Task 01).
+- `shamefully-hoist=true` in `.npmrc` for reliable module resolution under pnpm.
+- Pi SDK deliberately not integrated (deferred to Task 01).
 
-### Consequenze
-- Build emette in `dist/` (gitignored).
-- `tsc --build`, `eslint`, `vitest run` passano.
-- Endpoint `/api/health` risponde `{"status":"ok","service":"memora"}` su localhost.
-- L'integrazione con `@earendil-works/pi-coding-agent` è rimandata a Task 01.
+### Consequences
+- Builds emit to `dist/` (gitignored).
+- `tsc --build`, `eslint` and `vitest run` pass.
+- `/api/health` returns `{"status":"ok","service":"memora"}` on localhost.
+- Integration with `@earendil-works/pi-coding-agent` is deferred to Task 01.
 
 ---
-## ADR-002 — Integrazione Pi SDK ufficiale e AgentService
-**Data:** 2026-11-10
-**Stato:** accepted
+## ADR-002 — Official Pi SDK integration and AgentService
+**Date:** 2026-11-10
+**Status:** accepted
 
-### Contesto
-Task 01 richiede l'integrazione di `@earendil-works/pi-coding-agent` come dipendenza esterna per fornire AgentService con creazione sessione, invio prompt, streaming, abort e ripresa sessione.
+### Context
+Task 01 requires `@earendil-works/pi-coding-agent` as an external dependency for
+an AgentService with session creation, prompt sending, streaming, abort and
+resume.
 
-### Decisione
-- `@earendil-works/pi-coding-agent@1.5.2` (versione esatta, non `^`) aggiunto come dipendenza diretta di `@memora/agent` (non forkato, non vendoring).
-- `AgentService` creato in `@memora/agent/src/index.ts` che incapsula `createAgentSession`, `ModelRuntime`, `SessionManager` dell'SDK.
-- `MEMORA_DATA_DIR` usato per derivare:
+### Decision
+- `@earendil-works/pi-coding-agent@1.5.2` (exact version, not `^`) is a direct
+  dependency of `@memora/agent` (not forked, not vendored).
+- `AgentService` in `@memora/agent/src/index.ts` wraps the SDK's
+  `createAgentSession`, `ModelRuntime` and `SessionManager`.
+- `MEMORA_DATA_DIR` derives:
   - session directory: `$MEMORA_DATA_DIR/pi-sessions/`;
-  - Pi config dir: `$MEMORA_DATA_DIR/.pi/` (mai `~/.pi`).
-- OpenRouter configurato tramite `ModelRuntime.setRuntimeApiKey('openrouter', OPENROUTER_API_KEY)` a runtime (chiave mai scritta su disco, mai nel repository).
-- `cwd` esplicito e configurabile via `MEMORA_CWD` env.
-- Sessioni usano il formato JSONL nativo di Pi tramite `SessionManager`.
-- API Fastify esposta in `@memora/server`: POST /api/sessions, GET /api/sessions, GET /api/sessions/:id, POST /api/sessions/:id/messages (SSE streaming), POST /api/sessions/:id/abort.
-- Test con mock dell'SDK (vitest + vi.mock), nessun credito OpenRouter consumato.
-- Il SDK include `dist/index.d.ts` ufficiale; nessun file `.d.ts` locale mantenuto.
-- I symlink workspace sono creati automaticamente da `pnpm install` tramite `workspace:*` nei `dependencies` dei package che li usano (nessun script custom, nessun `postinstall`, nessuna manipolazione manuale di `node_modules/`).
-- TypeScript risolve direttamente i tipi reali forniti da `@earendil-works/pi-coding-agent/dist/index.d.ts` attraverso i symlink di pnpm (nessuno shim locale, nessun `any` ambientale, nessun `paths` fittizio).
-- `tsconfig.base.json` usa `moduleResolution: bundler` e `module: ESNext` (valori standard del progetto).
-- `.npmrc` contiene solo `ignore-scripts=false` (nessun `public-hoist-pattern`, nessun `shamefully-hoist`).
-- `pnpm-workspace.yaml` contiene solo la configurazione standard dei package workspace e `allowBuilds`.
+  - Pi config directory: `$MEMORA_DATA_DIR/.pi/` (never `~/.pi`).
+- OpenRouter is configured at runtime through
+  `ModelRuntime.setRuntimeApiKey('openrouter', OPENROUTER_API_KEY)`; the key is
+  never written to disk or the repository.
+- Explicit, configurable `cwd` through the `MEMORA_CWD` environment variable.
+- Sessions use Pi's native JSONL format through `SessionManager`.
+- Fastify API in `@memora/server`: POST /api/sessions, GET /api/sessions,
+  GET /api/sessions/:id, POST /api/sessions/:id/messages (SSE streaming),
+  POST /api/sessions/:id/abort.
+- SDK mocks for tests (Vitest + vi.mock); no OpenRouter credit consumed.
+- The SDK ships `dist/index.d.ts`; no local `.d.ts` shim is kept.
+- Workspace symlinks are created by `pnpm install` through `workspace:*`; no
+  custom postinstall or manual `node_modules` changes.
+- TypeScript resolves the SDK's real types through pnpm symlinks; no local shim,
+  ambient `any` or fake `paths`.
+- `tsconfig.base.json` uses `moduleResolution: bundler` and `module: ESNext`.
+- `.npmrc` contains only `ignore-scripts=false`; `pnpm-workspace.yaml` contains
+  standard workspace configuration plus `allowBuilds`.
 
-### Consequenze
-- `tsc --build`, `eslint`, `vitest run` passano su un clone pulito con il solo `pnpm install`.
-- Nessuna API key nel repository.
-- Nessun percorso hardcoded (`$HOME`, directory del progetto, `~/.pi`).
-- Le sessioni risiedono in `$MEMORA_DATA_DIR/pi-sessions/` (formato JSONL nativo Pi).
-- L'SDK rimane aggiornabile come dipendenza esterna (versione bloccata a 1.5.2 per riproducibilità).
-
----
-## ADR-003 — Session Management: rename, archive, modelId nella lista
-**Data:** 2026-11-10
-**Stato:** accepted
-
-### Contesto
-Task 03 richiede la gestione delle sessioni: rinomina (display name), archiviazione soft-delete, modelId nella lista sessioni, restart test automatizzato, branching documentato ma non implementato.
-
-### Decisione
-- **Rinomina**: usa `SessionManager.appendSessionInfo(name)` nativo di Pi SDK. Il nome viene memorizzato come entry di tipo `session_info` nel JSONL, recuperabile tramite `SessionManager.getSessionName()`. Endpoint: `PATCH /api/sessions/:id` con body `{ name: string }`.
-- **Archiviazione**: usa `SessionManager.appendCustomEntry('memora.session-meta', { archived: true/false })` nativo di Pi SDK. La custom entry non partecipa al contesto LLM (vedi documentazione SDK: CustomEntry non partecipa a buildSessionContext). L'ultima entry determina lo stato corrente. Endpoint: `PATCH /api/sessions/:id/archive` con body `{ archived: boolean }`.
-- **GET /api/sessions**: restituisce `name` (da session_info nativa) e `archived` (da custom entry). Per default esclude le sessioni archiviate; con `?archived=true` le include. Non aggiunge `modelId` alla lista perché richiederebbe di aprire ogni sessione (operazione costosa); `modelId` è disponibile via `GET /api/sessions/:id`.
-- **Restart test**: integration test vitest che simula dispose + nuova istanza AgentService con stessa data directory, usando mock dell'SDK (nessuna chiamata OpenRouter reale).
-- **Branching**: documentato come supportato nativamente da Pi SDK ma non esposto in Task 03.
-- **Nessun database separato**: JSONL Pi rimane fonte autorevole; metadata Memora (nome, archiviazione) vive come entry nel JSONL stesso.
-
-### Consequenze
-- `tsc --build`, `eslint`, `vitest run`, `pnpm build` passano.
-- 13 test passano (11 esistenti + 2 nuovi integration test restart).
-- Nessuna API key nel repository.
-- Nessun percorso hardcoded.
-- Nessun nuovo database creato.
-- UI: sidebar mostra `name ?? firstMessage`, tasto archivia/ripristina, tasto rinomina, vista archiviate toggle.
-- Decisione architetturale documentata: "Pi session JSONL remains the source of truth for session metadata; Memora-specific lightweight metadata is stored as Pi custom entries."
+### Consequences
+- `tsc --build`, `eslint` and `vitest run` pass on a clean clone with only
+  `pnpm install`.
+- No API key in the repository.
+- No hardcoded paths (`$HOME`, project directory, `~/.pi`).
+- Sessions live in `$MEMORA_DATA_DIR/pi-sessions/` in native Pi JSONL format.
+- The SDK remains updatable as an external dependency (pinned to 1.5.2 for
+  reproducibility).
 
 ---
-## ADR-004a — Session delete esplicito e irreversibile
-**Data:** 2026-11-14
-**Stato:** accepted
+## ADR-003 — Session management: rename, archive, modelId in the list
+**Date:** 2026-11-10
+**Status:** accepted
 
-### Contesto
-La gestione sessioni richiede ora anche la cancellazione definitiva delle chat. La precedente decisione MVP che la escludeva è superata.
+### Context
+Task 03 requires session management: rename (display name), archive as soft
+delete, modelId in the session list, automated restart testing, and branching
+documented but not implemented.
 
-### Decisione
-- Archive resta reversibile: `memora.session-meta` è metadata soft nel JSONL.
-- Delete è un'azione esplicita e irreversibile: `DELETE /api/sessions/:id` elimina il solo JSONL identificato dal `SessionManager`.
-- Il backend dispone/aborta prima una sessione caricata, rimuove lo stato runtime e verifica con `realpath` che il file sia direttamente sotto `$MEMORA_DATA_DIR/pi-sessions/`; il client non invia mai filepath.
-- Il frontend richiede conferma accessibile e normalizza la selezione dopo la cancellazione.
+### Decision
+- **Rename** uses Pi SDK's native `SessionManager.appendSessionInfo(name)`. The
+  name is stored as a `session_info` entry in JSONL and retrieved through
+  `SessionManager.getSessionName()`. Endpoint: `PATCH /api/sessions/:id` with
+  `{ name: string }`.
+- **Archive** uses `SessionManager.appendCustomEntry('memora.session-meta',
+  { archived: true/false })`. Custom entries do not participate in LLM context;
+  the latest entry determines current state. Endpoint:
+  `PATCH /api/sessions/:id/archive` with `{ archived: boolean }`.
+- **GET /api/sessions** returns `name` from native session_info and `archived`
+  from the custom entry. By default it excludes archived sessions; with
+  `?archived=true` it returns only archived sessions. It does not add `modelId`
+  because that would require opening every session; `modelId` is available from
+  `GET /api/sessions/:id`.
+- **Restart test**: a Vitest integration test simulates dispose + a new
+  AgentService instance on the same data directory using SDK mocks.
+- **Branching**: documented as natively supported by Pi SDK but not exposed in
+  Task 03.
+- **No separate database**: Pi JSONL remains the source of truth; Memora metadata
+  lives as entries in the same JSONL.
 
-### Conseguenze
-- Una chat eliminata non ricompare dopo refresh e non può essere ripristinata.
-- Un ID stale in URL/localStorage viene scartato senza effettuare richieste di resume/messages.
-- Nessuna chiamata OpenRouter è necessaria per i test di delete.
+### Consequences
+- `tsc --build`, `eslint`, `vitest run` and `pnpm build` pass.
+- 13 tests pass (11 existing + 2 restart integration tests).
+- No API key in the repository and no hardcoded paths.
+- No new database is created.
+- UI: sidebar shows `name ?? firstMessage`, archive/restore and rename buttons,
+  and an archived-view toggle.
+- Architecture decision: Pi session JSONL remains the source of truth for session
+  metadata; Memora-specific lightweight metadata is stored as Pi custom entries.
+
+---
+## ADR-004a — Explicit and irreversible session delete
+**Date:** 2026-11-14
+**Status:** accepted
+
+### Context
+Session management now also requires permanent chat deletion. The earlier MVP
+decision that excluded it is superseded.
+
+### Decision
+- Archive remains reversible: `memora.session-meta` is soft metadata in JSONL.
+- Delete is explicit and irreversible: `DELETE /api/sessions/:id` removes only the
+  JSONL identified by `SessionManager`.
+- The backend disposes/aborts a loaded session first, removes runtime state and
+  verifies with `realpath` that the file is directly under
+  `$MEMORA_DATA_DIR/pi-sessions/`; the client never sends a file path.
+- The frontend requires accessible confirmation and normalizes the selection
+  after deletion.
+
+### Consequences
+- A deleted chat does not reappear after refresh and cannot be restored.
+- A stale ID in URL/localStorage is discarded without resume/message requests.
+- No OpenRouter call is needed for delete tests.
 
 ---
 ## ADR-004 — Second Brain: Markdown scanner, SQLite FTS5, retrieval
-**Data:** 2026-11-10
-**Stato:** accepted
+**Date:** 2026-11-10
+**Status:** accepted
 
-### Contesto
-Task 04 richiede l'integrazione di un Second Brain: scanner Markdown, indicizzazione SQLite FTS5, retrieval semantico basato su full-text search, iniezione di contesto nelle sessioni Pi tramite hook `before_agent_start`, e UI per la consultazione delle fonti.
+### Context
+Task 04 requires a Second Brain: Markdown scanner, SQLite FTS5 indexing,
+full-text retrieval, context injection into Pi sessions through the
+`before_agent_start` hook, and UI source browsing.
 
-### Decisione
-- **Dati runtime**: tutti i file Markdown della knowledge base risiedono sotto `$MEMORA_DATA_DIR/{memory,projects,journal,documents}/`. Più nulla è hardcoded.
-- **Scanner**: `scanMarkdown()` scandisce ricorsivamente solo file `.md` nelle quattro directory. Esclude JSONL, segreti, .env, database, codice sorgente. Protegge contro path traversal e symlink che escono dalla data directory.
-- **Chunking**: deterministico, basato su heading Markdown (`#`, `##`, `###`...) e paragrafi. Massimo 2000 caratteri per chunk. Stesso input produce sempre gli stessi chunk.
-- **Indice**: SQLite + FTS5 sotto `$MEMORA_DATA_DIR/index/memora.sqlite`. Tabella `memory_sources` (metadati file), `memory_chunks` (chunk di testo), `memory_chunks_fts` (indice full-text). Indice ricostruibile da zero in qualsiasi momento.
-- **Reindex incrementale**: confronta content hash (SHA-256) e mtime. File nuovi → indicizzati; modificati → aggiornati; cancellati → rimossi; invariati → lasciati.
-- **MemoryService**: package `@memora/memory`. Espone `initialize()`, `reindex()`, `search()`, `listSources()`, `getSource()`, `close()`.
-- **Retrieval automatico**: prima di ogni nuovo turno utente, l'hook `before_agent_start` del Pi SDK 1.5.2 (registrato tramite `session.extensionRunner.on()`) esegue `memoryService.search()` e inietta i chunk recuperati nel system prompt del turno. I chunk NON vengono scritti nei JSONL né modificano il testo utente. Il contesto è transitorio per singolo turno.
-- **API HTTP**: `GET /api/memory/search?q=`, `POST /api/memory/reindex`, `GET /api/memory/sources`.
-- **UI**: pannello "Memoria utilizzata" nella chat che mostra le fonti usate nell'ultimo turno; sezione Second Brain con elenco fonti e ricerca manuale.
-- **Template open source**: `templates/memory/profile.md`, `templates/memory/preferences.md`, `templates/memory/decisions.md`, `templates/projects/esempio-progetto.md`. Nessun dato personale reale nel repository.
-- **Test**: 13 test automatici (scan, chunking, search, reindex idempotente, path traversal, symlink escape, DB cancellato e ricostruito, retrieval con/senza risultati). Nessuna chiamata OpenRouter reale.
-- **Collaudo E2E finale del retrieval**: eseguito con un token univoco casuale assente dal repository e mantenuto nel runtime. FTS ha recuperato la fonte corretta, `memory_sources` è stato emesso, il token è arrivato al modello tramite il context transitorio e non è stato persistito nei messaggi `user`/`system` o nelle entry `custom` del JSONL. Resume e cleanup con reindex sono passati.
-- La risposta finale non ha restituito il token per il comportamento del modello selezionato da `openrouter/free`, non per un fallimento del retrieval. `openrouter/free` non è quindi deterministico per acceptance test che validano il testo della risposta.
+### Decision
+- **Runtime data**: all knowledge-base Markdown files live under
+  `$MEMORA_DATA_DIR/{memory,projects,journal,documents}/`. Nothing is hardcoded.
+- **Scanner**: `scanMarkdown()` recursively scans only `.md` files in those four
+  directories. It excludes JSONL, secrets, `.env`, databases and source code, and
+  protects against path traversal and symlinks escaping the data directory.
+- **Chunking**: deterministic, based on Markdown headings (`#`, `##`, `###`...) and
+  paragraphs. Maximum 2000 characters per chunk; identical input always produces
+  identical chunks.
+- **Index**: SQLite + FTS5 under `$MEMORA_DATA_DIR/index/memora.sqlite`. Tables:
+  `memory_sources` (file metadata), `memory_chunks` (text chunks),
+  `memory_chunks_fts` (full-text index). The index can be rebuilt from scratch.
+- **Incremental reindex**: compares SHA-256 content hash and mtime. New files are
+  indexed; modified files updated; deleted files removed; unchanged files left
+  alone.
+- **MemoryService**: `@memora/memory` exposes `initialize()`, `reindex()`,
+  `search()`, `listSources()`, `getSource()` and `close()`.
+- **Automatic retrieval**: before each new user turn, the Pi SDK 1.5.2
+  `before_agent_start` hook (registered through
+  `session.extensionRunner.on()`) runs `memoryService.search()` and injects the
+  retrieved chunks into the turn system prompt. Chunks are not written to JSONL
+  and do not modify user text; context is transient per turn.
+- **HTTP API**: `GET /api/memory/search?q=`, `POST /api/memory/reindex`,
+  `GET /api/memory/sources`.
+- **UI**: “Memory used” chat panel showing sources from the last turn; Second
+  Brain section with source list and manual search.
+- **Open-source templates**: `templates/memory/profile.md`,
+  `templates/memory/preferences.md`, `templates/memory/decisions.md`,
+  `templates/projects/esempio-progetto.md`. No real personal data in the repo.
+- **Tests**: 13 automated tests covering scan, chunking, search, idempotent
+  reindex, path traversal, symlink escape, deleted/rebuilt DB and retrieval with
+  and without results. No real OpenRouter call.
+- **Final retrieval E2E**: used a random unique token absent from the repository
+  and kept only at runtime. FTS found the correct source, `memory_sources` was
+  emitted, the token reached the model through transient context and was not
+  persisted in user/system messages or custom JSONL entries. Resume and cleanup
+  with reindex passed.
+- The final answer did not return the token because of the model selected by
+  `openrouter/free`, not because retrieval failed. `openrouter/free` is therefore
+  not deterministic for acceptance tests that validate answer text.
 
-### Consequenze
-- `tsc --build`, `eslint`, `vitest run`, `pnpm build` passano.
-- 26 test totali passano (13 agent + 13 memory).
-- Nessuna API key nel repository.
-- Nessun percorso hardcoded.
-- Nessun nuovo database oltre all'indice SQLite ricostruibile.
-- `MEMORA_DATA_DIR` rispettato come directory principale dei dati runtime.
-- L'SDK Pi rimane dipendenza esterna aggiornabile (versione 1.5.2).
-- Decisione architetturale documentata: "Markdown = knowledge source of truth; SQLite/FTS5 = rebuildable search index; Pi JSONL = conversation source of truth."
-
----
-## ADR-005 — Acceptance E2E con modello esplicito e dati semanticamente neutri
-**Data:** 2026-11-13
-**Stato:** accepted
-
-### Contesto
-Il collaudo E2E ha verificato la catena completa del retrieval: token runtime assente dal repository, ricerca FTS della fonte, emissione di `memory_sources`, trasferimento nel context transitorio del modello, user message invariato nel JSONL, assenza del retrieval context dalla history, resume e cleanup riusciti. Il router `openrouter/free` ha però scelto un modello che ha rifiutato di restituire il token; il tool call effettuato non ha recuperato il token.
-
-### Decisione
-- `openrouter/free` non deve essere usato come modello deterministico per acceptance test che confrontano la risposta assistant.
-- I futuri test E2E devono configurare un modello fisico esplicito e registrare il modello effettivamente usato quando disponibile.
-- I dati di test devono essere fittizi e semanticamente neutri, evitando formulazioni come "riservato", "segreto" o equivalenti che possono attivare rifiuti del modello.
-- Le asserzioni sul retrieval (FTS, `memory_sources`, context transitorio e isolamento JSONL) restano separate dalle asserzioni sul testo generato dal modello.
-
-### Conseguenze
-- Il retrieval pipeline di Task 04 è considerato verificato.
-- L'acceptance della risposta LLM richiede un nuovo collaudo con modello esplicito e dati semanticamente neutri.
-- Nessuna chiamata LLM è necessaria per validare FTS, reindex, isolamento del context, resume o cleanup.
-
----
-## ADR-006 — Web Chat: normalizzazione dei content block e streaming SSE
-**Data:** 2026-11-13
-**Stato:** accepted
-
-### Contesto
-Il test manuale della Web Chat ha evidenziato due problemi indipendenti dal retrieval: il frontend leggeva il payload SSE annidato al livello sbagliato e la history trasformava i content block Pi non testuali in JSON grezzo. Inoltre la chiusura dello stream usava uno snapshot React obsoleto di `streamingContent`.
-
-### Decisione
-- Il backend mantiene l'envelope SSE esistente; il client espone al frontend il `payload` reale dell'`AgentSessionEvent` Pi.
-- `normalizePiContent()` è l'unica regola condivisa per estrarre i blocchi `text`. Thinking/reasoning, firme, tool call, tool result e blocchi sconosciuti non diventano testo UI.
-- Lo streaming concatena i `text_delta` in un ref e in uno state React, finalizzando una sola volta su `message_end`/`turn_end` conclusivo o `agent_end`.
-- `memory_sources` resta un evento separato e alimenta esclusivamente il pannello delle fonti.
-- La history espone solo messaggi user/assistant con testo visibile; system e tool messages restano nel JSONL Pi ma non vengono renderizzati nella chat.
-
-### Conseguenze
-- User message e assistant placeholder sono visibili senza refresh.
-- La risposta assistant si aggiorna progressivamente e non viene duplicata alla finalizzazione o al refresh.
-- Lo storico e lo streaming usano la stessa normalizzazione dei content block.
-- Sono coperti i casi text + thinking, thinkingSignature, text multipli, parità storico/streaming e separazione di `memory_sources`.
+### Consequences
+- `tsc --build`, `eslint`, `vitest run` and `pnpm build` pass.
+- 26 tests pass (13 agent + 13 memory).
+- No API key in the repository and no hardcoded paths.
+- No new database beyond the rebuildable SQLite index.
+- `MEMORA_DATA_DIR` is respected as the main runtime data directory.
+- Pi SDK remains an updatable external dependency (pinned to 1.5.2).
+- Architecture decision: Markdown = knowledge source of truth; SQLite/FTS5 =
+  rebuildable search index; Pi JSONL = conversation source of truth.
 
 ---
-## ADR-007 — Viste sessioni disgiunte e cancellazione osservabile
-**Data:** 2026-11-13
-**Stato:** accepted
+## ADR-005 — E2E acceptance with an explicit model and semantically neutral data
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-Il flusso sessioni aveva due ambiguità operative: `archived=true` includeva anche le sessioni attive e il frontend cambiava solo l'etichetta della vista senza ricaricare il filtro corrispondente. Inoltre il dialog DELETE veniva chiuso prima di sapere se la richiesta e il refresh fossero riusciti, nascondendo gli errori all'utente.
+### Context
+The E2E test verified the full retrieval chain: runtime token absent from the
+repo, FTS search, `memory_sources` emission, transfer into transient model
+context, unchanged user message in JSONL, absence of retrieval context from
+history, successful resume and cleanup. However `openrouter/free` selected a
+model that refused to return the token; its tool call did not retrieve it.
 
-### Decisione
-- `GET /api/sessions` restituisce esclusivamente sessioni non archiviate.
-- `GET /api/sessions?archived=true` restituisce esclusivamente sessioni archiviate; non esiste più una modalità "include archived".
-- Il frontend ricarica esplicitamente il filtro quando cambia vista e ignora le risposte di richieste obsolete, così una lista precedente non può sovrascrivere quella corrente.
-- Il DELETE valida metodo, ID e body `{ sessionId, deleted: true }`; il refresh viene eseguito solo dopo una risposta valida. Un errore mantiene aperto il dialog e viene mostrato in modo leggibile.
-- Le richieste senza body (GET e DELETE) non inviano `Content-Type: application/json`: Fastify rifiuterebbe un body JSON vuoto con `400 FST_ERR_CTP_EMPTY_JSON_BODY`. Il content-type viene impostato solo quando viene serializzato un body JSON.
-- Dopo una cancellazione riuscita il JSONL resta la fonte autorevole: la lista viene ricaricata dal backend e la selezione, URL e localStorage vengono puliti solo quando riferiscono la sessione cancellata.
-- Il controllo della vista archiviate usa solo un'icona SVG archive/tray, con `aria-label`, `title`, `aria-pressed` e stato attivo visibile.
+### Decision
+- `openrouter/free` must not be used as a deterministic model for acceptance
+  tests that compare assistant answers.
+- Future E2E tests must configure an explicit physical model and record the model
+  actually used when available.
+- Test data must be fictional and semantically neutral, avoiding wording such as
+  “confidential”, “secret” or equivalents that may trigger model refusals.
+- Retrieval assertions (FTS, `memory_sources`, transient context and JSONL
+  isolation) remain separate from generated-text assertions.
 
-### Conseguenze
-- Archive/restore sposta una sessione tra le due viste senza duplicazioni.
-- Delete di una sessione selezionata svuota la chat e pulisce i riferimenti persistiti; delete di una non selezionata non cambia la chat aperta.
-- I test automatici coprono filtro archive/restore, delete del JSONL, 404 al secondo DELETE, contratto HTTP e transizione della selezione senza chiamate OpenRouter.
-
----
-## ADR-008 — Nuove chat visibili subito come bozze in memoria
-**Data:** 2026-11-13
-**Stato:** accepted
-
-### Contesto
-Pi SDK crea il file JSONL solo quando la sessione contiene il primo messaggio user/assistant. Una sessione appena creata esiste quindi nel runtime ma non in `SessionManager.list()`, e scompariva dalla sidebar fino al primo messaggio. Creare un JSONL vuoto o un messaggio artificiale avrebbe violato il formato e il contesto della sessione Pi.
-
-### Decisione
-- `AgentService.listSessions()` unisce alle sessioni persistite le sessioni caricate in memoria che non hanno ancora un JSONL, marcandole con `draft: true`.
-- Le bozze compaiono solo nella vista attive, con titolo “Nuova chat”.
-- Rename/archive di una bozza restituiscono `409 session_not_persisted`; la UI nasconde quelle azioni e consente comunque la cancellazione, che rimuove la sessione solo dal runtime.
-- Dopo il primo turno la UI ricarica la lista: il JSONL è stato materializzato da Pi e la bozza viene sostituita dalla sessione persistita, senza duplicati.
-- “Nuova chat” riporta sempre alla vista attive, anche se l'utente stava guardando l'archivio.
-
-### Conseguenze
-- La nuova chat è visibile immediatamente senza file vuoti, entry artificiali o chiamate OpenRouter.
-- Le bozze non sopravvivono a un riavvio del backend: non contengono ancora dati conversazionali.
-- Le viste attive e archiviate restano disgiunte anche con sessioni appena create.
+### Consequences
+- The Task 04 retrieval pipeline is considered verified.
+- LLM answer acceptance requires a new test with an explicit model and
+  semantically neutral data.
+- No LLM call is needed to validate FTS, reindex, context isolation, resume or
+  cleanup.
 
 ---
-## ADR-009 — Layout responsive: shell, topbar e pannelli collassabili
-**Data:** 2026-11-13
-**Stato:** accepted
+## ADR-006 — Web Chat: content-block normalization and SSE streaming
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-La UI mescolava stili inline e CSS, la barra del modello occupava una riga separata, il Second Brain aperto riduceva lo spazio della chat e su mobile la sidebar restava sempre visibile lasciando poco spazio alla conversazione.
+### Context
+Manual Web Chat testing exposed two retrieval-independent problems: the frontend
+read the nested SSE payload at the wrong level, and history converted non-text Pi
+content blocks into raw JSON. Stream closure also used a stale React snapshot of
+`streamingContent`.
 
-### Decisione
-- Shell unica `app → sidebar + main-panel`, con topbar contenente titolo della conversazione e selettore modello.
-- Chat con larghezza massima leggibile, messaggi differenziati per ruolo e composer ancorato al fondo.
-- Second Brain convertito in pannello `<details>` collassabile, chiuso per default, senza perdere ricerca e fonti.
-- Su viewport inferiori a 900px la sidebar diventa un drawer con backdrop e pulsante di chiusura; su mobile la topbar espone il toggle del pannello.
-- Stili spostati in `index.css` con variabili colore, stati focus visibili e rispetto di `prefers-reduced-motion`.
+### Decision
+- The backend keeps the existing SSE envelope; the client exposes the real Pi
+  `AgentSessionEvent` `payload` to the frontend.
+- `normalizePiContent()` is the only shared rule for extracting `text` blocks.
+  Thinking/reasoning, signatures, tool calls, tool results and unknown blocks
+  never become UI text.
+- Streaming concatenates `text_delta` in a ref and React state, finalizing once
+  on the concluding `message_end`/`turn_end` or `agent_end`.
+- `memory_sources` remains a separate event and feeds only the sources panel.
+- History exposes only user/assistant messages with visible text; system and tool
+  messages remain in Pi JSONL but are not rendered in chat.
 
-### Conseguenze
-- La chat dispone di più spazio verticale e la lettura è più stabile su desktop e mobile.
-- Nessuna modifica al protocollo API o al formato delle sessioni.
-- `pnpm build`, typecheck, lint e test restano la verifica riproducibile del layout.
-
----
-## ADR-010 — Memory Writer con approvazione esplicita
-**Data:** 2026-11-13
-**Stato:** accepted
-
-### Contesto
-Il Second Brain aveva già Markdown come fonte autorevole, SQLite/FTS5 come indice ricostruibile e retrieval automatico. Mancava la scrittura. Scrivere direttamente ogni informazione emersa dalla conversazione avrebbe reso la knowledge base rumorosa e difficile da correggere.
-
-### Decisione
-- La pipeline è `conversazione → MemoryCandidate → dedup/conflict → Memory Inbox → approvazione → Markdown → reindex`.
-- I candidate vivono append-only in `$MEMORA_DATA_DIR/memory-inbox/candidates.jsonl`; l'ultima versione per ID è lo stato corrente e le versioni precedenti costituiscono audit minimale. Non vengono inseriti nell'indice FTS né nei JSONL di conversazione.
-- `MemoryCandidate` contiene testo proposto, categoria, progetto, destinazione, sezione, rationale sintetica, stato, origine, priorità, duplicato/conflitto e campi di revisione. Non contiene chain-of-thought.
-- Le richieste esplicite (`ricorda che...`, `salva questa informazione...`, `aggiungi al second brain...`, `da ora in poi...`) sono estratte localmente e producono sempre un candidato pending, anche con writer automatico OFF.
-- L'estrazione automatica è conservativa, locale, basata su indicatori testuali e disattivata di default con `MEMORA_MEMORY_WRITER_ENABLED=false`. Il Task 05 non introduce una chiamata LLM aggiuntiva.
-- Dedup/conflict usano `MemoryService.search()` e normalizzazione/Jaccard testuale. Un duplicato probabile resta pending e viene segnalato; un possibile aggiornamento/contraddizione diventa `conflict` con contenuto esistente visibile.
-- Approve valida il target (solo `memory/`, `projects/`, `journal/`, `.md`, niente traversal/symlink), scrive atomicamente un bullet nella sezione scelta, senza duplicare heading o bullet identici, poi esegue reindex. Reject non modifica Markdown.
-- Il rilevamento segreti blocca API key, password, token, private key, cookie e credenziali comuni. Per una richiesta esplicita viene conservato solo un audit redatto; per l'estrazione automatica il candidato viene scartato.
-- La UI espone Memory Inbox nella sezione Second Brain con Approva, Modifica, Rifiuta, testo, categoria, progetto, destinazione e confronto con il contenuto esistente.
-
-### Conseguenze
-- Conversazione ≠ memoria e candidate ≠ approved memory: solo il Markdown approvato è conoscenza autorevole.
-- Dopo Approva il contenuto è subito recuperabile senza riavvio, perché il reindex è automatico.
-- Il diff completo del file non è ancora mostrato; la preview MVP mostra cosa verrà aggiunto, dove e l'eventuale conflitto.
-- I conflitti approvati aggiungono il nuovo contenuto senza cancellare quello vecchio: la risoluzione automatica delle contraddizioni resta fuori scope.
-- I candidate non approvati non sono recuperabili e non modificano il Second Brain.
+### Consequences
+- User message and assistant placeholder appear without refresh.
+- The assistant answer updates progressively and is not duplicated at
+  finalization or refresh.
+- History and streaming use the same content-block normalization.
+- Tests cover text + thinking, thinkingSignature, multiple text blocks,
+  history/streaming parity and separation of `memory_sources`.
 
 ---
-## ADR-011 — Runtime production: Fastify unico processo e static React
-**Data:** 2026-11-13
-**Stato:** accepted
+## ADR-007 — Disjoint session views and observable deletion
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-Il runtime richiedeva backend Fastify e Vite dev server avviati manualmente. Per un servizio self-hosted permanente servono un solo processo in production, frontend già compilato, gestione SIGTERM e avvio systemd.
+### Context
+The session flow had two ambiguities: `archived=true` also included active
+sessions, and the frontend changed only the view label without reloading the
+corresponding filter. The DELETE dialog also closed before knowing whether the
+request and refresh succeeded, hiding errors from the user.
 
-### Decisione
-- `NODE_ENV=production` attiva `@fastify/static` (Fastify 5) con root sulla build React e `wildcard: false`.
-- La build Vite attuale resta in `apps/dist/web` (`outDir: ../dist/web`) ed è sovrascrivibile con `MEMORA_WEB_DIST_DIR`.
-- SPA fallback: `setNotFoundHandler` restituisce `index.html` solo per GET/HEAD non-API senza estensione. `/api/*` sconosciute restano JSON 404 e gli asset mancanti restano 404.
-- In development Fastify non registra static e Vite continua a usare il proxy `/api` su :3000.
-- `pnpm start` esegue il server compilato con `NODE_ENV=production`, senza Vite e senza `tsx`.
-- Shutdown: SIGTERM/SIGINT chiudono prima Fastify e poi AgentService/MemoryService, con guardia contro doppio shutdown.
-- Unit systemd di esempio in `deploy/memora.service`, con `EnvironmentFile` assoluto perché systemd non espande `~`, `User=memora`, `WorkingDirectory=/opt/memora`, `Restart=on-failure` e journald.
-- Bind predefinito `127.0.0.1`; accesso remoto tramite SSH tunnel anche su Tailscale. Nessun Tailscale Serve.
+### Decision
+- `GET /api/sessions` returns only non-archived sessions.
+- `GET /api/sessions?archived=true` returns only archived sessions; there is no
+  longer an “include archived” mode.
+- The frontend explicitly reloads the filter on view change and ignores stale
+  responses, so an older list cannot overwrite the current one.
+- DELETE validates method, ID and `{ sessionId, deleted: true }`; refresh runs
+  only after a valid response. An error keeps the dialog open and displays a
+  readable message.
+- Requests without a body (GET/DELETE) do not send `Content-Type:
+  application/json`; Fastify would reject an empty JSON body with `400
+  FST_ERR_CTP_EMPTY_JSON_BODY`. Content-Type is set only when a JSON body is
+  serialized.
+- After successful deletion, JSONL remains authoritative: the list is reloaded
+  from the backend and selection, URL and localStorage are cleared only when they
+  refer to the deleted session.
+- The archived-view control uses an archive/tray SVG icon with `aria-label`,
+  `title`, `aria-pressed` and a visible active state.
 
-### Conseguenze
-- Production richiede solo `pnpm build && pnpm start`.
-- `pnpm smoke:prod` avvia solo il server compilato e verifica frontend, API, SPA fallback, 404 e graceful shutdown.
-- La unit contiene path di deployment, non percorsi hardcoded nel codice applicativo.
-- La build frontend deve esistere prima dell'avvio production: in sua assenza il server fallisce con un errore esplicito.
-
----
-## ADR-012 — Gestione delle memorie approvate direttamente sul Markdown
-**Data:** 2026-11-13
-**Stato:** accepted
-
-### Contesto
-Dopo l'approvazione, l'utente poteva creare e recuperare memorie ma non gestirle dalla Web UI. Serviva chiudere il ciclo crea → recupera → modifica → elimina senza introdurre un database separato delle memorie approvate.
-
-### Decisione
-- Markdown resta la fonte autorevole; SQLite/FTS5 resta un indice ricostruibile.
-- La lista fonti espone path relativo, categoria, modifiedAt, chunkCount e titolo principale; il dettaglio restituisce il contenuto completo tramite source ID.
-- Il client invia solo `source id`. Il backend risolve il path dall'indice e non accetta mai path arbitrari.
-- Edit e delete verificano: path sotto `MEMORA_DATA_DIR`, root ammessa (`memory`, `projects`, `journal`, `documents`), estensione `.md`, assenza di symlink/path traversal e parent realpath dentro la data directory.
-- Edit scrive atomicamente il file completo con temp + rename, preserva un modo sicuro e reindicizza. Delete elimina solo il file target, senza rimuovere directory parent, e reindicizza.
-- Dopo ogni operazione il source viene restituito aggiornato o rimosso; `search()` vede subito il nuovo contenuto o l'assenza.
-- La UI mostra le fonti, apre il dettaglio, permette modifica Markdown in textarea e delete con conferma esplicita. I risultati di ricerca aprono la fonte con heading/line range evidenziati.
-- Nei file core `memory/profile.md`, `memory/preferences.md`, `memory/decisions.md` la UI nasconde il delete completo perché possono contenere più memorie; la modifica del file completo resta disponibile.
-- Rename/move non è implementato nel MVP: edit e delete sono prioritari e il move aggiungerebbe rischio di overwrite.
-
-### Conseguenze
-- La gestione delle memorie approvate non crea un nuovo database né duplica la conoscenza.
-- Il reindex mantiene FTS allineato; un riavvio non è necessario.
-- Il delete di singoli bullet non è affidabile e resta rimandato a memory entry ID strutturati.
-- Il delete file completo è disponibile solo per fonti non-core nella UI; l'API resta esplicita e protetta.
+### Consequences
+- Archive/restore moves a session between the two views without duplication.
+- Deleting a selected session clears the chat and persisted references; deleting
+  a non-selected session does not change the open chat.
+- Automated tests cover archive/restore filtering, JSONL deletion, 404 on a second
+  DELETE, the HTTP contract and selection transitions without OpenRouter calls.
 
 ---
-## ADR-013 — Personal Assistant Runtime Isolation
-**Data:** 2026-11-13
-**Stato:** accepted
+## ADR-008 — New chats immediately visible as in-memory drafts
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-Una domanda personale ha prodotto una risposta contaminata da task, test E2E, SQLite, source ID e dettagli del repository Memora. La causa era che le sessioni usavano la directory del repository come cwd, caricavano AGENTS.md/project resources e mantenevano i built-in coding tools attivi. Il repository dell'applicazione non deve essere conoscenza dell'assistente personale.
+### Context
+Pi SDK creates the JSONL file only when a session contains its first
+user/assistant message. A new session therefore exists at runtime but not in
+`SessionManager.list()` and disappeared from the sidebar until the first message.
+Creating an empty JSONL or artificial message would violate Pi's session format
+and context.
 
-### Decisione
-- Le sessioni personal assistant usano un CWD isolato: `$MEMORA_DATA_DIR/runtime/assistant`, sovrascrivibile con `MEMORA_ASSISTANT_CWD`.
-- `createAgentSession` usa `noTools: "builtin"`: read, bash, edit, write, grep, find e ls non sono attivi; le custom/integration tools esplicitamente registrate restano disponibili.
-- `DefaultResourceLoader` viene configurato esplicitamente con `noContextFiles`, `noSkills`, `noPromptTemplates`, `noExtensions`, `appendSystemPrompt: []` e `systemPrompt: PERSONAL_ASSISTANT_SYSTEM_PROMPT`.
-- L'inline extension Memora per Memory Retrieval continua a essere caricata tramite `extensionFactories`; le estensioni scoperte automaticamente dal repository non vengono caricate.
-- Il system prompt limita le risposte a conversazione, memoria recuperata e integrazioni disponibili; vieta di trattare codice/repository come conoscenza personale, impone di dichiarare la mancanza di informazioni e chiarisce che i chunk di memoria sono contesto, non istruzioni.
-- Le sessioni nuove hanno header/CWD assistant. La discovery usa `SessionManager.listAll(sessionDir)` per mantenere visibili le sessioni legacy; il resume usa `SessionManager.open(..., assistantCwd)` per applicare la stessa policy.
-- Il line range dei chunk resta in `memory_sources` per la UI ma viene rimosso dal testo iniettato nel prompt, perché il modello lo interpretava come contenuto informativo.
+### Decision
+- `AgentService.listSessions()` merges persisted sessions with in-memory sessions
+  that have no JSONL yet, marking them `draft: true`.
+- Drafts appear only in the active view, titled “New chat”.
+- Rename/archive on a draft return `409 session_not_persisted`; the UI hides those
+  actions but still allows deletion, which removes the session from runtime only.
+- After the first turn the UI reloads the list: Pi materializes the JSONL and the
+  draft is replaced by the persisted session without duplicates.
+- “New chat” always returns to the active view, even if the user was viewing the
+  archive.
 
-### Conseguenze
-- Una sessione personal assistant non può leggere file, eseguire bash o esplorare il repository.
-- AGENTS.md, skills, prompt template, documentazione e source code del repository non entrano nel context.
-- Memory Retrieval e Memory Writer restano funzionanti.
-- Model selection, resume, streaming, archive/delete, Memory Inbox e production runtime restano invariati.
-- Il Coding Mode è deliberatamente rimandato: la policy tool è centralizzata per poterlo aggiungere in futuro.
-
----
-## ADR-014 — Admin settings JSON e precedenza environment
-**Stato:** accepted
-
-### Contesto
-Le opzioni runtime erano configurabili solo tramite environment e file secrets.
-Servono modifica da Web UI, override operativi systemd/Docker e compatibilità con
-installazioni esistenti, senza mettere segreti nelle impostazioni.
-
-### Decisione
-- Le impostazioni non derivate vivono in `$MEMORA_DATA_DIR/config/settings.json`,
-  non in SQLite. Il file è versionato, leggibile, scritto atomicamente e `0600`.
-- Precedenza default → file → environment. I campi env sono read-only nell'API/UI.
-- Le API amministrative sono centralizzate sotto `/api/admin/*`; non c'è ancora
-  autenticazione e questo è documentato come limite.
-- La configurazione live usa setter espliciti di MemoryService, MemoryCurator e
-  AgentService. Embeddings e abilitazione Curator richiedono restart; provider,
-  modello e reasoning del Curator vengono ricaricati a caldo, mentre il provider
-  Chat predefinito si applica live alle nuove sessioni.
-- `chat.defaultModel` cambia solo il default delle nuove sessioni.
-- PATCH usa una whitelist, validazione di enum/range e rifiuto ricorsivo delle
-  chiavi che sembrano segreti.
-- Lite/Standard sono preset UI con preview; non vengono applicati silenziosamente.
-
-### Conseguenze
-- Il runtime può essere amministrato senza modificare secrets.env.
-- Le installazioni con sole variabili d'ambiente continuano a funzionare e non
-  viene creato settings.json fino al primo salvataggio.
-- Un file corrotto non blocca l'avvio; viene ignorato con warning.
-- Un cambio di embeddings o abilitazione Curator richiede un riavvio esplicito;
-  provider/modello/ragionamento Curator e provider Chat sono live. Il processo web
-  non riceve privilegi sudo.
+### Consequences
+- A new chat is visible immediately without empty files, artificial entries or
+  OpenRouter calls.
+- Drafts do not survive a backend restart because they contain no conversation
+  data yet.
+- Active and archived views remain disjoint even for newly created sessions.
 
 ---
-## ADR-015 — Provider multipli, secret store e cataloghi modello
-**Stato:** accepted
+## ADR-009 — Responsive layout: shell, topbar and collapsible panels
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-La configurazione chat era legata a OpenRouter e le API key vivevano solo
-nell'environment. Serve selezione provider/modello dalla Web UI, con OpenCode Go
-già supportato dal Pi SDK installato, senza esporre credenziali.
+### Context
+The UI mixed inline styles and CSS, the model bar occupied a separate row, an
+open Second Brain reduced chat space, and on mobile the sidebar was always
+visible, leaving little room for conversation.
 
-### Decisione
-- `openrouter` e `opencode-go` sono i provider supportati. Pi fornisce entrambi;
-  gli ID OpenCode Go sono bare (`deepseek-v4.1-flash`).
-- Le API key sono in `$MEMORA_DATA_DIR/config/secrets.json`, mode `0600`,
-  scrittura atomica; l'environment ha precedenza e rende il campo read-only.
-  GET espone solo `{configured, source, editable}`.
-- Il catalogo OpenRouter usa il catalogo Pi (375+ modelli con metadata). OpenCode
-  Go usa l'endpoint remoto ufficiale filtrato sui modelli che il Pi installato
-  può eseguire, con cache 10 minuti, refresh esplicito e fallback cache/Pi.
-- La UI Chat e Curator hanno provider e modello indipendenti. Il Curator
-  riutilizza la stessa credenziale del provider e accetta solo modelli
-  OpenAI-compatible su OpenCode Go.
-- Il default Chat si applica alle nuove sessioni; quelle esistenti conservano il
-  modello persistito. Il Curator provider/model viene ricaricato a caldo.
-- Il test connessione usa endpoint catalogo/key, non inferenza, e restituisce
-  errori sanitizzati.
+### Decision
+- Single `app → sidebar + main-panel` shell, with a topbar containing the
+  conversation title and model selector.
+- Chat with a readable maximum width, role-differentiated messages and a composer
+  anchored to the bottom.
+- Second Brain converted into a collapsible `<details>` panel, closed by default,
+  without losing search or sources.
+- Below 900px the sidebar becomes a drawer with backdrop and close button; on
+  mobile the topbar exposes the panel toggle.
+- Styles moved to `index.css` with color variables, visible focus states and
+  respect for `prefers-reduced-motion`.
 
-### Conseguenze
-- Le API key non vengono mai restituite né scritte nei settings.
-- La ricerca modelli è case-insensitive su nome, ID e provider; OpenRouter espone
-  il filtro Free basato sui metadata.
-- Se il catalogo remoto fallisce, Memora continua con cache/Pi e warning.
-- Non c'è ancora autenticazione admin: il limite resta documentato.
-- La verifica di inferenza OpenCode Go richiede una chiave fornita dall'utente e
-  non può essere eseguita nei test automatici.
+### Consequences
+- Chat has more vertical space and reading is more stable on desktop and mobile.
+- No API protocol or session-format changes.
+- `pnpm build`, typecheck, lint and tests remain the reproducible layout
+  verification.
 
 ---
-## ADR-016 — Guardrail della memoria e redazione PII
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-010 — Memory Writer with explicit approval
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-La memoria recuperata entra nel prompt della chat e un estratto viene inviato al
-Curator remoto. I documenti Markdown possono contenere testo ostile o dati
-personali; l'output del Curator non è fidato. Servono difese verificabili senza
-cambiare il formato Markdown-first.
+### Context
+The Second Brain already had authoritative Markdown, a rebuildable SQLite/FTS5
+index and automatic retrieval. Writing was missing. Writing every piece of
+information directly from conversation would make the knowledge base noisy and
+hard to correct.
 
-### Decisione
-- La memoria viene inserita in un blocco JSON delimitato da
-  `<memora-memory-json>`; `<`, `>` e `&` sono escapati e i marcatori di confine
-  e i caratteri di controllo vengono neutralizzati. Il prompt base resta il
-  prefisso e dichiara che la memoria è dato, non istruzione.
-- Prima del Curator cloud i segreti bloccano l'analisi; email, telefoni, IBAN,
-  carte valide secondo Luhn e codici fiscali italiani vengono redatti. I chunk
-  di memoria con PII ad alta confidenza non vengono inviati.
-- L'output del Curator viene rifiutato se contiene segreti, PII o segnaposto di
-  redazione. Restano validazione del path, approvazione umana e log di soli
-  metadata.
-- La UI Impostazioni mostra quali provider Chat/Curator ricevono dati, che gli
-  embeddings sono locali e quali categorie vengono redatte.
-- La redazione è euristica: nomi, indirizzi e altre PII non riconoscibili
-  possono ancora raggiungere il provider. Il rischio residuo è documentato in
-  `docs/MEMORY-SECURITY.md`.
-- L'autenticazione admin resta un prerequisito del task `09-hardening.md` per
-  qualsiasi esposizione di rete.
+### Decision
+- The pipeline is `conversation → MemoryCandidate → dedup/conflict → Memory Inbox
+  → approval → Markdown → reindex`.
+- Candidates live append-only in
+  `$MEMORA_DATA_DIR/memory-inbox/candidates.jsonl`; the latest version per ID is
+  current state and previous versions form a minimal audit trail. They are not
+  inserted into FTS or conversation JSONL.
+- `MemoryCandidate` contains proposed text, category, project, destination,
+  section, synthetic rationale, status, origin, priority, duplicate/conflict and
+  review fields. It contains no chain-of-thought.
+- Explicit requests (`remember that...`, `save this information...`, `add to the
+  second brain...`, `from now on...`) are extracted locally and always produce a
+  pending candidate, even with automatic writing OFF.
+- Automatic extraction is conservative, local, text-marker based and disabled by
+  default with `MEMORA_MEMORY_WRITER_ENABLED=false`. Task 05 adds no extra LLM
+  call.
+- Dedup/conflict use `MemoryService.search()` and textual normalization/Jaccard.
+  A likely duplicate stays pending and is flagged; a possible update/contradiction
+  becomes `conflict` with visible existing content.
+- Approve validates the target (only `memory/`, `projects/`, `journal/`, `.md`, no
+  traversal/symlink), atomically writes a bullet in the chosen section without
+  duplicating headings or identical bullets, then reindexes. Reject does not
+  modify Markdown.
+- Secret detection blocks API keys, passwords, tokens, private keys, cookies and
+  common credentials. For an explicit request only a redacted audit is kept; for
+  automatic extraction the candidate is discarded.
+- The UI exposes Memory Inbox under Second Brain with Approve, Edit, Reject, text,
+  category, project, destination and comparison with existing content.
 
-### Conseguenze
-- Aumenta la dimensione del prompt per via del JSON, ma il confine è
-  strutturalmente più difficile da chiudere.
-- Un turno con PII può perdere il contesto delle memorie che le contengono; è
-  preferibile a un invio non necessario.
-- I test di prompt injection e redazione diventano parte della suite.
-- La protezione non è una garanzia contro prompt injection semantico né contro
-  tutte le PII; il modello di minaccia e i rischi residui restano espliciti.
-
----
-## ADR-017 — Evaluation harness e baseline della memoria
-**Data:** 2026-11-15
-**Stato:** accepted
-
-### Contesto
-Il benchmark esistente misurava solo poche query sintetiche e non copriva
-Curator, regressioni, ambiguità o modalità live. Serve una valutazione
-riproducibile che non introduca dati personali e che possa girare in CI senza
-rete.
-
-### Decisione
-- I dataset sono JSON sintetici in `evaluation/`: 46 query di retrieval e 15 casi
-  Curator. Nessun dato reale, personale o runtime entra nel repository.
-- Le metriche di retrieval sono Recall@k, Precision@k, MRR, nDCG@k, latenza e
-  token stimati (`caratteri / 4`). Le modalità sono separate.
-- Il Curator replay usa output provider congelati e misura la pipeline di
-  validazione, le soglie e le classi. La modalità live è esplicita, usa la
-  credenziale locale e non può scrivere la baseline.
-- `evaluation/baseline.json` è versionata. Il check usa una tolleranza assoluta
-  di `0.02`; la latenza è misurata ma non è un gate.
-- La CI esegue lexical e Curator replay senza modello o rete. Semantic/hybrid
-  richiedono `MEMORA_DATA_DIR` con il modello locale.
-- Il dataset è volutamente piccolo e sintetico; i risultati non sostituiscono
-  una valutazione su conversazioni reali anonimizzate.
-
-### Conseguenze
-- Ogni modifica a retrieval o Curator può essere confrontata con una baseline
-  stabile.
-- I cambi intenzionali di qualità richiedono l'aggiornamento esplicito della
-  baseline.
-- La misura live del reasoning è indicativa e non riproducibile; non viene usata
-  come gate.
-- La precision@10 va letta insieme a Recall e nDCG, perché molte query hanno una
-  sola evidenza gold.
+### Consequences
+- Conversation ≠ memory and candidate ≠ approved memory: only approved Markdown
+  is authoritative knowledge.
+- After approval, content is immediately retrievable without restart because
+  reindexing is automatic.
+- The full file diff is not shown yet; MVP preview shows what will be added, where
+  and any conflict.
+- Approved conflicts add new content without deleting the old content; automatic
+  contradiction resolution remains out of scope.
+- Unapproved candidates are not retrievable and do not modify the Second Brain.
 
 ---
-## ADR-018 — Metadata per bullet e lineage delle memorie
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-011 — Production runtime: single Fastify process and static React
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-Il Markdown era la fonte autorevole, ma non conservava identità, provenienza,
-confidenza o storico degli aggiornamenti. SQLite non poteva essere l'unica copia
-di questi dati senza violare il principio di indice ricostruibile.
+### Context
+The runtime required manually starting a Fastify backend and a Vite dev server.
+A permanent self-hosted service needs one production process, a prebuilt frontend,
+SIGTERM handling and systemd startup.
 
-### Decisione
-- I metadata vivono in un commento HTML sulla riga del bullet
-  (`<!-- memora-memory:v1 ... -->`), invisibile nel Markdown renderizzato.
-- `memoryId` identifica la lineage stabile; `versionId` identifica la singola
-  versione; `version`, `status`, `supersedes` e `supersededBy` descrivono la
-  catena.
-- Provenienza: sessione, messaggio, turno, timestamp, confidenza, scope,
-  progetto, entità, tag, provider e modello Curator.
-- Un aggiornamento conserva il bullet precedente come `superseded` e aggiunge un
-  bullet `active`. Il reindex rimuove i commenti, svuota le righe superseded e
-  indicizza solo le versioni attive.
-- SQLite aggiunge `memory_records` e `metadata` sui chunk. Entrambi sono derivati
-  e ricostruibili dai file.
-- La migrazione dei bullet legacy è esplicita e non distruttiva: dry-run
-  predefinito, `--apply` aggiunge solo commenti, `--backup` opzionale.
-- Metadata invalidi o riferimenti rotti producono warning con file, riga e
-  codice; non vengono mai loggati contenuti.
+### Decision
+- `NODE_ENV=production` enables `@fastify/static` (Fastify 5) rooted at the React
+  build with `wildcard: false`.
+- The current Vite build stays in `apps/dist/web` (`outDir: ../dist/web`) and can
+  be overridden with `MEMORA_WEB_DIST_DIR`.
+- SPA fallback: `setNotFoundHandler` returns `index.html` only for non-API
+  GET/HEAD requests without a file extension. Unknown `/api/*` remain JSON 404,
+  and missing assets remain 404.
+- In development Fastify does not register static and Vite keeps proxying `/api`
+  to :3000.
+- `pnpm start` runs the compiled server with `NODE_ENV=production`, without Vite
+  and without `tsx`.
+- Shutdown: SIGTERM/SIGINT close Fastify first, then AgentService/MemoryService,
+  with double-shutdown protection.
+- Example systemd unit in `deploy/memora.service`, with an absolute
+  `EnvironmentFile` because systemd does not expand `~`, `User=memora`,
+  `WorkingDirectory=/opt/memora`, `Restart=on-failure` and journald.
+- Default bind `127.0.0.1`; remote access through an SSH tunnel, including over
+  Tailscale. Tailscale Serve is not used.
 
-### Conseguenze
-- Le memorie sono più verbose nel sorgente, ma restano leggibili e modificabili.
-- Il retrieval non restituisce versioni storiche.
-- Il database può essere eliminato e ricostruito senza perdere la provenienza,
-  purché i commenti Markdown siano conservati.
-- La migrazione automatica non modifica i dati dell'utente all'avvio.
-- I commenti non sono firmati: la provenienza è affidabile quanto il filesystem.
-
----
-## ADR-019 — Memoria storica, retention e integrità
-**Data:** 2026-11-15
-**Stato:** accepted
-
-### Contesto
-Le versioni `superseded` erano conservate ma non consultabili. L'utente poteva
-chiedere “che cosa usava prima?” e ricevere “non è in memoria”, anche se la
-versione storica esisteva nel Markdown. Mancavano inoltre policy esplicite per
-retention, cancellazione propagata e verifica dell'indice.
-
-### Decisione
-- Le versioni superate restano fuori dal retrieval normale.
-- Per query con indicatori temporali espliciti, l'estensione cerca solo versioni
-  `superseded` nei path delle fonti attive pertinenti e aggiunge un blocco
-  `Memoria storica` separato e marcato come non corrente.
-- La ricerca storica è lessicale e conservativa; non viene usata per domande sul
-  presente.
-- La vista di una fonte espone lo storico completo con stato, versione, data,
-  provenienza e testo.
-- La retention è manuale: `memory:history:prune` è dry-run di default, richiede
-  `--apply`, supporta backup e non rimuove mai versioni attive.
-- La cancellazione di una fonte propaga a indice, vettori e candidate; i
-  candidati pendenti diventano `rejected` con `source_deleted`, quelli approvati
-  ricevono `purgedAt`.
-- `memory:integrity` esegue controlli read-only su SQLite, foreign key e metadata
-  Markdown senza loggare contenuti.
-- I riassunti gerarchici sono valutati e rimandati: con il corpus attuale
-  aggiungono complessità e rischio di perdita di dettaglio.
-
-### Conseguenze
-- La chat può rispondere a domande storiche senza trattare il passato come
-  verità corrente.
-- La retention è prevedibile e non cancella automaticamente dati dell'utente.
-- Backup e restore hanno una procedura verificabile.
-- La ricerca storica è euristica e non copre query temporali implicite.
+### Consequences
+- Production only needs `pnpm build && pnpm start`.
+- `pnpm smoke:prod` starts only the compiled server and verifies frontend, API,
+  SPA fallback, 404 and graceful shutdown.
+- The unit contains deployment paths, not application-code hardcoded paths.
+- The frontend build must exist before production start; otherwise the server
+  fails with an explicit error.
 
 ---
-## ADR-020 — Retrieval runtime con budget, filtri e diversità
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-012 — Managing approved memories directly in Markdown
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-Il retrieval restituiva i risultati grezzi di FTS/vector/RRF. Mancavano un
-budget token, filtri espliciti, protezione dalla ridondanza e uso dei metadata
-per il ranking. Il benchmark misurava le modalità grezze, non la pipeline reale.
+### Context
+After approval, the user could create and retrieve memories but not manage them
+from the Web UI. The create → retrieve → edit → delete cycle needed completion
+without introducing a separate database of approved memories.
 
-### Decisione
-- `MemoryService.search()` applica overfetch, filtri per progetto/tipo/confidenza,
-  reranking con confidenza/importanza/recency, diversità Jaccard e budget
-  `maxChars` + `maxTokens`.
-- `MEMORA_MEMORY_MAX_TOKENS` (default 1000) usa una stima `caratteri/4`;
-  `MEMORA_MEMORY_DIVERSITY` (default 0.15) controlla la penalità MMR. Entrambi
-  sono modificabili da **Impostazioni → Memoria** e si applicano live.
-- Le modalità dirette restano disponibili per benchmark e diagnostica. La
-  baseline non cambia; la pipeline runtime ha test dedicati.
-- Non viene caricato un cross-encoder locale: RAM, latenza e mancanza di un
-  modello italiano verificato rendono il costo non giustificato.
-- Query rewriting e multi-query sono valutati e rimandati; l'ibrido fonde già
-  lexical e semantico.
-- `memory_sources` espone source ID e metadata delle versioni usate; i log non
-  contengono contenuti.
+### Decision
+- Markdown remains authoritative; SQLite/FTS5 remains a rebuildable index.
+- The source list exposes relative path, category, modifiedAt, chunkCount and
+  main heading; detail returns full content through a source ID.
+- The client sends only a `source id`. The backend resolves the path from the
+  index and never accepts arbitrary paths.
+- Edit and delete validate: path under `MEMORA_DATA_DIR`, allowed root (`memory`,
+  `projects`, `journal`, `documents`), `.md` extension, no symlink/path traversal,
+  and parent realpath inside the data directory.
+- Edit atomically writes the full file with temp + rename, preserves a safe mode
+  and reindexes. Delete removes only the target file, without removing parent
+  directories, and reindexes.
+- After every operation the source is returned updated or removed; `search()`
+  immediately sees the new content or its absence.
+- The UI lists sources, opens detail, allows Markdown editing in a textarea and
+  deletion with explicit confirmation. Search results open the source with
+  heading/line range highlighted.
+- For core files `memory/profile.md`, `memory/preferences.md` and
+  `memory/decisions.md`, the UI hides full-file deletion because they may contain
+  multiple memories; full-file editing remains available.
+- Rename/move is not implemented in the MVP: edit and delete are priorities and
+  move would add overwrite risk.
 
-### Conseguenze
-- Il contesto è più prevedibile e meno ridondante.
-- La pipeline runtime può divergere dalla baseline grezza; serve un futuro
-  benchmark dedicato per misurarla end-to-end.
-- I pesi e la diversità sono deterministici e richiedono taratura su query reali.
-- I bullet legacy senza metadata restano inclusi e ricevono boost neutri.
+### Consequences
+- Managing approved memories creates no new database and does not duplicate
+  knowledge.
+- Reindexing keeps FTS aligned; no restart is required.
+- Deleting individual bullets is not reliable and remains deferred to structured
+  memory entry IDs.
+- Full-file deletion is available only for non-core sources in the UI; the API
+  remains explicit and protected.
 
 ---
-## ADR-021 — Coda Curator durevole e idempotenza
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-013 — Personal Assistant runtime isolation
+**Date:** 2026-11-13
+**Status:** accepted
 
-### Contesto
-La coda del Curator era volatile: crash o chiusura forzata potevano perdere
-proposte. Un retry dopo una scrittura già avvenuta poteva duplicare candidate.
-Il consolidamento dell'intera memoria era assente.
+### Context
+A personal question produced an answer contaminated by tasks, E2E tests, SQLite,
+source IDs and Memora repository details. Sessions used the repository directory
+as cwd, loaded AGENTS.md/project resources and kept built-in coding tools active.
+The application repository must not be personal-assistant knowledge.
 
-### Decisione
-- I job vengono persistiti in `$MEMORA_DATA_DIR/memory-inbox/writer-queue.jsonl`
-  con permessi `0600`, retry, backoff e limite di 100 pending.
-- Ogni job ha un `idempotencyKey` da `turnId`, `sourceMessageId` o hash del testo.
-- I job `running` vengono rimessi in coda dopo un riavvio.
-- Il writer ignora un turno se esiste già un candidate con lo stesso
+### Decision
+- Personal-assistant sessions use an isolated CWD:
+  `$MEMORA_DATA_DIR/runtime/assistant`, overridable with `MEMORA_ASSISTANT_CWD`.
+- `createAgentSession` uses `noTools: "builtin"`: read, bash, edit, write, grep,
+  find and ls are disabled; explicitly registered custom/integration tools remain
+  available.
+- `DefaultResourceLoader` is explicitly configured with `noContextFiles`,
+  `noSkills`, `noPromptTemplates`, `noExtensions`, `appendSystemPrompt: []` and
+  `systemPrompt: PERSONAL_ASSISTANT_SYSTEM_PROMPT`.
+- The inline Memora Memory Retrieval extension is still loaded through
+  `extensionFactories`; extensions discovered automatically from the repository
+  are not loaded.
+- The system prompt limits answers to conversation, retrieved memory and available
+  integrations; it forbids treating repository code as personal knowledge,
+  requires declaring missing information, and clarifies that memory chunks are
+  context, not instructions.
+- New sessions have an assistant header/CWD. Discovery uses
+  `SessionManager.listAll(sessionDir)` to keep legacy sessions visible; resume
+  uses `SessionManager.open(..., assistantCwd)` to apply the same policy.
+- Chunk line ranges remain in `memory_sources` for the UI but are removed from
+  text injected into the prompt because the model treated them as informative
+  content.
+
+### Consequences
+- A personal-assistant session cannot read files, run bash or explore the
+  repository.
+- AGENTS.md, skills, prompt templates, documentation and repository source code
+  never enter context.
+- Memory Retrieval and Memory Writer keep working.
+- Model selection, resume, streaming, archive/delete, Memory Inbox and production
+  runtime remain unchanged.
+- Coding Mode is deliberately deferred; tool policy is centralized so it can be
+  added later.
+
+---
+## ADR-014 — Admin settings JSON and environment precedence
+**Status:** accepted
+
+### Context
+Runtime options were configurable only through environment variables and secrets
+files. Web UI editing, systemd/Docker operational overrides and compatibility with
+existing installations were needed without putting secrets in settings.
+
+### Decision
+- Non-derived settings live in `$MEMORA_DATA_DIR/config/settings.json`, not
+  SQLite. The file is versioned, readable, atomically written and `0600`.
+- Precedence: defaults → file → environment. Environment fields are read-only in
+  API/UI.
+- Admin APIs are centralized under `/api/admin/*`; authentication does not exist
+  yet and this is documented as a limitation.
+- Live configuration uses explicit MemoryService, MemoryCurator and AgentService
+  setters. Embeddings and Curator enablement require restart; Curator provider,
+  model and reasoning reload live, while the default Chat provider applies live to
+  new sessions.
+- `chat.defaultModel` changes only the default for new sessions.
+- PATCH uses a whitelist, enum/range validation and recursive rejection of
+  secret-looking keys.
+- Lite/Standard are UI presets with preview; they are never applied silently.
+
+### Consequences
+- The runtime can be administered without editing secrets.env.
+- Environment-only installations keep working and no settings.json is created
+  until the first save.
+- A corrupt file does not block startup; it is ignored with a warning.
+- Changing embeddings or Curator enablement requires an explicit restart; Curator
+  provider/model/reasoning and Chat provider are live. The web process receives no
+  sudo privileges.
+
+---
+## ADR-015 — Multiple providers, secret store and model catalogs
+**Status:** accepted
+
+### Context
+Chat configuration was tied to OpenRouter and API keys lived only in the
+environment. Provider/model selection from the Web UI was needed, with OpenCode Go
+already supported by the installed Pi SDK, without exposing credentials.
+
+### Decision
+- `openrouter` and `opencode-go` are supported. Pi provides both; OpenCode Go IDs
+  are bare (`deepseek-v4.1-flash`).
+- API keys are in `$MEMORA_DATA_DIR/config/secrets.json`, mode `0600`, atomically
+  written; the environment takes precedence and makes the field read-only. GET
+  exposes only `{configured, source, editable}`.
+- The OpenRouter catalog uses the Pi catalog (375+ models with metadata). OpenCode
+  Go uses the official remote endpoint filtered to models supported by the
+  installed Pi, with a 10-minute cache, explicit refresh and cache/Pi fallback.
+- Chat and Curator have independent provider/model settings. Curator reuses the
+  same provider credential and accepts only OpenAI-compatible OpenCode Go models.
+- The Chat default applies to new sessions; existing sessions keep their persisted
+  model. Curator provider/model reloads live.
+- Connection tests use catalog/key endpoints, not inference, and return sanitized
+  errors.
+
+### Consequences
+- API keys are never returned or written to settings.
+- Model search is case-insensitive across name, ID and provider; OpenRouter exposes
+  a Free filter based on metadata.
+- If the remote catalog fails, Memora continues with cache/Pi and a warning.
+- Admin authentication still does not exist; the limitation is documented.
+- OpenCode Go inference verification requires a user-provided key and cannot run
+  in automated tests.
+
+---
+## ADR-016 — Memory guardrails and PII redaction
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+Retrieved memory enters the chat prompt and an excerpt is sent to the remote
+Curator. Markdown documents may contain hostile text or personal data; Curator
+output is untrusted. Verifiable defenses are needed without changing the
+Markdown-first format.
+
+### Decision
+- Memory is inserted into a JSON block delimited by `<memora-memory-json>`; `<`,
+  `>` and `&` are escaped, and boundary markers and control characters are
+  neutralized. The base prompt comes first and declares memory as data, not
+  instructions.
+- Before the cloud Curator, secrets block analysis; emails, phone numbers, IBANs,
+  Luhn-valid cards and Italian tax codes are redacted. Memory chunks with
+  high-confidence PII are not sent.
+- Curator output is rejected if it contains secrets, PII or redaction
+  placeholders. Path validation, human approval and metadata-only logging remain.
+- Settings UI shows which Chat/Curator providers receive data, that embeddings
+  are local, and which categories are redacted.
+- Redaction is heuristic: names, addresses and other unrecognizable PII may still
+  reach the provider. Residual risk is documented in `docs/MEMORY-SECURITY.md`.
+- Admin authentication remains a prerequisite in `09-hardening.md` for any network
+  exposure.
+
+### Consequences
+- Prompt size increases due to JSON, but the boundary is structurally harder to
+  close.
+- A turn containing PII may lose the context of memories that contain it; this is
+  preferable to unnecessary transmission.
+- Prompt-injection and redaction tests become part of the suite.
+- Protection is not a guarantee against semantic prompt injection or all PII; the
+  threat model and residual risks remain explicit.
+
+---
+## ADR-017 — Evaluation harness and memory baseline
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+The existing benchmark measured only a few synthetic queries and did not cover
+Curator, regressions, ambiguity or live modes. A reproducible evaluation was
+needed that introduces no personal data and can run in CI without network access.
+
+### Decision
+- Datasets are synthetic JSON files in `evaluation/`: 46 retrieval queries and 15
+  Curator cases. No real, personal or runtime data enters the repository.
+- Retrieval metrics are Recall@k, Precision@k, MRR, nDCG@k, latency and estimated
+  tokens (`characters / 4`). Modes are reported separately.
+- Curator replay uses frozen provider outputs and measures the validation
+  pipeline, thresholds and classes. Live mode is explicit, uses the local
+  credential and cannot write the baseline.
+- `evaluation/baseline.json` is versioned. The check uses an absolute tolerance of
+  `0.02`; latency is measured but is not a gate.
+- CI runs lexical and Curator replay without a model or network. Semantic/hybrid
+  need `MEMORA_DATA_DIR` with the local model.
+- The dataset is intentionally small and synthetic; results do not replace
+  evaluation on anonymized real conversations.
+
+### Consequences
+- Every retrieval or Curator change can be compared against a stable baseline.
+- Intentional quality changes require explicit baseline updates.
+- Live reasoning measurement is indicative and non-reproducible; it is not a gate.
+- Precision@10 must be read together with Recall and nDCG because many queries
+  have only one gold evidence item.
+
+---
+## ADR-018 — Per-bullet metadata and memory lineage
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+Markdown was authoritative but did not preserve identity, provenance, confidence
+or update history. SQLite could not be the only copy of this data without
+violating the rebuildable-index principle.
+
+### Decision
+- Metadata lives in an HTML comment on the bullet line
+  (`<!-- memora-memory:v1 ... -->`), invisible in rendered Markdown.
+- `memoryId` identifies stable lineage; `versionId` identifies a single version;
+  `version`, `status`, `supersedes` and `supersededBy` describe the chain.
+- Provenance: session, message, turn, timestamp, confidence, scope, project,
+  entity, tags, provider and Curator model.
+- An update keeps the previous bullet as `superseded` and adds an `active` bullet.
+  Reindexing removes comments, skips superseded lines and indexes only active
+  versions.
+- SQLite adds `memory_records` and chunk metadata. Both are derived and
+  rebuildable from files.
+- Legacy-bullet migration is explicit and non-destructive: dry-run by default,
+  `--apply` only adds comments, optional `--backup`.
+- Invalid metadata or broken references produce warnings with file, line and code;
+  content is never logged.
+
+### Consequences
+- Memories are more verbose in source but remain readable and editable.
+- Retrieval never returns historical versions.
+- The database can be deleted and rebuilt without losing provenance as long as
+  Markdown comments are preserved.
+- Automatic migration does not modify user data at startup.
+- Comments are not signed: provenance is as trustworthy as the filesystem.
+
+---
+## ADR-019 — Historical memory, retention and integrity
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+`superseded` versions were preserved but not queryable. A user could ask “what did
+it use before?” and receive “not in memory” even though the historical version
+existed in Markdown. Explicit policies for retention, propagated deletion and
+index verification were also missing.
+
+### Decision
+- Superseded versions stay outside normal retrieval.
+- For queries with explicit temporal markers, the extension searches only
+  `superseded` versions in related active source paths and adds a separate
+  `Historical memory` block marked as non-current.
+- Historical search is lexical and conservative; it is not used for present-tense
+  questions.
+- Source detail exposes full history with status, version, date, provenance and
+  text.
+- Retention is manual: `memory:history:prune` is dry-run by default, requires
+  `--apply`, supports backup and never removes active versions.
+- Deleting a source propagates to index, vectors and candidates; pending
+  candidates become `rejected` with `source_deleted`, approved ones receive
+  `purgedAt`.
+- `memory:integrity` runs read-only checks on SQLite, foreign keys and Markdown
+  metadata without logging content.
+- Hierarchical summaries are evaluated and deferred: with the current corpus they
+  add complexity and risk of detail loss.
+
+### Consequences
+- Chat can answer historical questions without treating the past as current truth.
+- Retention is predictable and never deletes user data automatically.
+- Backup and restore have a verifiable procedure.
+- Historical search is heuristic and does not cover implicit temporal queries.
+
+---
+## ADR-020 — Runtime retrieval with budget, filters and diversity
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+Retrieval returned raw FTS/vector/RRF results. Token budget, explicit filters,
+redundancy protection and metadata-aware ranking were missing. The benchmark
+measured raw modes, not the real pipeline.
+
+### Decision
+- `MemoryService.search()` applies overfetch, project/type/confidence filters,
+  confidence/importance/recency reranking, Jaccard diversity and `maxChars` +
+  `maxTokens` budget.
+- `MEMORA_MEMORY_MAX_TOKENS` (default 1000) uses a `characters/4` estimate;
+  `MEMORA_MEMORY_DIVERSITY` (default 0.15) controls MMR penalty. Both are editable
+  in **Settings → Memory** and apply live.
+- Direct modes remain available for benchmarks and diagnostics. The baseline does
+  not change; runtime pipeline has dedicated tests.
+- No local cross-encoder is loaded: RAM, latency and lack of a verified Italian
+  model do not justify the cost.
+- Query rewriting and multi-query are evaluated and deferred; hybrid already fuses
+  lexical and semantic.
+- `memory_sources` exposes source IDs and metadata of used versions; logs contain
+  no content.
+
+### Consequences
+- Context is more predictable and less redundant.
+- Runtime pipeline may diverge from the raw baseline; a future dedicated benchmark
+  is needed to measure it end-to-end.
+- Weights and diversity are deterministic and require tuning on real queries.
+- Legacy bullets without metadata remain included and receive neutral boosts.
+
+---
+## ADR-021 — Durable Curator queue and idempotency
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+The Curator queue was volatile: crashes or forced shutdown could lose proposals. A
+retry after an already-completed write could duplicate candidates. Consolidation
+of the entire memory was absent.
+
+### Decision
+- Jobs are persisted in
+  `$MEMORA_DATA_DIR/memory-inbox/writer-queue.jsonl` with `0600` permissions,
+  retry, backoff and a 100-pending-job limit.
+- Each job has an `idempotencyKey` from `turnId`, `sourceMessageId` or text hash.
+- `running` jobs are requeued after restart.
+- The writer ignores a turn if a candidate already exists with the same
   `turnId`/`sourceMessageId`.
-- In shutdown durevole si attende il job corrente e si lasciano i pending su
-  disco; la coda volatile dei test mantiene il drain completo.
-- `memory:consolidate` è un audit deterministico read-only delle memorie attive
-  simili; il consolidamento LLM automatico è rimandato.
-- `memory:integrity` aggiunge le metriche dell'Inbox e il pannello admin mostra
-  coda, job falliti e tentativi.
+- Durable shutdown waits for the current job and leaves pending jobs on disk; the
+  volatile test queue keeps full drain behavior.
+- `memory:consolidate` is a deterministic read-only audit of similar active
+  memories; automatic LLM consolidation is deferred.
+- `memory:integrity` adds Inbox metrics, and the admin panel shows queue, failed
+  jobs and attempts.
 
-### Conseguenze
-- Un crash non perde silenziosamente i job.
-- Un retry non duplica proposte già persistite.
-- La coda persistita contiene dati del turno e va inclusa nella retention e nei
-  backup cifrati.
-- Il consolidamento automatico con LLM, il feedback loop e il batching restano
-  lavoro futuro.
-
----
-## ADR-022 — Metriche aggregate e runbook operativo
-**Data:** 2026-11-15
-**Stato:** accepted
-
-### Contesto
-Lo stato admin mostrava fonti, chunk, vettori e lunghezza coda, ma non latenza,
-errori, token recuperati, età della coda o tasso di approvazione. Mancava un
-runbook per backup, restore, migrazione e degrado.
-
-### Decisione
-- `RuntimeMetrics` aggrega in memoria retrieval e Curator senza query, prompt o
-  contenuto. Le metriche sono esposte in `/api/admin/status` e nella pagina
-  **Sistema → Osservabilità**.
-- La coda espone job falliti, tentativi, età del job più vecchio e ultimo esito.
-- La Memory Inbox espone pending/conflict/approved/rejected e approval rate.
-- Alert: coda bloccata, job falliti, backlog, errori Curator/retrieval.
-- `docs/OPERATIONS.md` contiene backup, restore, reindex, migrazione e
-  comportamento con embeddings assenti, SQLite corrotto, metadata invalidi e
-  disco pieno.
-- Il degrado embeddings→lexical e i metadata invalidi sono coperti da test;
-  disco pieno e SQLite corrotto sono procedure operative documentate.
-
-### Conseguenze
-- Un operatore può capire lo stato senza leggere contenuti personali.
-- Le metriche sono per processo: un riavvio azzera i contatori, non i dati.
-- La coda persistita contiene input personali e va inclusa in backup/retention.
+### Consequences
+- A crash does not silently lose jobs.
+- A retry does not duplicate already-persisted proposals.
+- The persisted queue contains turn data and must be included in retention and
+  encrypted backups.
+- Automatic LLM consolidation, feedback loop and batching remain future work.
 
 ---
-## ADR-023 — Consolidamento LLM read-only e feedback advisory
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-022 — Aggregate metrics and operational runbook
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-Il consolidamento deterministico trovava solo similarità lessicali. Serviva un
-controllo semantico di duplicati e contraddizioni oltre il set per-turno, senza
-introdurre merge automatici rischiosi o tuning non controllato delle soglie.
+### Context
+Admin status showed sources, chunks, vectors and queue length, but not latency,
+errors, retrieved tokens, queue age or approval rate. A runbook for backup,
+restore, migration and degradation was missing.
 
-### Decisione
-- `MemoryConsolidator` usa una completion JSON con schema versionato
-  (`schemaVersion: 1`) e accetta solo ID presenti nel batch.
-- `memory:consolidate:llm` è esplicito, read-only, con limiti di record e batch;
-  produce un report, non candidate o Markdown.
-- Il Curator per-turno accetta `schemaVersion` assente o `1` e rifiuta versioni
-  future.
-- `memory:feedback` calcola tasso di approvazione e punteggi medi e fornisce un
-  suggerimento sulle soglie; non modifica la configurazione.
-- Nessun merge automatico e nessun tuning automatico.
+### Decision
+- `RuntimeMetrics` aggregates retrieval and Curator data in memory without
+  queries, prompts or content. Metrics are exposed at `/api/admin/status` and in
+  **System → Observability**.
+- The queue exposes failed jobs, attempts, oldest-job age and last outcome.
+- Memory Inbox exposes pending/conflict/approved/rejected and approval rate.
+- Alerts: blocked queue, failed jobs, backlog, Curator/retrieval errors.
+- `docs/OPERATIONS.md` covers backup, restore, reindex, migration and behavior
+  with missing embeddings, corrupt SQLite, invalid metadata and full disk.
+- Embedding→lexical degradation and invalid metadata are covered by tests; full
+  disk and corrupt SQLite are documented operational procedures.
 
-### Conseguenze
-- Il consolidamento semantico è disponibile senza rischio di scritture errate.
-- Il report è locale e va trattato come dato personale se contiene memorie.
-- Il feedback richiede un numero minimo di revisioni per essere utile.
-- Costi e latenza restano controllati da batch e timeout.
-
----
-## ADR-024 — Progetti di prima classe
-**Data:** 2026-11-15
-**Stato:** accepted
-
-### Contesto
-I progetti esistevano solo come directory Markdown e campo `project`. Mancavano
-configurazione, fonti dichiarate, prompt, associazione sessioni e isolamento del
-retrieval.
-
-### Decisione
-- `projects/<slug>/project.json` è la configurazione; `memory.md` resta memoria e
-  `sources/**/*.md` e `sources/**/*.txt` sono fonti.
-- Lo slug è immutabile; il nome è modificabile.
-- Il prompt di progetto è uno strato subordinato alla policy Memora e precede la
-  memoria recuperata.
-- Le sessioni usano la custom entry `memora.project`; le sessioni legacy restano
-  globali.
-- Il retrieval usa `searchScoped()` con RRF tra memoria globale e progetto.
-- Il Curator instrada i fatti di progetto nel progetto corrente.
-- Le fonti hanno CRUD, include/exclude e reindex; la cancellazione propaga a
-  indice, vettori e candidate.
-- L'UI offre selettore progetto, pagina progetto, prompt, fonti, sessioni
-  filtrate e Second Brain filtrato.
-- Archive è reversibile; purge richiede `confirm` e sposta la directory in
-  `.trash/projects`; export è JSON.
-
-### Conseguenze
-- Un progetto non vede fonti o memoria di un altro progetto.
-- I progetti legacy restano compatibili.
-- La migrazione a `project.json` è esplicita.
-- Il purge non è un pulsante UI distruttivo.
+### Consequences
+- An operator can understand status without reading personal content.
+- Metrics are per process: restart resets counters, not data.
+- The persisted queue contains personal input and must be included in
+  backup/retention.
 
 ---
-## ADR-025 — Preferenze aspetto locali e sidebar comprimibile
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-023 — Read-only LLM consolidation and advisory feedback
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-La UI usava un solo tema chiaro con colori in parte hardcoded, non offriva
-controlli di leggibilità e la sidebar occupava sempre spazio prezioso anche su
-schermi piccoli.
+### Context
+Deterministic consolidation found only lexical similarities. Semantic checking of
+duplicates and contradictions beyond the per-turn set was needed, without risky
+automatic merges or uncontrolled threshold tuning.
 
-### Decisione
-- Le preferenze di aspetto sono locali al browser (`localStorage`), non fanno
-  parte di `settings.json` e non vengono inviate al server.
-- Tema `system`/`light`/`dark`, dimensione testo, densità, larghezza chat,
-  movimento ridotto e stato della sidebar sono applicati tramite attributi su
-  `<html>` e variabili CSS.
-- Un bootstrap inline in `index.html` applica il tema prima del primo render per
-  evitare il flash chiaro/scuro.
-- La sidebar desktop è comprimibile con il pulsante in topbar, `Ctrl+B` o
-  l’opzione nelle impostazioni; su mobile resta un drawer.
-- Il composer riceve il focus quando cambia la sessione attiva, quindi una nuova
-  chat è subito pronta per la scrittura.
+### Decision
+- `MemoryConsolidator` uses a JSON completion with a versioned schema
+  (`schemaVersion: 1`) and accepts only IDs present in the batch.
+- `memory:consolidate:llm` is explicit, read-only, with record and batch limits;
+  it produces a report, not candidates or Markdown.
+- The per-turn Curator accepts an absent `schemaVersion` or `1` and rejects future
+  versions.
+- `memory:feedback` computes approval rate and average scores and suggests
+  thresholds; it does not modify configuration.
+- No automatic merge and no automatic tuning.
 
-### Conseguenze
-- Le preferenze non seguono l’utente su altri browser/dispositivi.
-- I colori semantici passano da variabili CSS, così il tema scuro non dipende da
-  override fragili.
-- La UI deve mantenere accessibili i controlli anche quando la sidebar è
-  compressa.
+### Consequences
+- Semantic consolidation is available without risk of incorrect writes.
+- The report is local and must be treated as personal data if it contains
+  memories.
+- Feedback needs a minimum number of reviews to be useful.
+- Cost and latency remain controlled by batches and timeouts.
 
 ---
-## ADR-026 — Allegati chat e file progetto con anteprima locale
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-024 — First-class projects
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-La chat accettava solo testo. I progetti avevano fonti Markdown/TXT indicizzate,
-ma non un modo per esplorare la cartella o consultare PDF, HTML e documenti Word.
-Serviva anche passare allegati al modello senza inserirli nel messaggio utente.
+### Context
+Projects existed only as Markdown directories and a `project` field.
+Configuration, declared sources, prompts, session association and retrieval
+isolation were missing.
 
-### Decisione
-- Il pannello **File progetto** elenca solo `projects/<id>/`, con protezione da
-  symlink e traversal; supporta ricerca e anteprime per Markdown, testo, PDF,
-  HTML, `.docx` e immagini.
-- HTML è sempre in iframe sandboxed; `.docx` usa Mammoth; PDF usa il viewer
-  nativo; nessun file viene eseguito.
-- Gli allegati chat sono copiati in `chat-attachments/<sessionId>/` con permessi
-  `0600`; il client invia il contenuto in JSON base64.
-- Testo, PDF e Word vengono estratti localmente e iniettati nel system prompt
-  transitorio come dati non fidati; le immagini usano il blocco immagini Pi.
-- Il testo utente e il JSONL Pi restano invariati; i metadati degli allegati
-  sono una custom entry `memora.attachments`.
-- Il delete sessione rimuove anche la directory degli allegati; il delete esplicito
-  di un allegato rimuove il file.
+### Decision
+- `projects/<slug>/project.json` is configuration; `memory.md` is memory and
+  `sources/**/*.md` plus `sources/**/*.txt` are sources.
+- The slug is immutable; the name is editable.
+- The project prompt is a layer subordinate to Memora policy and precedes
+  retrieved memory.
+- Sessions use the `memora.project` custom entry; legacy sessions remain global.
+- Retrieval uses `searchScoped()` with RRF over global and project memory.
+- The Curator routes project facts to the current project.
+- Sources support CRUD, include/exclude and reindex; deletion propagates to index,
+  vectors and candidates.
+- The UI provides a project selector, project page, prompt, sources, filtered
+  sessions and filtered Second Brain.
+- Archive is reversible; purge requires `confirm` and moves the directory to
+  `.trash/projects`; export is JSON.
 
-### Conseguenze
-- PDF e Word richiedono `pdf-parse` e `mammoth` nel server.
-- Gli allegati sono dati personali: backup e retention devono includere
+### Consequences
+- A project cannot see another project's sources or memory.
+- Legacy projects remain compatible.
+- Migration to `project.json` is explicit.
+- Purge is not a destructive one-click UI action.
+
+---
+## ADR-025 — Local appearance preferences and collapsible sidebar
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+The UI used one light theme with partly hardcoded colors, offered no readability
+controls, and the sidebar always consumed valuable space even on small screens.
+
+### Decision
+- Appearance preferences are local to the browser (`localStorage`), are not part
+  of `settings.json` and are never sent to the server.
+- Theme `system`/`light`/`dark`, text size, density, chat width, reduced motion and
+  sidebar state are applied through `<html>` attributes and CSS variables.
+- An inline bootstrap in `index.html` applies the theme before first render to
+  avoid a light/dark flash.
+- The desktop sidebar can be collapsed with the topbar button, `Ctrl+B` or the
+  settings option; on mobile it remains a drawer.
+- The composer receives focus when the active session changes, so a new chat is
+  immediately ready for typing.
+
+### Consequences
+- Preferences do not follow the user across browsers/devices.
+- Semantic colors use CSS variables, so dark mode does not depend on fragile
+  overrides.
+- The UI must keep controls accessible when the sidebar is collapsed.
+
+---
+## ADR-026 — Chat attachments and project files with local preview
+**Date:** 2026-11-15
+**Status:** accepted
+
+### Context
+Chat accepted only text. Projects had indexed Markdown/TXT sources but no way to
+browse the folder or inspect PDF, HTML and Word documents. Attachments also needed
+to reach the model without being inserted into the user message.
+
+### Decision
+- The **Project files** panel lists only `projects/<id>/`, protected against
+  symlinks and traversal, with search and previews for Markdown, text, PDF, HTML,
+  `.docx` and images.
+- HTML is always in a sandboxed iframe; `.docx` uses Mammoth; PDF uses the native
+  viewer; no file is executed.
+- Chat attachments are copied to `chat-attachments/<sessionId>/` with `0600`
+  permissions; the client sends content as base64 JSON.
+- Text, PDF and Word are extracted locally and injected into the transient system
+  prompt as untrusted data; images use Pi image blocks.
+- User text and Pi JSONL remain unchanged; attachment metadata is a
+  `memora.attachments` custom entry.
+- Session deletion also removes the attachment directory; explicit attachment
+  deletion removes the file.
+
+### Consequences
+- PDF and Word require `pdf-parse` and `mammoth` on the server.
+- Attachments are personal data: backup and retention must include
   `chat-attachments/`.
-- Gli upload non inviati possono restare orfani finché non viene aggiunta una
-  retention automatica.
-- I modelli senza supporto immagini possono rifiutare gli allegati immagine.
+- Uploads that are never sent can remain orphaned until automatic retention is
+  added.
+- Models without image support may reject image attachments.
 
 ---
-## ADR-027 — Contesto per chat, archivio file progetto e artefatti
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-027 — Per-chat context, project file archive and artifacts
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-I file caricati in chat erano solo allegati temporanei; il pannello progetto era
-a sinistra; non era possibile scegliere per chat quali fonti usare; gli output
-strutturati non avevano un contenitore dedicato.
+### Context
+Files uploaded in chat were only temporary attachments; the project panel was on
+the left; there was no way to choose which sources to use per chat; structured
+outputs had no dedicated container.
 
-### Decisione
-- Gli allegati di una chat di progetto vengono archiviati anche in
-  `projects/<id>/files/`; `files/` è esclusa dal retrieval e dalla memoria.
-- Il contesto di retrieval è per sessione (`memora.context`) con tre toggle:
-  memoria globale, memoria progetto, fonti progetto. I default del progetto
-  restano un limite superiore.
-- Il pannello contestuale è a destra, con schede File/Contesto/Artefatti.
-- Gli artefatti sono file testuali in `artifacts/<sessionId>/`, creati dal tool
-  `create_artifact`; HTML/SVG sono sandboxed. Non c’è esecuzione Python.
-- Gli allegati e gli artefatti vengono rimossi con la sessione.
+### Decision
+- Attachments in a project chat are also archived in `projects/<id>/files/`;
+  `files/` is excluded from retrieval and memory.
+- Retrieval context is per session (`memora.context`) with three toggles: global
+  memory, project memory and project sources. Project defaults remain an upper
+  bound.
+- The contextual panel is on the right, with Files/Context/Artifacts tabs.
+- Artifacts are text files in `artifacts/<sessionId>/`, created by the
+  `create_artifact` tool; HTML/SVG are sandboxed. No Python execution.
+- Attachments and artifacts are removed with the session.
 
-### Conseguenze
-- La cartella `files/` è consultabile ma non è conoscenza del modello finché non
-  viene promossa esplicitamente a fonte.
-- I toggle di contesto non riscrivono il progetto e sono reversibili.
-- Gli artefatti non sono un ambiente di esecuzione: per calcoli/grafici servirà
-  un sandbox separato.
-
----
-## ADR-028 — PDF token-efficient
-**Data:** 2026-11-15
-**Stato:** accepted
-
-### Contesto
-Un tool PDF che riceve il documento completo duplicherebbe il contenuto nel
-tool call e nei turni successivi, aumentando i token di input. Serviva inoltre
-una generazione PDF leggera sulla N95.
-
-### Decisione
-- Il rendering PDF usa `pdfkit` lato server, senza browser headless o Python.
-- `create_pdf` riceve solo `title` e `filename`; il contenuto viene preso dalla
-  risposta finale dell’assistente dopo il turno.
-- Il pulsante **PDF** esporta il testo già presente nella risposta: zero token
-  LLM aggiuntivi.
-- Gli artefatti PDF sono binari in `artifacts/<sessionId>/` e non vengono mai
-  reinseriti nel contesto.
-- Limiti: 30.000 caratteri Markdown, 30 pagine, 5 MB.
-- HTML/SVG restano sandboxed; i PDF usano il viewer del browser.
-
-### Conseguenze
-- La generazione PDF non consuma token; consuma CPU solo al momento della
-  richiesta.
-- Il modello deve scrivere il documento nella risposta finale quando usa
-  `create_pdf`.
-- Template e skill PDF potranno essere aggiunti senza cambiare il confine di
-  sicurezza.
+### Consequences
+- The `files/` folder is browsable but is not model knowledge until explicitly
+  promoted to a source.
+- Context toggles do not rewrite the project and are reversible.
+- Artifacts are not an execution environment: calculations/charts will need a
+  separate sandbox.
 
 ---
-## ADR-029 — HTML verso PDF senza browser headless
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-028 — Token-efficient PDF
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-PDFKit produce documenti leggibili ma poco impaginati; i modelli sanno generare
-HTML con CSS molto più curato. Chromium headless non è disponibile in modo
-affidabile sulla macchina di destinazione e aggiungerebbe browser, RAM e
-superficie di sicurezza.
+### Context
+A PDF tool receiving the full document would duplicate content in the tool call
+and subsequent turns, increasing input tokens. Lightweight PDF generation was
+also needed on the N95.
 
-### Decisione
-- Il formato HTML viene convertito con `html-to-pdfmake` + `pdfmake` dopo aver
-  inlineato i CSS base con `inline-css`.
-- Script, iframe, object, embed, link esterni, handler inline e `@import` vengono
-  rimossi. Le risorse remote sono bloccate.
-- Il renderer supporta un sottoinsieme CSS: colori, font, bordi, tabelle,
-  dimensioni. Flex/grid e layout complessi non sono garantiti.
-- Il tool `create_pdf` supporta `format: "html"` con contenuto preso dalla
-  risposta finale, senza duplicarlo nel tool call.
-- Gli artefatti HTML/Markdown hanno **Esporta PDF**.
-- L’anteprima PDF usa PDF.js, non il plugin del browser.
+### Decision
+- PDF rendering uses server-side `pdfkit`, without a headless browser or Python.
+- `create_pdf` receives only `title` and `filename`; content is taken from the
+  assistant's final answer after the turn.
+- The **PDF** button exports text already present in the answer: zero additional
+  LLM tokens.
+- PDF artifacts are binary files in `artifacts/<sessionId>/` and are never
+  reinserted into context.
+- Limits: 30,000 Markdown characters, 30 pages, 5 MB.
+- HTML/SVG remain sandboxed; PDFs use the browser viewer.
 
-### Conseguenze
-- I PDF HTML sono più curati dei PDF Markdown ma non sono una resa browser
-  pixel-perfect.
-- Non aumentano il consumo di token né richiedono Chromium.
-- Per template complessi sarà possibile aggiungere in futuro un renderer
-  browser opzionale.
+### Consequences
+- PDF generation consumes no tokens and only CPU when requested.
+- The model must write the document in the final answer when using `create_pdf`.
+- PDF templates and skills can be added later without changing the security
+  boundary.
 
 ---
-## ADR-030 — Chromium opzionale per PDF HTML fedeli
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-029 — HTML to PDF without a headless browser
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-PDFMake/HTML-to-PDFMake non supportano layout CSS complessi. I PDF risultavano
-semplici rispetto all’HTML prodotto dai modelli.
+### Context
+PDFKit produces readable but plainly laid-out documents; models can generate much
+better HTML/CSS. Headless Chromium was not reliably available on the target
+machine and would add a browser, RAM and security surface.
 
-### Decisione
-- Il rendering HTML prova prima Chromium headless (`@sparticuz/chromium` +
-  `puppeteer-core`), con JavaScript disabilitato, richieste di rete bloccate e
-  una sola generazione alla volta.
-- Se Chromium non è disponibile, usa il fallback `html-to-pdfmake`/`pdfmake`.
-- Le librerie Debian mancanti (`libnspr4`, `libnss3`) vengono installate in
-  `$MEMORA_DATA_DIR/browser-libs/` tramite `pnpm pdf:browser:setup`, senza root.
-- Il tool `create_pdf` resta metadata-only; il contenuto HTML viene preso dalla
-  risposta finale.
+### Decision
+- HTML format is converted with `html-to-pdfmake` + `pdfmake` after inlining basic
+  CSS with `inline-css`.
+- Scripts, iframes, objects, embeds, external links, inline handlers and `@import`
+  are removed. Remote resources are blocked.
+- The renderer supports a CSS subset: colors, fonts, borders, tables, dimensions.
+  Flex/grid and complex layouts are not guaranteed.
+- The `create_pdf` tool supports `format: "html"` with content taken from the final
+  answer, without duplicating it in the tool call.
+- HTML/Markdown artifacts have **Export PDF**.
+- PDF preview uses PDF.js, not the browser PDF plugin.
 
-### Conseguenze
-- I PDF HTML possono usare layout, font, sfondi e CSS complessi.
-- Il primo PDF avvia Chromium e richiede più RAM; il processo viene chiuso dopo
-  ogni conversione.
-- Il fallback garantisce continuità ma produce PDF più semplici.
-
----
-## ADR-031 — Versioni artefatti e controlli conversazione
-**Data:** 2026-11-15
-**Stato:** accepted
-
-### Contesto
-Rigenerare un artefatto con lo stesso nome creava file duplicati. Inoltre la
-chat non permetteva di copiare, correggere una domanda o riformulare una
-risposta, e il composer perdeva il focus dopo il turno.
-
-### Decisione
-- `ArtifactStore` mantiene un solo artefatto corrente per nome/sessione; le
-  versioni precedenti vengono archiviate in `.versions/<artifactId>/`.
-- `ChatArtifact` espone `version` e `updatedAt`; `ArtifactStore` espone
-  `listVersions`/`getVersion` e la UI permette di selezionare la versione.
-- La modifica di una domanda usa `navigateTree` di Pi: il nuovo ramo sostituisce
-  la vecchia domanda nel contesto attivo, senza cancellare il JSONL storico.
-- Le risposte hanno copia Markdown, PDF e Riformula; le domande hanno copia
-  testuale e modifica con editor ampio auto-ridimensionato.
-- Il composer riceve un focus token dopo ogni turno completato o annullato.
-
-### Conseguenze
-- Un artefatto revisionato resta lo stesso file logico con versione crescente.
-- La modifica di una domanda non riscrive lo storico Pi: crea un ramo.
-- Riformula è un nuovo turno esplicito, non una rigenerazione silenziosa.
+### Consequences
+- HTML PDFs look better than Markdown PDFs but are not pixel-perfect browser
+  renderings.
+- They add no token cost and require no Chromium.
+- An optional browser renderer can be added later for complex templates.
 
 ---
-## ADR-032 — Second Brain dedicato e memoria dalle risposte
-**Data:** 2026-11-15
-**Stato:** accepted
+## ADR-030 — Optional Chromium for faithful HTML PDFs
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-Il vecchio pannello “Second Brain” era un drawer sotto la chat che mescolava
-ricerca della conoscenza, Memory Inbox e dettaglio fonti. Non era chiaro dove
-fossero le memorie di tutte le chat/progetti e mancava un modo esplicito per
-salvare una risposta dell’assistente.
+### Context
+PDFMake/HTML-to-PDFMake do not support complex CSS layouts. Generated PDFs looked
+plain compared with the HTML produced by models.
 
-### Decisione
-- La sidebar ha due icone: Second Brain e Impostazioni.
-- La pagina Second Brain elenca tutte le fonti indicizzate, con filtro
-  globale/progetto, ricerca e modifica Markdown.
-- Il pannello inferiore viene rinominato **Memoria della chat** e contiene la
-  Memory Inbox e i collegamenti alle memorie globali/di progetto.
-- Una risposta può essere promossa con il pulsante **Memoria**; il candidato ha
-  `sourceKind: assistant`, origine esplicita e richiede approvazione.
-- L’estrazione automatica continua a considerare solo le affermazioni
-  dell’utente. Le risposte dell’assistente non diventano mai memoria implicita.
+### Decision
+- HTML rendering first tries headless Chromium (`@sparticuz/chromium` +
+  `puppeteer-core`), with JavaScript disabled, network requests blocked and one
+  generation at a time.
+- If Chromium is unavailable, it uses the `html-to-pdfmake`/`pdfmake` fallback.
+- Missing Debian libraries (`libnspr4`, `libnss3`) are installed in
+  `$MEMORA_DATA_DIR/browser-libs/` through `pnpm pdf:browser:setup`, without root.
+- `create_pdf` remains metadata-only; HTML content comes from the final answer.
 
-### Conseguenze
-- La conoscenza indicizzata ha una destinazione unica e riconoscibile.
-- Il salvataggio di una risposta è intenzionale, tracciato e reversibile.
-- La memoria non si autoalimenta con output del modello.
+### Consequences
+- HTML PDFs can use layouts, fonts, backgrounds and complex CSS.
+- The first PDF starts Chromium and needs more RAM; the process closes after each
+  conversion.
+- The fallback guarantees continuity but produces simpler PDFs.
 
 ---
-## ADR-033 — Artefatti Office leggeri e PPTX HTML-first
-**Data:** 2026-11-16
-**Stato:** accepted
+## ADR-031 — Artifact versions and conversation controls
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-Memora produce PDF, Markdown e HTML, ma non DOCX, XLSX o PPTX. Un renderer
-Office universale richiederebbe LibreOffice, molto pesante per il target N95 e
-per un'installazione open source riproducibile. La generazione deve inoltre
-restare economica in token.
+### Context
+Regenerating an artifact with the same name created duplicate files. Chat also did
+not allow copying, correcting a question or rephrasing an answer, and the composer
+lost focus after a turn.
 
-### Decisione
-- DOCX, XLSX e PPTX sono nuovi `ArtifactKind` binari, con storage in
-  `artifacts/<sessionId>/`, versioni e limiti dedicati.
-- I tool `create_docx`, `create_xlsx` e `create_pptx` ricevono solo titolo e nome
-  file; il contenuto viene preso dalla risposta finale, come per `create_pdf`.
-- DOCX: Markdown → `docx`; preview Mammoth in iframe sandboxed.
-- XLSX: tabelle Markdown → `exceljs`; preview JSON limitata renderizzata in
-  React, senza valutare formule.
-- PPTX: deck HTML con `<section class="slide">` → `jsdom` + `pptxgenjs`; lo
-  stesso HTML sanificato viene salvato in `.previews/<artifactId>.html` e usato
-  come anteprima.
-- I PPTX caricati dall'utente restano senza anteprima nella prima versione.
-- HTML delle anteprime: sandbox, CSP, nessuno script, nessuna rete esterna.
-- LibreOffice non è una dipendenza.
+### Decision
+- `ArtifactStore` keeps one current artifact per name/session; previous versions
+  are archived in `.versions/<artifactId>/`.
+- `ChatArtifact` exposes `version` and `updatedAt`; `ArtifactStore` exposes
+  `listVersions`/`getVersion`, and the UI can select a version.
+- Editing a question uses Pi's `navigateTree`: the new branch replaces the old
+  question in active context without deleting historical JSONL.
+- Answers have Markdown copy, PDF and Regenerate; questions have text copy and
+  editing with a large auto-resizing editor.
+- The composer receives a focus token after every completed or aborted turn.
 
-### Conseguenze
-- L'installazione resta leggera e senza servizi esterni.
-- La preview PPTX è fedele all'HTML, mentre il `.pptx` supporta un sottoinsieme
-  di titoli, testi, liste, tabelle e immagini `data:`.
-- Le formule Excel e i layout Office complessi non sono perfettamente
-  riprodotti, ma il file resta apribile e modificabile con strumenti esterni.
-- Un converter Office universale potrà essere aggiunto solo come opzione
-  esplicita in futuro.
+### Consequences
+- A revised artifact remains the same logical file with an increasing version.
+- Editing a question does not rewrite Pi history: it creates a branch.
+- Regenerate is an explicit new turn, not a silent retry.
 
 ---
-## ADR-034 — Login Web single-user
-**Data:** 2026-11-16
-**Stato:** accepted
+## ADR-032 — Dedicated Second Brain and memory from answers
+**Date:** 2026-11-15
+**Status:** accepted
 
-### Contesto
-Memora contiene sessioni, memoria personale, segreti provider e API
-amministrative. Il default è localhost, ma l’accesso da LAN e Tailscale rende
-necessario un confine di autenticazione prima dell’uso reale.
+### Context
+The old “Second Brain” panel was a drawer under chat mixing knowledge search,
+Memory Inbox and source detail. It was unclear where memories from all
+chats/projects lived, and there was no explicit way to save an assistant answer.
 
-### Decisione
-- Login single-user, password-only, senza username né registrazione.
-- Prima password: il primo setup valido crea `config/auth.json`; le API
-  applicative sono bloccate finché il setup non è completato.
-- Hash `scrypt` con salt e parametri espliciti, file `0600`.
-- Cookie `memora_session` `HttpOnly`, `SameSite=Lax`, durata 24 ore.
-- Logout e reset password invalidano tutte le sessioni tramite
-  `sessionVersion`.
-- Tutte le `/api/*` sono protette, eccetto health, login, setup e stato auth.
-- Controllo `Origin` per le richieste di scrittura, rate limit sul login.
-- Reset password solo da CLI (`pnpm memora:set-password`).
-- Nessun token API nella v0.1.
-- HTTP LAN ammesso per uso domestico; `Secure` attivabile con
-  `MEMORA_COOKIE_SECURE=true` quando esiste HTTPS.
+### Decision
+- The sidebar has two icons: Second Brain and Settings.
+- The Second Brain page lists all indexed sources, with global/project filter,
+  search and Markdown editing.
+- The bottom panel is renamed **Chat memory** and contains Memory Inbox plus links
+  to global/project memories.
+- An answer can be promoted with the **Memory** button; the candidate has
+  `sourceKind: assistant`, explicit origin and requires approval.
+- Automatic extraction still considers only user statements. Assistant answers
+  never become implicit memory.
 
-### Conseguenze
-- La Web UI è utilizzabile su LAN/Tailscale senza esporre direttamente le API.
-- La prima password deve essere impostata subito dopo l’installazione: chi
-  raggiunge la pagina di setup per primo può sceglierla.
-- Se `auth.json` viene perso, serve un reset da shell o un ripristino backup.
-- Non è ancora multiutente, OAuth, 2FA o gestione permessi.
+### Consequences
+- Indexed knowledge has a single recognizable destination.
+- Saving an answer is intentional, traceable and reversible.
+- Memory does not feed on model output by itself.
 
 ---
-## ADR-035 — Pannello laterale unificato della chat
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-033 — Lightweight Office artifacts and HTML-first PPTX
+**Date:** 2026-11-16
+**Status:** accepted
 
-### Contesto
-Le chat di progetto e quelle senza progetto usavano due pannelli diversi:
-il primo con tab File/Contesto/Artefatti, il secondo con contesto, artefatti e
-fonti web impilati. La scheda Fonti non era raggiungibile nelle chat di
-progetto, il pannello si apriva automaticamente solo in alcuni casi e le fonti
-web non si aggiornavano dopo una ricerca.
+### Context
+Memora produced PDF, Markdown and HTML but not DOCX, XLSX or PPTX. A universal
+Office renderer would require LibreOffice, too heavy for the N95 target and for a
+reproducible open-source installation. Generation also had to remain token-cheap.
 
-### Decisione
-- Un solo `ChatSidePanel` con header e tab fissi: File, Contesto, Artefatti,
-  Fonti.
-- File esiste solo nelle chat di progetto; senza progetto restano Contesto,
-  Artefatti e Fonti.
-- Fonti indica le fonti web; le fonti indicizzate del progetto restano
-  un’opzione del Contesto.
-- Il pannello è collassato per default in ogni chat.
-- Su desktop (> 900 px) si apre automaticamente su Fonti quando arriva una
-  nuova fonte web e su Artefatti, con il dettaglio del nuovo artefatto, quando
-  viene creato un artefatto. Su mobile non si apre automaticamente.
-- Gli aggiornamenti immediati usano gli eventi `tool_execution_end` di Pi;
-  un refresh completo a fine turno recupera gli artefatti generati dopo la
-  risposta (PDF, DOCX, XLSX, PPTX).
-- La selezione dell’artefatto è controllata dall’esterno per aprire il nuovo
-  artefatto e viene consumata una sola volta.
-- Ogni area ha contatore, refresh e stato vuoto; il refresh è disponibile
-  anche manualmente.
-- La tab attiva e lo stato aperto/chiuso non vengono persistiti tra sessioni
-  diverse: una nuova chat parte sempre collassata.
+### Decision
+- DOCX, XLSX and PPTX are new binary `ArtifactKind` values, stored in
+  `artifacts/<sessionId>/`, with versions and dedicated limits.
+- `create_docx`, `create_xlsx` and `create_pptx` receive only title and filename;
+  content comes from the final answer, as with `create_pdf`.
+- DOCX: Markdown → `docx`; Mammoth preview in a sandboxed iframe.
+- XLSX: Markdown tables → `exceljs`; limited JSON preview rendered in React
+  without evaluating formulas.
+- PPTX: HTML deck with `<section class="slide">` → `jsdom` + `pptxgenjs`; the same
+  sanitized HTML is saved in `.previews/<artifactId>.html` and used as preview.
+- User-uploaded PPTX files remain without preview in the first version.
+- Preview HTML: sandbox, CSP, no scripts, no external network.
+- LibreOffice is not a dependency.
 
-### Conseguenze
-- Il pannello è coerente tra chat con e senza progetto.
-- L’auto-apertura è volutamente limitata al desktop per non coprire la chat
-  su schermi piccoli.
-- Le fonti web sono sempre raggiungibili, anche nei progetti.
-- Il pannello richiede che il client interpreti i dettagli dei tool; se un
-  evento non contiene dettagli, il refresh di fine turno resta la fallback.
+### Consequences
+- Installation remains lightweight and needs no external services.
+- PPTX preview is faithful to HTML, while `.pptx` supports a subset of titles,
+  text, lists, tables and `data:` images.
+- Excel formulas and complex Office layouts are not perfectly reproduced, but the
+  file remains editable with external tools.
+- A universal Office converter can only be added as an explicit option later.
 
 ---
-## ADR-036 — Fonti web numerate e citazioni
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-034 — Single-user web login
+**Date:** 2026-11-16
+**Status:** accepted
 
-### Contesto
-Le fonti web erano mostrate senza un identificatore stabile e il modello poteva
-citare URL o omettere la provenienza. Le citazioni dovevano restare coerenti tra
-ricerche successive e dopo il limite delle 50 fonti.
+### Context
+Memora contains sessions, personal memory, provider secrets and admin APIs. The
+default is localhost, but LAN and Tailscale access require an authentication
+boundary before real use.
 
-### Decisione
-- Ogni `WebSource` ha un `number` opzionale, assegnato alla prima acquisizione.
-- Il numero viene persistito in `memora.web-sources` insieme a `nextNumber`;
-  una fonte ritrovata mantiene il proprio numero e i numeri non vengono
-  riutilizzati quando le fonti più vecchie escono dal limite.
-- Le fonti legacy senza numero vengono normalizzate in lettura.
-- `web_search` e `web_fetch` restituiscono al modello fonti con `number`;
-  il system prompt impone di citare ogni informazione con `[n]` e di usare più
-  riferimenti quando una frase combina fonti.
-- La UI mostra `[n]` nella scheda Fonti e trasforma `[n]` in link cliccabili
-  nella risposta, solo per URL HTTP/HTTPS.
-- Le citazioni dentro il codice non vengono trasformate in link.
+### Decision
+- Single-user, password-only login, with no username or registration.
+- First password: the first valid setup creates `config/auth.json`; application
+  APIs are blocked until setup is complete.
+- `scrypt` hash with salt and explicit parameters; file `0600`.
+- `memora_session` cookie, `HttpOnly`, `SameSite=Lax`, 24-hour lifetime.
+- Logout and password reset invalidate all sessions through `sessionVersion`.
+- All `/api/*` are protected except health, login, setup and auth status.
+- `Origin` checks for write requests, login rate limiting.
+- Password reset only from CLI (`pnpm memora:set-password`).
+- No API tokens in v0.1.
+- LAN HTTP allowed for home use; `Secure` can be enabled with
+  `MEMORA_COOKIE_SECURE=true` when HTTPS exists.
 
-### Conseguenze
-- Le citazioni restano coerenti tra turni e fonti.
-- Il modello deve seguire il formato; se non lo fa, la risposta non viene
-  modificata artificialmente con fonti inventate.
-- Il limite di 50 fonti resta, ma i numeri non collassano.
+### Consequences
+- The Web UI is usable on LAN/Tailscale without directly exposing APIs.
+- The first password must be set immediately after installation: whoever reaches
+  the setup page first can choose it.
+- If `auth.json` is lost, a shell reset or backup restore is required.
+- There is no multi-user, OAuth, 2FA or permission management yet.
 
 ---
-## ADR-037 — Aggiornamento toolchain e dipendenze (novembre 2026)
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-035 — Unified chat side panel
+**Date:** 2026-11-18
+**Status:** accepted
 
-### Contesto
-La toolchain era ferma alle versioni risolte alla creazione del monorepo
-(TypeScript 5.6, ESLint 9, Vitest 2, Vite 5, React 18, better-sqlite3 11,
-pnpm 12.18). Si voleva riallineare tutto senza rompere la DoD
-(`tsc --build`, `eslint`, `vitest run`, `pnpm build`) e senza toccare i pin
-intenzionali.
+### Context
+Project chats and non-project chats used two different panels: the first with
+Files/Context/Artifacts tabs, the second with stacked context, artifacts and web
+sources. The Sources tab was unreachable in project chats, the panel opened
+automatically only in some cases, and web sources did not refresh after a search.
 
-### Decisione
-Aggiornati (con verifica a ogni stadio):
+### Decision
+- A single `ChatSidePanel` with a fixed header and tabs: Files, Context, Artifacts,
+  Sources.
+- Files exist only in project chats; without a project, Context, Artifacts and
+  Sources remain.
+- Sources means web sources; indexed project sources remain a Context option.
+- The panel is collapsed by default in every chat.
+- On desktop (> 900px) it opens automatically on Sources when a new web source
+  arrives and on Artifacts, with the new artifact detail, when an artifact is
+  created. On mobile it does not auto-open.
+- Immediate updates use Pi `tool_execution_end` events; a full turn-end refresh
+  recovers artifacts generated after the answer (PDF, DOCX, XLSX, PPTX).
+- Artifact selection is controlled externally to open the new artifact and is
+  consumed only once.
+- Each area has a counter, refresh and empty state; manual refresh is available.
+- Active tab and open/closed state are not persisted across sessions: a new chat
+  always starts collapsed.
 
-| Pacchetto | Da | A |
+### Consequences
+- The panel is consistent between project and non-project chats.
+- Auto-open is intentionally desktop-only to avoid covering chat on small screens.
+- Web sources are always reachable, including inside projects.
+- The panel depends on the client interpreting tool details; if an event contains
+  no details, the turn-end refresh remains the fallback.
+
+---
+## ADR-036 — Numbered web sources and citations
+**Date:** 2026-11-18
+**Status:** accepted
+
+### Context
+Web sources were shown without a stable identifier and the model could cite URLs
+or omit provenance. Citations had to remain consistent across successive searches
+and after the 50-source limit.
+
+### Decision
+- Every `WebSource` has an optional `number`, assigned on first acquisition.
+- The number is persisted in `memora.web-sources` together with `nextNumber`; a
+  rediscovered source keeps its number, and numbers are not reused when older
+  sources fall outside the limit.
+- Legacy sources without a number are normalized on read.
+- `web_search` and `web_fetch` return sources with `number` to the model; the
+  system prompt requires every piece of information to be cited with `[n]` and
+  multiple references when a sentence combines sources.
+- The UI shows `[n]` in the Sources tab and turns `[n]` into clickable links in
+  the answer, only for HTTP/HTTPS URLs.
+- Citations inside code blocks are not converted into links.
+
+### Consequences
+- Citations remain consistent across turns and sources.
+- The model must follow the format; if it does not, the answer is not artificially
+  modified with invented sources.
+- The 50-source limit remains, but numbers do not collapse.
+
+---
+## ADR-037 — Toolchain and dependency upgrade (November 2026)
+**Date:** 2026-11-18
+**Status:** accepted
+
+### Context
+The toolchain was frozen at versions resolved when the monorepo was created
+(TypeScript 5.6, ESLint 9, Vitest 2, Vite 5, React 18, better-sqlite3 11, pnpm
+12.18). We wanted to realign everything without breaking the Definition of Done
+(`tsc --build`, `eslint`, `vitest run`, `pnpm build`) or intentional pins.
+
+### Decision
+Updated with verification at every stage:
+
+| Package | From | To |
 |---|---|---|
 | pnpm (`packageManager`) | 12.18.0 | 12.21.0 |
 | ESLint / `@eslint/js` | 9.39.5 | 10.15.0 / 10.0.1 |
@@ -1196,245 +1366,240 @@ Aggiornati (con verifica a ogni stadio):
 | Vitest | 2.1.9 | 5.1.0 |
 | Vite | 5.4.21 | 8.3.8 |
 | `@vitejs/plugin-react` | 4.7.0 | 6.3.0 |
-| React / React DOM (+ tipi) | 18.3.1 | 19.3.1 |
+| React / React DOM (+ types) | 18.3.1 | 19.3.1 |
 | pdfjs-dist | 5.4.296 | 6.5.438 |
-| better-sqlite3 (+ tipi) | 11.10.0 | 13.2.0 / 9.6.0 |
+| better-sqlite3 (+ types) | 11.10.0 | 13.2.0 / 9.6.0 |
 | `@fastify/static` | 8.3.0 | 10.1.11 |
 | Fastify | 5.0.0 | 5.12.8 |
 | `@types/node` | 24.19.2 | 26.6.6 |
-| TypeScript | 5.6.0 range | 5.6.3 (range invariata) |
+| TypeScript | 5.6.0 range | 5.6.3 (range unchanged) |
 
-Adattamenti al codice resi necessari dagli aggiornamenti:
-- ESLint 10 abilita `no-useless-assignment` e `preserve-caught-error`: risolti
-  i 7 rilievi nel codice (inizializzazioni ridondanti rimosse,
-  `new Error(..., { cause })` sul curator error). Nessuna regola disabilitata.
-- `@fastify/static` v10 passa la `FastifyReply` a `setHeaders`: sostituito
-  `response.setHeader(...)` con `response.header(...)` (stessa semantica di
-  cache-control sugli asset).
-- pdfjs-dist v6 rimuove `PDFDocumentProxy.destroy()`: `PdfPreview` chiude il
-  documento distruggendo il loading task (`task.destroy()`).
-- `apps/web` dichiara `"type": "module"` (Vite 8 carica la config come ESM) e
-  `vitest.config.ts` usa `import.meta.dirname` invece di `__dirname`.
-- `pnpm-workspace.yaml`: `allowBuilds` allineato a `better-sqlite3@13.2.0`
-  (senza questo il binding nativo non verrebbe costruito).
+Code adaptations required by the upgrade:
+- ESLint 10 enables `no-useless-assignment` and `preserve-caught-error`: seven
+  findings were fixed (redundant initializations removed, `new Error(...,
+  { cause })` for the curator error). No rule was disabled.
+- `@fastify/static` v10 passes the `FastifyReply` to `setHeaders`:
+  `response.setHeader(...)` became `response.header(...)`, preserving asset
+  cache-control semantics.
+- pdfjs-dist v6 removes `PDFDocumentProxy.destroy()`: `PdfPreview` closes the
+  document by destroying the loading task (`task.destroy()`).
+- `apps/web` declares `"type": "module"` (Vite 8 loads config as ESM) and
+  `vitest.config.ts` uses `import.meta.dirname` instead of `__dirname`.
+- `pnpm-workspace.yaml`: `allowBuilds` aligned to `better-sqlite3@13.2.0` without
+  which the native binding would not be built.
 
-### Pin mantenuti volutamente
-- `typebox` resta **1.3.27 esatto**: è la stessa identica versione dipendenza di
-  `@earendil-works/pi-coding-agent@1.5.2`. Un bump disallineerebbe gli schemi
-  dei tool rispetto al runtime Pi.
-- TypeScript resta **5.6.x**: `typescript-eslint@8.73` dichiara supporto
-  `typescript >=4.8.4 <6.1.0` e va in hard error con TS 7; con TS 7.0.2 anche
-  `tsc --build` fallisce sulla risoluzione dei tipi `@types/pdfmake`. Il major
-  verrà ripreso quando typescript-eslint supporterà TS 7.
-- `pdfjs-dist`, `@huggingface/transformers`, `sqlite-vec`, `typebox` restano
-  versioni esatte (riproducibilità degli artefatti e allineamento al runtime).
+### Intentional pins
+- `typebox` remains exact **1.3.27**: it is the exact dependency version of
+  `@earendil-works/pi-coding-agent@1.5.2`. A bump would misalign tool schemas with
+  the Pi runtime.
+- TypeScript remains **5.6.x**: `typescript-eslint@8.73` declares support for
+  `typescript >=4.8.4 <6.1.0` and hard-errors with TS 7; with TS 7.0.2,
+  `tsc --build` also fails resolving `@types/pdfmake`. The major upgrade will
+  resume when typescript-eslint supports TS 7.
+- `pdfjs-dist`, `@huggingface/transformers`, `sqlite-vec` and `typebox` remain
+  exact versions (artifact reproducibility and runtime alignment).
 
-### Conseguenze
-- `pnpm outdated -r` resta con solo i due pin intenzionali (`typebox`,
+### Consequences
+- `pnpm outdated -r` only reports the two intentional pins (`typebox`,
   TypeScript).
-- Verifica riproducibile: `pnpm install && pnpm typecheck && pnpm lint &&
-  pnpm test && pnpm build` (72 file di test, 373 test verdi), `pnpm peers check`
-  senza problemi, `pnpm smoke:dist` verde.
-- Il binding `better-sqlite3@13.2.0` funziona su Node 24 (SQLite 3.54.1).
+- Reproducible verification: `pnpm install && pnpm typecheck && pnpm lint &&
+  pnpm test && pnpm build` (72 test files, 373 passing tests), `pnpm peers check`
+  clean, `pnpm smoke:dist` green.
+- The `better-sqlite3@13.2.0` binding works on Node 24 (SQLite 3.54.1).
 
 ---
-## ADR-038 — Metadati e tooltip delle fonti web
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-038 — Web source metadata and tooltips
+**Date:** 2026-11-18
+**Status:** accepted
 
-### Contesto
-Il tooltip nativo delle citazioni mostrava solo “Fonte n”, mentre l’utente
-voleva riconoscere subito sito, titolo e contenuto senza aprire la fonte. Le
-etichette `WEB` e `HTML` della scheda Fonti non spiegavano la differenza tra un
-risultato di ricerca e una pagina letta.
+### Context
+The native citation tooltip showed only “Source n”, while the user wanted to
+recognize site, title and content immediately without opening the source. The
+`WEB` and `HTML` labels in the Sources tab did not explain the difference between
+a search result and a read page.
 
-### Decisione
-- Le citazioni `[n]` contengono un tooltip HTML/CSS con dominio, titolo e uno
-  snippet breve; il tooltip compare su hover e su focus da tastiera.
-- I metadati provengono dalla `WebSource` e vengono passati al renderer Markdown;
-  testo e attributi sono sempre escapati.
-- Le etichette della scheda Fonti diventano:
-  - **Ricerca**: risultato del motore, non ancora letto;
-  - **Letta**: pagina recuperata e letta;
-  - **PDF**: PDF letto.
-- Una legenda nella scheda spiega le etichette.
-- Per le pagine lette vengono salvati anche titolo reale e un estratto iniziale;
-  per i PDF viene salvato un estratto del testo estratto.
+### Decision
+- `[n]` citations contain an HTML/CSS tooltip with domain, title and a short
+  snippet; the tooltip appears on hover and keyboard focus.
+- Metadata comes from `WebSource` and is passed to the Markdown renderer; text and
+  attributes are always escaped.
+- Sources tab labels become:
+  - **Search**: search-engine result, not read yet;
+  - **Read**: page fetched and read;
+  - **PDF**: PDF read.
+- A legend in the tab explains the labels.
+- Read pages also store the real title and an initial excerpt; PDFs store an
+  excerpt of the extracted text.
 
-### Conseguenze
-- Il tooltip non dipende da JavaScript e resta disponibile anche con la UI
-  statica.
-- Il tooltip è informativo ma non sostituisce l’apertura della fonte.
-- I vecchi riferimenti senza metadati restano testo `[n]`.
-
----
-## ADR-039 — Sezioni personalizzabili e sidebar ad albero
-**Data:** 2026-11-18
-**Stato:** accepted
-
-### Contesto
-La sidebar usava un selettore progetto e una lista piatta di sessioni. Il modello
-mentale più familiare è invece: sezioni → progetti → sessioni. Servono inoltre
-icone stabili per sezioni e progetti, senza caricare SVG arbitrari.
-
-### Decisione
-- Le sezioni sono entità persistenti in
-  `$MEMORA_DATA_DIR/config/project-sections.json`, con `id`, `name`, `icon`,
-  `order` e timestamp.
-- `project.json` accetta `sectionId` e `icon` opzionali; un progetto senza
-  sezione finisce in **Senza sezione**.
-- Le icone sono un elenco chiuso e validato lato server; non vengono caricati
-  SVG o file esterni.
-- La sidebar mostra un albero con sezioni, progetti e sessioni. Sezioni e
-  progetti hanno stato aperto/chiuso indipendente, persistito in `localStorage`.
-- Selezionare una sezione la apre; selezionare un progetto lo apre e mostra le
-  sue sessioni. Il progetto selezionato non filtra più l’intera lista.
-- Le chat senza progetto sono raggruppate sotto **Chat senza progetto**.
-- La creazione di un progetto può partire dalla sezione (`+`), e le impostazioni
-  del progetto permettono di cambiare sezione e icona.
-- L’eliminazione di una sezione è consentita solo se non contiene progetti.
-
-### Conseguenze
-- La sidebar è più familiare ma richiede un caricamento separato delle sezioni.
-- I dati delle sezioni non sono contenuti nei `project.json`: vanno inclusi nei
-  backup della data directory.
-- Un progetto orfano da una sezione mancante resta visibile in **Senza sezione**.
-- Lo stato di apertura è locale al browser; non viene sincronizzato tra device.
+### Consequences
+- The tooltip does not depend on JavaScript and remains available in the static
+  UI.
+- The tooltip is informative but does not replace opening the source.
+- Old references without metadata remain plain `[n]` text.
 
 ---
-## ADR-040 — Azioni contestuali e chat in evidenza
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-039 — Custom sections and tree sidebar
+**Date:** 2026-11-18
+**Status:** accepted
 
-### Contesto
-I pulsanti inline di rinomina, archiviazione ed eliminazione occupavano spazio
-nelle righe della sidebar e rendevano i nomi troppo corti. Serviva un modello
-più leggibile e un modo per tenere in evidenza le chat importanti.
+### Context
+The sidebar used a project selector and a flat session list. The more familiar
+mental model is sections → projects → sessions. Stable icons for sections and
+projects were also needed without loading arbitrary SVGs.
 
-### Decisione
-- Le azioni delle righe sono in un menu verticale `⋮`, visibile solo su hover o
-  focus; il trigger non occupa larghezza nel layout del nome.
-- Sessioni: rinomina, archivia/ripristina, elimina e metti/rimuovi evidenza.
-- Sezioni: nuovo progetto, modifica, elimina.
-- Progetti: nuova chat, impostazioni progetto.
-- Le chat in evidenza sono locali al browser (`localStorage`) e vengono ordinate
-  prima delle altre nello stesso gruppo.
-- Il menu si chiude con click esterno o `Escape`.
+### Decision
+- Sections are persistent entities in
+  `$MEMORA_DATA_DIR/config/project-sections.json`, with `id`, `name`, `icon`,
+  `order` and timestamps.
+- `project.json` accepts optional `sectionId` and `icon`; a project without a
+  section appears under **No section**.
+- Icons are a closed list validated server-side; no SVG or external files are
+  loaded.
+- The sidebar shows a tree of sections, projects and sessions. Sections and
+  projects have independent open/closed state persisted in `localStorage`.
+- Selecting a section opens it; selecting a project opens it and shows its
+  sessions. The selected project no longer filters the entire list.
+- Chats without a project are grouped under **Chats without project**.
+- A project can be created from a section (`+`), and project settings allow
+  changing section and icon.
+- A section can only be deleted when it contains no projects.
 
-### Conseguenze
-- I nomi hanno più spazio e la sidebar è meno rumorosa.
-- L’evidenziazione non è sincronizzata tra browser o dispositivi.
-- Le azioni distruttive restano sempre a due passaggi (menu + conferma).
-
----
-## ADR-041 — Titoli automatici delle sessioni
-**Data:** 2026-11-18
-**Stato:** accepted
-
-### Contesto
-Pi usa `session_info` per il nome visualizzato, ma una nuova chat non ha un
-nome finché l’utente non la rinomina; la sidebar ricade sul primo messaggio,
-che è spesso lungo e poco leggibile.
-
-### Decisione
-- Al primo turno viene salvato subito un titolo locale deterministico, con
-  fallback `Nuova chat`.
-- Lo stesso turno avvia in background un titolo LLM usando il primo messaggio
-  utente e la prima risposta dell’assistente (massimo 1200 caratteri ciascuno),
-  senza memoria o allegati.
-- Il titolo LLM viene salvato con `session_info` nativa e un metadata
-  `memora.title` con `source: auto`.
-- `renameSession` scrive `source: manual`; la generazione non può sovrascrivere
-  un titolo manuale.
-- La generazione avviene solo al primo turno completato, con timeout e fallback
-  locale in caso di errore/provider non disponibile.
-- Il titolo LLM si può disabilitare da **Amministrazione → Chat**
-  (`chat.autoTitleEnabled` in `settings.json`); il fallback locale resta attivo.
-  Non è una variabile d’ambiente.
-- Un evento SSE `session_title` aggiorna la sidebar senza polling.
-
-### Conseguenze
-- La sidebar mostra un titolo utile già dal primo turno.
-- Ogni nuova chat può produrre una piccola chiamata LLM aggiuntiva; il testo
-  inviato è il primo scambio richiesta + risposta, senza memoria o allegati.
-- Se il primo titolo automatico resta il fallback, viene ritentato al turno
-  successivo fino a due tentativi.
-- Il nome manuale resta sempre prioritario.
+### Consequences
+- The sidebar is more familiar but requires a separate sections load.
+- Section data is not stored in `project.json`: it must be included in data
+  directory backups.
+- A project orphaned by a missing section remains visible under **No section**.
+- Open state is local to the browser and is not synchronized across devices.
 
 ---
-## ADR-042 — Turni in background e coda
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-040 — Contextual actions and pinned chats
+**Date:** 2026-11-18
+**Status:** accepted
 
-### Contesto
-L’esecuzione di un turno era legata alla connessione SSE del browser. Cambiando
-chat o chiudendo il browser il lavoro poteva continuare senza controllo, e non
-esisteva uno stato condiviso tra sessioni o dispositivi.
+### Context
+Inline rename, archive and delete buttons consumed space in sidebar rows and made
+names too short. A more readable model and a way to pin important chats were
+needed.
 
-### Decisione
-- Un `TurnManager` server-side possiede i turni, indipendentemente dalla
-  connessione del client.
-- Massimo 2 turni concorrenti globali; gli altri vengono accodati.
-- Una sessione ha un solo turno attivo; i messaggi successivi vengono messi in
-  coda, non iniettati nella risposta in corso.
-- La disconnessione del browser non interrompe il turno; solo un abort esplicito
-  o un riavvio del server lo fermano.
-- Gli eventi hanno una sequenza e un buffer per consentire la riconnessione;
-  il client usa EventSource e riprende da `after` quando la chat torna visibile.
-- `GET /api/turns` espone lo stato sintetico; la sidebar usa polling leggero e
-  mostra giallo per turni in corso fuori dalla chat attiva e verde per risposte
-  completate non ancora lette.
-- Lo stato sintetico dei turni viene persistito in `config/turns.json`; al
-  riavvio i turni `running`/`queued` diventano `interrupted`. Il contenuto degli
-  eventi non viene persistito.
-- I turni completati sostituiti vengono rimossi dalla mappa in memoria; i
-  turni falliti/interrotti hanno un indicatore rosso nella sidebar.
+### Decision
+- Row actions live in a vertical `⋮` menu, visible only on hover or focus; the
+  trigger consumes no width in the name layout.
+- Sessions: rename, archive/restore, delete and pin/unpin.
+- Sections: new project, edit, delete.
+- Projects: new chat, project settings.
+- Pinned chats are local to the browser (`localStorage`) and sorted before other
+  chats in the same group.
+- The menu closes on outside click or `Escape`.
 
-### Conseguenze
-- L’utente può leggere una chat mentre un’altra lavora.
-- Il browser può essere chiuso durante la generazione; il risultato viene
-  recuperato alla riapertura.
-- Servono un limite di concorrenza e una coda per proteggere RAM, CPU e quota
-  provider.
-- La consegna cross-device può arrivare con il ritardo del polling.
+### Consequences
+- Names have more space and the sidebar is less noisy.
+- Pinning is not synchronized across browsers or devices.
+- Destructive actions always remain two-step (menu + confirmation).
 
 ---
-## ADR-043 — Robustezza dei turni in background (P2)
-**Data:** 2026-11-18
-**Stato:** accepted
+## ADR-041 — Automatic session titles
+**Date:** 2026-11-18
+**Status:** accepted
 
-### Contesto
-Dopo il primo rilascio dei turni in background restavano cinque limiti: il
-limite di concorrenza era fisso, lo stato “letta” viveva solo nel browser, i
-messaggi in coda potevano sparire dopo un reload, non c’erano notifiche e i test
-coprivano il manager ma non il percorso HTTP con più client.
+### Context
+Pi uses `session_info` for the display name, but a new chat has no name until the
+user renames it; the sidebar falls back to the first message, which is often long
+and hard to read.
 
-### Decisione
-- La concorrenza è configurabile in **Amministrazione → Chat** con
-  `chat.maxConcurrentTurns` (intero 1–4, default 2). È applicata a caldo tramite
-  `TurnManager.setMaxConcurrent()` e non usa variabili d’ambiente.
-- Lo stato letto è persistito dal server in `config/turn-reads.json` con mode
-  `0600`; il localStorage resta un fallback ottimistico. La mappa è
-  `sessionId → turnId` e non contiene testo delle conversazioni.
-- `TurnInfo.text` espone il testo della richiesta in memoria, così la UI può
-  mostrare subito i messaggi in coda anche dopo un reload. `turns.json` non
-  persiste quel testo: i turni interrotti dopo un riavvio restano senza prompt
-  duplicato e il contenuto autorevole resta nel JSONL.
-- `GET /turns/current` restituisce il turno in esecuzione quando esiste, anche
-  se c’è una richiesta in coda; `/api/turns` continua a esporre l’ultimo turno
-  per sessione.
-- Le notifiche sono notifiche browser opt-in, con permesso richiesto da un gesto
-  esplicito. Richiedono la scheda Memora aperta e non sono push notification.
-  Telegram non è implementato e non viene simulato.
-- I test end-to-end HTTP avviano due client SSE, verificano la chiusura al
-  completamento e il replay di un turno già completato; restano test del manager
-  per coda, abort, aumento di concorrenza e riavvio.
+### Decision
+- On the first turn an immediate deterministic local title is stored, with a
+  “New chat” fallback.
+- The same turn starts a background LLM title using the first user message and the
+  first assistant answer (maximum 1200 characters each), without memory or
+  attachments.
+- The LLM title is stored with native `session_info` and a `memora.title` metadata
+  entry with `source: auto`.
+- `renameSession` writes `source: manual`; generation cannot overwrite a manual
+  title.
+- Generation happens only on the first completed turn, with a timeout and local
+  fallback on error/provider unavailability.
+- The LLM title can be disabled in **Administration → Chat**
+  (`chat.autoTitleEnabled` in `settings.json`); the local fallback remains active.
+  It is not an environment variable.
+- An SSE `session_title` event updates the sidebar without polling.
 
-### Conseguenze
-- L’amministratore può adattare il parallelismo alla RAM disponibile senza
-  riavviare il servizio.
-- “Letta” è coerente tra browser e dispositivi, con un ulteriore file di stato
-  da includere nei backup.
-- Le notifiche browser non raggiungono un browser chiuso; una futura integrazione
-  Telegram o Web Push potrà aggiungere la consegna esterna.
-- Il polling può ancora arrivare con circa 2 secondi di ritardo.
+### Consequences
+- The sidebar shows a useful title from the first turn.
+- Every new chat may make one small extra LLM call; the text sent is the first
+  request + response exchange, without memory or attachments.
+- If the first automatic title remains the fallback, it is retried on the next
+  turn up to two attempts.
+- A manual name always remains authoritative.
+
+---
+## ADR-042 — Background turns and queue
+**Date:** 2026-11-18
+**Status:** accepted
+
+### Context
+Turn execution was tied to the browser SSE connection. Switching chats or closing
+the browser could leave work running without control, and there was no shared
+state across sessions or devices.
+
+### Decision
+- A server-side `TurnManager` owns turns independently of the client connection.
+- Maximum 2 concurrent global turns; others are queued.
+- A session has one active turn; subsequent messages are queued, not injected
+  into the running response.
+- Browser disconnect does not stop a turn; only an explicit abort or server
+  restart does.
+- Events have a sequence and buffer to support reconnection; the client uses
+  EventSource and resumes from `after` when chat becomes visible.
+- `GET /api/turns` exposes synthetic state; the sidebar uses lightweight polling
+  and shows yellow for turns running outside the active chat and green for
+  completed unread answers.
+- Synthetic turn state is persisted in `config/turns.json`; `running`/`queued`
+  turns become `interrupted` after restart. Event content is not persisted.
+- Superseded completed turns are removed from the in-memory map; failed/interrupted
+  turns get a red sidebar indicator.
+
+### Consequences
+- The user can read one chat while another works.
+- The browser can close during generation; the result is recovered on reopen.
+- Concurrency and queue limits protect RAM, CPU and provider quota.
+- Cross-device delivery may arrive with polling delay.
+
+---
+## ADR-043 — Background turn robustness (P2)
+**Date:** 2026-11-18
+**Status:** accepted
+
+### Context
+After the first background-turn release, five limitations remained: concurrency
+was fixed, read state lived only in the browser, queued messages could disappear
+after reload, there were no notifications, and tests covered the manager but not
+the HTTP path with multiple clients.
+
+### Decision
+- Concurrency is configurable in **Administration → Chat** through
+  `chat.maxConcurrentTurns` (integer 1–4, default 2). It is applied live through
+  `TurnManager.setMaxConcurrent()` and does not use environment variables.
+- Read state is persisted by the server in `config/turn-reads.json` with mode
+  `0600`; localStorage remains an optimistic fallback. The map is
+  `sessionId → turnId` and contains no conversation text.
+- `TurnInfo.text` exposes request text in memory, so the UI can show queued
+  messages immediately and after reload. `turns.json` does not persist that text:
+  interrupted turns after restart stay without a duplicated prompt and
+  authoritative content remains in JSONL.
+- `GET /turns/current` returns the running turn when one exists, even if there is
+  a queued request; `/api/turns` keeps exposing the latest turn per session.
+- Notifications are opt-in browser notifications, with permission requested by an
+  explicit gesture. They require the Memora tab to be open and are not push
+  notifications. Telegram is not implemented and is not simulated.
+- End-to-end HTTP tests start two SSE clients, verify closure at completion and
+  replay of a completed turn; manager tests cover queue, abort, concurrency
+  increase and restart.
+
+### Consequences
+- The administrator can adapt parallelism to available RAM without restarting the
+  service.
+- “Read” is consistent across browsers and devices, with an additional state file
+  to include in backups.
+- Browser notifications cannot reach a closed browser; future Telegram or Web Push
+  integration can add external delivery.
+- Polling may still arrive with about 2 seconds of delay.

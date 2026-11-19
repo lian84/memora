@@ -1,48 +1,50 @@
 # Memora
 
+**English** | [Italiano](README.it.md)
+
 > Self-hosted, file-first personal AI assistant built on Pi.
-> La documentazione del progetto è in italiano.
 
 [![CI](https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg)](https://github.com/lian84/memora/actions/workflows/ci.yml)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
-Memora è un assistente personale self-hosted costruito sopra
-[Pi](https://github.com/earendil-works/pi). Riunisce chat persistenti, un Second
-Brain in Markdown, memoria con approvazione umana, progetti, artefatti e ricerca
-web in un'unica interfaccia.
+Memora is a self-hosted personal assistant built on
+[Pi](https://github.com/earendil-works/pi). It brings persistent chats, a
+Markdown-based Second Brain, human-reviewed memory, projects, artifacts and web
+research into one interface.
 
-Il registro completo delle funzionalità, con stato e limiti noti, è in
-[`docs/FEATURES.md`](docs/FEATURES.md). Le decisioni architetturali sono in
-[`docs/DECISIONS.md`](docs/DECISIONS.md).
+The complete feature registry, with status and known limitations, is in
+[`docs/FEATURES.md`](docs/FEATURES.md). Architectural decisions are documented
+in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
-## Stato
+## Status
 
-Memora è in sviluppo **pre-release**. Il codice è utilizzabile e testato, ma
-l'installazione e le migrazioni non sono ancora considerate stabili. Non
-esporre il servizio su Internet senza HTTPS, reverse proxy e una revisione della
-configurazione.
+Memora is in **pre-release development**. The code is usable and tested, but
+installation and migrations are not yet considered stable. Do not expose the
+service to the public Internet without HTTPS, a reverse proxy and a review of
+your configuration.
 
-## Funzionalità principali
+## Key features
 
-- Chat con streaming, sessioni Pi persistenti e turni in background.
-- Second Brain file-first: Markdown autorevole, SQLite ricostruibile.
-- Embeddings locali opzionali e ricerca semantica/ibrida.
-- Memory Inbox con approvazione esplicita; Curator LLM opzionale.
-- Progetti, fonti indicizzate, file di progetto e artefatti versionati.
-- PDF, DOCX, XLSX e PPTX senza LibreOffice.
-- Ricerca web SSRF-safe tramite Brave o SearXNG, con citazioni numerate.
-- Login single-user, notifiche browser e interfaccia IT/EN/FR.
-- Layout responsive, pannello laterale e amministrazione runtime.
+- Streaming chat, persistent Pi sessions and background turns.
+- File-first Second Brain: authoritative Markdown and a rebuildable SQLite
+  index.
+- Optional local embeddings with semantic and hybrid retrieval.
+- Memory Inbox with explicit approval; optional LLM Memory Curator.
+- Projects, indexed sources, project files and versioned artifacts.
+- PDF, DOCX, XLSX and PPTX generation without LibreOffice.
+- SSRF-safe web research through Brave or SearXNG, with numbered citations.
+- Single-user login, browser notifications and an IT/EN/FR interface.
+- Responsive layout, chat side panel and runtime administration.
 
-## Requisiti
+## Requirements
 
 - Node.js 24
 - pnpm 12.21
-- Debian 13 o una distribuzione compatibile per il runtime completo
-- Chromium headless opzionale per il rendering PDF
-- Modello di embedding locale opzionale per la ricerca semantica
+- Debian 13 or a compatible distribution for the full runtime
+- Optional headless Chromium for PDF rendering
+- Optional local embedding model for semantic search
 
-## Avvio rapido
+## Quick start
 
 ```bash
 git clone https://github.com/lian84/memora.git
@@ -52,50 +54,52 @@ pnpm install
 pnpm dev
 ```
 
-Apri `http://127.0.0.1:3000`, completa il primo accesso e configura provider,
-modello e credenziali da **Amministrazione**.
+Open `http://127.0.0.1:3000`, complete the first-run setup and configure the
+provider, model and credentials in **Administration**.
 
-Build production:
+Production build:
 
 ```bash
 pnpm build
 pnpm start
 ```
 
-## Documentazione
+## Documentation
 
-- [Funzionalità](docs/FEATURES.md)
-- [Architettura](ARCHITECTURE.md)
-- [Decisioni](docs/DECISIONS.md)
-- [Operazioni](docs/OPERATIONS.md)
-- [Sicurezza](docs/SECURITY.md)
-- [Roadmap](ROADMAP.md)
+- [Features](docs/FEATURES.md) · [Italiano](docs/FEATURES.it.md)
+- [Decisions](docs/DECISIONS.md) · [Italiano](docs/DECISIONS.it.md)
+- [Architecture](ARCHITECTURE.md) (Italian)
+- [Operations](docs/OPERATIONS.md) (Italian)
+- [Security](docs/SECURITY.md) (Italian)
+- [Roadmap](ROADMAP.md) (Italian)
 
-## Principi di progetto
+The README, feature registry and decision log are maintained in English and
+Italian. Some operational and security deep-dives are currently Italian-only.
 
-1. Pi è il motore agentico e resta una dipendenza esterna, non un fork.
-2. La memoria importante resta leggibile in Markdown.
-3. Le sessioni restano nel formato Pi JSONL.
-4. Le credenziali non entrano mai nel repository.
-5. Il deployment predefinito resta locale/LAN; l'esposizione pubblica richiede
-   HTTPS e una configurazione esplicita.
-6. Memora deve restare utile cambiando modello o frontend.
-7. Codice, configurazione, dati e segreti sono separati; i dati runtime vivono
-   in `MEMORA_DATA_DIR`.
-8. Nessun percorso specifico dell'utente o della macchina è hardcoded.
+## Design principles
 
-Le risposte possono continuare in background: la concorrenza è configurabile
-da Amministrazione (1–4, default 2) e gli altri turni vengono accodati.
-Chiudere il browser non interrompe il turno; un riavvio di Memora sì. La sidebar
-mostra un pallino giallo per una risposta in corso in un'altra chat e verde per
-una risposta completata non ancora letta. Lo stato letto è condiviso tra
-dispositivi, mentre le notifiche browser a risposta pronta sono opt-in e
-richiedono la scheda aperta (Telegram non è ancora implementato). Tornando
-nella chat, il client si ricollega agli eventi già prodotti e riprende il testo
-parziale. Dopo un riavvio del server i turni in corso vengono marcati come
-interrotti.
+1. Pi is the agent engine and remains an external dependency, not a fork.
+2. Important memory remains readable as Markdown.
+3. Sessions remain in Pi JSONL format.
+4. Credentials never enter the repository.
+5. The default deployment is local/LAN; public exposure requires HTTPS and an
+   explicit configuration.
+6. Memora must remain useful when models or frontends change.
+7. Code, configuration, data and secrets are separate; runtime data lives in
+   `MEMORA_DATA_DIR`.
+8. No user- or machine-specific paths are hardcoded.
+
+Responses can continue in the background: concurrency is configurable in
+Administration (1–4, default 2) and additional turns are queued. Closing the
+browser does not stop a turn; restarting Memora does. The sidebar shows a yellow
+dot for a response running in another chat and a green dot for a completed unread
+response. Read state is shared across devices, while browser notifications are
+opt-in and require the tab to stay open (Telegram is not implemented yet).
+Returning to a chat reconnects to events already produced and resumes partial
+text. After a server restart, in-flight turns are marked as interrupted.
 
 ## Stack
+
 - Debian 13
 - Node.js 24 LTS
 - TypeScript
@@ -104,150 +108,168 @@ interrotti.
 - Fastify
 - React + Vite
 - SQLite + FTS5
-- Markdown come fonte autorevole
+- Markdown as the authoritative source
 
-## Comandi
+## Commands
 
 ```bash
-pnpm install          # installa le dipendenze del monorepo
-pnpm dev              # development: backend Fastify su :3000
-pnpm build            # build backend + frontend React
-pnpm start            # production: Fastify serve API + React su :3000
+pnpm install          # install monorepo dependencies
+pnpm dev              # development: Fastify backend on :3000
+pnpm build            # build backend + React frontend
+pnpm start            # production: Fastify serves API + React on :3000
 pnpm lint             # ESLint
 pnpm format           # Prettier
-pnpm typecheck        # TypeScript strict
+pnpm typecheck        # strict TypeScript
 pnpm test             # Vitest
-pnpm smoke:dist       # smoke dei moduli compilati
-pnpm smoke:prod       # smoke del runtime production completo
-pnpm embeddings:setup     # download esplicito e verifica offline del modello
-pnpm embeddings:benchmark # benchmark sintetico locale (richiede setup)
-pnpm eval:memory          # valutazione memoria: lexical, più semantic/hybrid se disponibili
-pnpm eval:memory:check    # confronto con evaluation/baseline.json
-pnpm memory:metadata:migrate # dry-run metadata dei bullet legacy
-pnpm memory:history:prune  # dry-run retention delle versioni superate
-pnpm memory:integrity      # controllo read-only di indice, metadata e Inbox
-pnpm memory:consolidate    # audit read-only delle memorie attive simili
-pnpm memory:consolidate:llm # report LLM read-only su duplicati/conflitti
-pnpm memory:feedback      # tuning advisory delle soglie
-pnpm projects:migrate     # dry-run project.json per i progetti legacy
+pnpm smoke:dist       # smoke-test compiled modules
+pnpm smoke:prod       # full production runtime smoke test
+pnpm embeddings:setup     # explicit model download and offline verification
+pnpm embeddings:benchmark # synthetic local benchmark (requires setup)
+pnpm eval:memory          # memory evaluation: lexical, plus semantic/hybrid when available
+pnpm eval:memory:check    # compare with evaluation/baseline.json
+pnpm memory:metadata:migrate # dry-run metadata for legacy bullets
+pnpm memory:history:prune  # dry-run retention of superseded versions
+pnpm memory:integrity      # read-only index, metadata and Inbox check
+pnpm memory:consolidate    # read-only audit of similar active memories
+pnpm memory:consolidate:llm # read-only LLM report on duplicates/conflicts
+pnpm memory:feedback      # advisory threshold tuning
+pnpm projects:migrate     # dry-run project.json for legacy projects
 ```
 
-Variabili d'ambiente (vedi `.env.example`). Le variabili Memora usano il prefisso `MEMORA_*`; le credenziali provider e `NODE_ENV` mantengono i nomi standard.
-- `NODE_ENV` (`development` oppure `production`)
+Environment variables are documented in `.env.example`. Memora variables use
+the `MEMORA_*` prefix; provider credentials and `NODE_ENV` keep their standard
+names.
+
+- `NODE_ENV` (`development` or `production`)
 - `MEMORA_HOST` (default `127.0.0.1`)
 - `MEMORA_PORT` (default `3000`)
 - `MEMORA_DATA_DIR` (default `./data`)
-- `MEMORA_WEB_DIST_DIR` (opzionale): override della build frontend servita in production
-- `MEMORA_ASSISTANT_CWD` (opzionale): CWD isolato delle sessioni personal assistant
-- `MEMORA_MEMORY_SEARCH_MODE`: `lexical` (default), `semantic` o `hybrid`.
-- `MEMORA_MEMORY_TOP_K` (default `5`), `MEMORA_MEMORY_MAX_CHARS` (default `4000`) e `MEMORA_MEMORY_MAX_TOKENS` (default `1000`, stima `caratteri/4`): limiti del contesto memoria per turno.
-- `MEMORA_MEMORY_DIVERSITY` (default `0.15`, `0..1`): penalità di similarità per evitare chunk ridondanti.
-- `MEMORA_EMBEDDINGS_ENABLED` (default `false`): carica e indicizza embeddings locali, necessari per `semantic` e `hybrid`.
-- `MEMORA_HYBRID_SEARCH_ENABLED` è legacy: `true` seleziona `hybrid` solo se `MEMORA_MEMORY_SEARCH_MODE` non è impostata; la modalità esplicita ha sempre precedenza.
-- `MEMORA_EMBEDDING_MODEL` (default `Horizon-Labs/multilingual-embedding-small`) e `MEMORA_EMBEDDING_DIMENSIONS` (default `1024`).
-- `MEMORA_MEMORY_CURATOR_ENABLED` (default `false`): abilita il Curator LLM opzionale; `MEMORA_MEMORY_CURATOR_AUTO` (default `true`) abilita le proposte automatiche.
-- `MEMORA_MEMORY_CURATOR_PROVIDER` (default `openrouter`) e `MEMORA_MEMORY_CURATOR_MODEL` (default vuoto): provider e modello indipendenti da quelli della chat; `MEMORA_MEMORY_CURATOR_MIN_CONFIDENCE` (default `0.75`) e `MEMORA_MEMORY_CURATOR_MIN_SALIENCE` (default `0.70`) sono soglie separate.
-- `MEMORA_MEMORY_QUEUE_MAX_ATTEMPTS` (default `3`) e `MEMORA_MEMORY_QUEUE_RETRY_DELAY_MS` (default `5000`): retry della coda Curator durevole.
-- `OPENCODE_API_KEY` e `OPENROUTER_API_KEY`: credenziali provider lette dal secret store locale o dall'environment.
-- `MEMORA_CHAT_PROVIDER`: `openrouter` o `opencode-go`; `OPENROUTER_MODEL` resta il nome storico della variabile per il modello chat predefinito. La UI Impostazioni permette di scegliere provider, modello, chiave e livello reasoning.
-- `MEMORA_CHAT_REASONING_LEVEL` (default `medium`) e `MEMORA_MEMORY_CURATOR_REASONING_LEVEL` (default `low`): livelli `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.
+- `MEMORA_WEB_DIST_DIR` (optional): override the frontend build served in production
+- `MEMORA_ASSISTANT_CWD` (optional): isolated CWD for personal-assistant sessions
+- `MEMORA_MEMORY_SEARCH_MODE`: `lexical` (default), `semantic` or `hybrid`
+- `MEMORA_MEMORY_TOP_K` (default `5`), `MEMORA_MEMORY_MAX_CHARS` (default
+  `4000`) and `MEMORA_MEMORY_MAX_TOKENS` (default `1000`, estimated as
+  characters/4): memory context limits per turn
+- `MEMORA_MEMORY_DIVERSITY` (default `0.15`, `0..1`): similarity penalty used to
+  avoid redundant chunks
+- `MEMORA_EMBEDDINGS_ENABLED` (default `false`): load and index local embeddings,
+  required for `semantic` and `hybrid`
+- `MEMORA_HYBRID_SEARCH_ENABLED` is legacy: `true` selects `hybrid` only when
+  `MEMORA_MEMORY_SEARCH_MODE` is unset; the explicit mode always wins
+- `MEMORA_EMBEDDING_MODEL` (default `Horizon-Labs/multilingual-embedding-small`)
+  and `MEMORA_EMBEDDING_DIMENSIONS` (default `1024`)
+- `MEMORA_MEMORY_CURATOR_ENABLED` (default `false`): enable the optional LLM
+  Curator; `MEMORA_MEMORY_CURATOR_AUTO` (default `true`) enables automatic
+  proposals
+- `MEMORA_MEMORY_CURATOR_PROVIDER` (default `openrouter`) and
+  `MEMORA_MEMORY_CURATOR_MODEL` (default empty): independent provider and model;
+  `MEMORA_MEMORY_CURATOR_MIN_CONFIDENCE` (default `0.75`) and
+  `MEMORA_MEMORY_CURATOR_MIN_SALIENCE` (default `0.70`) are separate thresholds
+- `MEMORA_MEMORY_QUEUE_MAX_ATTEMPTS` (default `3`) and
+  `MEMORA_MEMORY_QUEUE_RETRY_DELAY_MS` (default `5000`): durable Curator queue
+  retries
+- `OPENCODE_API_KEY` and `OPENROUTER_API_KEY`: provider credentials read from the
+  local secret store or environment
+- `MEMORA_CHAT_PROVIDER`: `openrouter` or `opencode-go`; `OPENROUTER_MODEL` is the
+  historical variable name for the default chat model. The Settings UI lets you
+  choose provider, model, key and reasoning level
+- `MEMORA_CHAT_REASONING_LEVEL` (default `medium`) and
+  `MEMORA_MEMORY_CURATOR_REASONING_LEVEL` (default `low`): `minimal`, `low`,
+  `medium`, `high`, `xhigh`, `max`
 
-Le variabili di configurazione runtime hanno precedenza su
-`$MEMORA_DATA_DIR/config/settings.json`. Un valore impostato dall'ambiente è
-mostrato come bloccato nella pagina Impostazioni. Il pannello è organizzato in
-pagine: Aspetto, Generale, Chat, Memoria, Curator, Web e Sistema. Embeddings e
-dati/provider sono raggruppati nelle pagine Memoria e Sistema.
-Token budget e diversità sono modificabili da **Memoria** e si applicano live.
-La pagina **Aspetto** gestisce tema chiaro/scuro/sistema, dimensione del testo,
-densità, larghezza conversazione e movimento ridotto. Queste preferenze sono
-locali al browser (`localStorage`), non vengono inviate al server e si applicano
-subito. La sidebar è comprimibile con il pulsante nella topbar o `Ctrl+B`.
-- `MEMORA_MEMORY_WRITER_ENABLED` (default `false`): abilita l'estrazione
-  automatica conservativa dei candidati memoria. Le richieste esplicite
-  (“ricorda che…”, “salva questa informazione…”) funzionano comunque.
+Runtime configuration variables take precedence over
+`$MEMORA_DATA_DIR/config/settings.json`. A value set through the environment is
+shown as locked in Settings. The panel is organized into Appearance, General,
+Chat, Memory, Curator, Web and System pages. Embeddings and data/provider
+settings are grouped under Memory and System. Token budget and diversity are
+editable under **Memory** and apply live. **Appearance** manages light/dark/system
+theme, text size, density, conversation width and reduced motion. These
+preferences are local to the browser (`localStorage`), are not sent to the
+server and apply immediately. The sidebar can be collapsed with the topbar
+button or `Ctrl+B`.
 
-## Retrieval semantico locale (opzionale)
+- `MEMORA_MEMORY_WRITER_ENABLED` (default `false`): enable conservative
+  automatic memory-candidate extraction. Explicit requests (“remember that…”) and
+  saving an assistant answer still work.
 
-Markdown rimane la fonte autorevole; SQLite è un indice ricostruibile, con FTS5
-per il lessico e sqlite-vec per embeddings locali. RRF fonde le classifiche,
-senza combinare direttamente i punteggi BM25 e cosine. Il default rimane FTS.
+## Optional local semantic retrieval
 
-Impostare `MEMORA_DATA_DIR` fuori dal repository e, una sola volta, eseguire
-`pnpm embeddings:setup`: il modello q8 viene scaricato in `$MEMORA_DATA_DIR/models/`
-e verificato offline in un secondo processo. Non inviare contenuti privati al
-setup: è il solo passaggio che consente rete e scarica solo il modello. Il runtime
-invece vieta il download remoto e genera gli embeddings localmente. Impostare
-`MEMORA_EMBEDDINGS_ENABLED=true` e scegliere `MEMORA_MEMORY_SEARCH_MODE=semantic`
-o `hybrid`, riavviare e chiamare `POST /api/memory/reindex`
-per costruire esplicitamente i vettori. Un reindex successivo riusa i vettori
-invariati; se gli embeddings sono disabilitati, il modello manca o fallisce, il
-servizio avverte e usa FTS. Una modalità non valida produce warning e usa FTS,
-anche se la flag legacy è attiva. Il log di startup riporta la modalità effettiva.
-Il caricamento richiede RAM significativa; vedere `tasks/05.4-hybrid-rag.md`.
+Markdown remains the authoritative source; SQLite is a rebuildable index with
+FTS5 for lexical search and sqlite-vec for local embeddings. RRF fuses the
+rankings without directly combining BM25 and cosine scores. The default remains
+FTS.
 
-Per diagnostica, `/api/memory/search?q=...&mode=lexical|semantic|hybrid` seleziona
-il motore senza modificare il default. `pnpm embeddings:benchmark` crea una
-fixture temporanea sintetica e non usa OpenRouter né dati personali.
+Set `MEMORA_DATA_DIR` outside the repository and run `pnpm embeddings:setup`
+once: the q8 model is downloaded to `$MEMORA_DATA_DIR/models/` and verified
+offline in a second process. Do not send private content to setup: it is the only
+step allowed to use the network and it downloads only the model. The runtime
+forbids remote downloads and generates embeddings locally. Set
+`MEMORA_EMBEDDINGS_ENABLED=true`, choose `MEMORA_MEMORY_SEARCH_MODE=semantic` or
+`hybrid`, restart and call `POST /api/memory/reindex` to build vectors
+explicitly. A later reindex reuses unchanged vectors; if embeddings are disabled,
+the model is missing or fails, the service warns and falls back to FTS. An
+invalid mode produces a warning and uses FTS even when the legacy flag is
+enabled. The startup log reports the effective mode. Loading requires
+significant RAM; see `tasks/05.4-hybrid-rag.md`.
 
-## Memory Curator opzionale
+For diagnostics, `/api/memory/search?q=...&mode=lexical|semantic|hybrid` selects
+the engine without changing the default. `pnpm embeddings:benchmark` creates a
+temporary synthetic fixture and uses neither OpenRouter nor personal data.
 
-Il Curator è disattivato per default. Per provarlo configurare esplicitamente
-provider e modello dalla pagina Impostazioni, oppure con
-`MEMORA_MEMORY_CURATOR_ENABLED=true`, `MEMORA_MEMORY_CURATOR_PROVIDER`,
-`MEMORA_MEMORY_CURATOR_MODEL` e la relativa API key. Il modello è separato da
-quello della chat. **Privacy:** quando attivo, fino a tre brevi messaggi utente
-precedenti, il turno corrente e fino a cinque chunk correlati vengono inviati al
-provider configurato (OpenRouter o OpenCode Go); non è un'elaborazione locale. I controlli per segreti sono conservativi e non possono
-garantire il riconoscimento di ogni dato sensibile. Non attivarlo se non si
-vuole inviare questo contesto al provider.
+## Optional Memory Curator
 
-Dopo un turno significativo: prefilter → ricerca memoria configurata → una
-chiamata Curator → validazione e rilevanza → Memory Inbox → approvazione umana
-→ Markdown → reindex. I saluti brevi sono esclusi localmente; la decisione
-semantica spetta all'LLM. Le richieste esplicite conservano la priorità alta e,
-in caso di errore del Curator, ricadono nel Memory Writer precedente. Un errore
-non interrompe la chat. Se il Curator è disattivato il Writer resta invariato.
-Quando è attivo, i turni vengono accodati dopo la risposta, con una sola
-elaborazione alla volta; la Inbox si aggiorna automaticamente ogni tre secondi.
-La coda è limitata a 100 turni in attesa, **solo in memoria**: arresti improvvisi
-e riavvii forzati possono perderli; al limite i nuovi turni sono rifiutati e
-viene emesso un warning. Lo shutdown regolare attende la coda prima di chiudere
-SQLite, ma un timeout forzato del service manager può interromperla.
+The Curator is disabled by default. To try it, explicitly configure provider and
+model in Settings, or use `MEMORA_MEMORY_CURATOR_ENABLED=true`,
+`MEMORA_MEMORY_CURATOR_PROVIDER`, `MEMORA_MEMORY_CURATOR_MODEL` and the matching
+API key. Its model is separate from the chat model. **Privacy:** when enabled,
+up to three short recent user messages, the current turn and up to five relevant
+chunks are sent to the configured provider (OpenRouter or OpenCode Go); this is
+not local processing. Secret checks are conservative and cannot guarantee that
+every sensitive value is detected. Do not enable it if you do not want this
+context sent to the provider.
 
-Rilevanza = media dei cinque valori 0..1 importance, durability, futureUtility,
-novelty e confidence; i pesi sono iniziali e non calibrati. Le proposte
-automatiche richiedono confidence ≥ 0,75 e rilevanza ≥ 0,70 per default; le
-soglie sono configurabili separatamente. Duplicati ad alta
-confidenza sono saltati. Un UPDATE è proposto solo quando il testo corrente
-corrisponde esattamente a un bullet nella fonte correlata; l'approvazione
-verifica nuovamente il bullet e rifiuta modifiche ambigue o obsolete.
-Il Curator riceve i bullet esistenti e deve classificare l'update come
-`augment`, `replace`, `remove` o `correct`. `proposedText` è sempre lo stato
-finale canonico completo, non il delta: per `augment` il controllo backend
-verifica che i fatti precedenti sopravvivano e rifiuta una proposta incompleta.
-Solo `replace`, `remove` e `correct` possono omettere un valore precedente,
-perché l'utente lo ha esplicitamente invalidato. Nessuna
-approvazione è automatica. Eventi e latenza sono loggati senza testo del turno;
-il Curator aggiunge al massimo una chiamata LLM per turno significativo.
-I log strutturati distinguono request, response, parse, validation, decision e
-persistence, con status HTTP e codici sanitizzati ma senza prompt, risposta o
-chunk. OpenRouter riceve `reasoning.enabled=false`; OpenCode Go non accetta quel
-parametro e viene quindi omesso. Il modello OpenCode può comunque produrre
-reasoning interno: un output troncato viene diagnosticato senza registrare il
-contenuto.
+After a meaningful turn: prefilter → configured memory search → one Curator call
+→ validation and relevance → Memory Inbox → human approval → Markdown → reindex.
+Short greetings are excluded locally; the semantic decision belongs to the LLM.
+Explicit requests keep high priority and fall back to the previous Memory Writer
+if the Curator fails. A failure does not interrupt the chat. If the Curator is
+disabled, the Writer remains unchanged. When enabled, turns are queued after the
+response, with one job processed at a time; the Inbox refreshes automatically
+every three seconds. The queue is limited to 100 pending jobs, **in memory only**:
+sudden crashes and forced restarts may lose them; at the limit new jobs are
+rejected and a warning is emitted. Graceful shutdown waits for the queue before
+closing SQLite, but a forced service-manager timeout can interrupt it.
 
-## Impostazioni amministrative
+Relevance is the average of five 0..1 values: importance, durability,
+futureUtility, novelty and confidence; weights are initial and not calibrated.
+Automatic proposals require confidence ≥ 0.75 and relevance ≥ 0.70 by default;
+thresholds are configurable separately. High-confidence duplicates are skipped.
+An UPDATE is proposed only when the current text exactly matches a bullet in the
+related source; approval rechecks the bullet and rejects ambiguous or stale
+changes. The Curator receives existing bullets and must classify the update as
+`augment`, `replace`, `remove` or `correct`. `proposedText` is always the full
+canonical final state, not a delta: for `augment`, the backend checks that earlier
+facts survive and rejects an incomplete proposal. Only `replace`, `remove` and
+`correct` may omit a previous value because the user explicitly invalidated it.
+No approval is automatic. Events and latency are logged without turn text; the
+Curator adds at most one LLM call per meaningful turn. Structured logs distinguish
+request, response, parse, validation, decision and persistence, with HTTP status
+and sanitized codes but no prompt, answer or chunk. OpenRouter receives
+`reasoning.enabled=false`; OpenCode Go does not accept that parameter, so it is
+omitted. The OpenCode model may still produce internal reasoning; a truncated
+output is diagnosed without logging its content.
 
-L’icona **Impostazioni** nella sidebar permette di modificare le opzioni runtime
-senza editare manualmente i file. La configurazione è salvata in
-`$MEMORA_DATA_DIR/config/settings.json` con scrittura atomica, JSON leggibile,
-schema versionato e mode `0600`. Il file contiene solo override e viene creato
-al primo salvataggio; le installazioni esistenti continuano a funzionare con
-default + environment senza migrazioni automatiche.
+## Administration
 
-Precedenza: default applicativi → `settings.json` → environment. I campi
-provenienti dall'ambiente sono marcati “Gestito dall'ambiente” e non modificabili
-dalla UI. Le API sono centralizzate sotto `/api/admin/*`:
+The **Settings** icon in the sidebar opens runtime options without manual file
+editing. Configuration is stored in `$MEMORA_DATA_DIR/config/settings.json` with
+atomic writes, readable JSON, a versioned schema and mode `0600`. The file
+contains only overrides and is created on the first save; existing installations
+continue to work with defaults + environment and no automatic migrations.
+
+Precedence: application defaults → `settings.json` → environment. Fields that
+come from the environment are marked “Managed by the environment” and cannot be
+edited in the UI. APIs are centralized under `/api/admin/*`:
 
 ```text
 GET   /api/admin/settings
@@ -255,63 +277,60 @@ PATCH /api/admin/settings
 GET   /api/admin/status
 ```
 
-La sezione **Chat** permette di scegliere OpenRouter o OpenCode Go, salvare la
-chiave nel secret store locale, testare la connessione, cercare e selezionare un
-modello dal catalogo reale. Il nuovo default vale per le nuove sessioni; le
-sessioni esistenti non vengono modificate. Da questa sezione si possono anche
-abilitare o disabilitare i titoli automatici delle nuove chat; il fallback
-locale resta sempre disponibile. La sezione **Memory Curator** sceglie
-provider e modello separati e riutilizza la stessa chiave del provider, senza
-chiederne una seconda. Il catalogo OpenRouter usa il catalogo Pi; OpenCode Go usa
-l'endpoint remoto con cache di 10 minuti e fallback al catalogo Pi.
+The **Chat** section lets you choose OpenRouter or OpenCode Go, save the key in
+the local secret store, test the connection and search/select a model from the
+real catalog. The new default applies to new sessions; existing sessions are not
+changed. This section also toggles automatic titles for new chats; the local
+fallback always remains available. The **Memory Curator** section selects a
+separate provider and model and reuses the same provider key without asking for a
+second one. The OpenRouter catalog uses the Pi catalog; OpenCode Go uses its
+remote endpoint with a 10-minute cache and fallback to the Pi catalog.
 
-Retrieval mode, topK/maxChars, soglie Curator, reasoning, provider/modello Curator,
-default Chat e titoli automatici si applicano a caldo; embeddings e abilitazione/disabilitazione del
-Curator richiedono un riavvio esplicito. La UI
-mostra “Riavvio Memora necessario” e non esegue mai `systemctl` o comandi sudo.
-I preset Lite e Standard mostrano le modifiche prima dell'applicazione. Lite è
-pensato per VPS con 1–2 GB RAM; Standard per host da almeno 4 GB RAM.
+Retrieval mode, topK/maxChars, Curator thresholds, reasoning, Curator
+provider/model, Chat defaults, automatic titles and turn concurrency apply live;
+embedding changes and enabling/disabling the Curator require an explicit restart.
+The UI shows “Memora restart required” and never executes `systemctl` or sudo
+commands. Lite and Standard presets show changes before applying them. Lite is
+intended for 1–2 GB RAM VPS instances; Standard for hosts with at least 4 GB RAM.
 
-Le API amministrative sono protette dalla login single-user. Le chiavi sono
-salvate solo in `$MEMORA_DATA_DIR/config/secrets.json` (mode `0600`, scrittura
-atomica) oppure lette dall'environment; `GET` restituisce soltanto stato e
-provenienza, mai il valore. La configurazione è adatta a systemd, Docker futuro,
-VPS, Proxmox, mini PC e installazioni locali, senza path hardcoded oltre
-`MEMORA_DATA_DIR`.
+Admin APIs are protected by single-user login. Keys are stored only in
+`$MEMORA_DATA_DIR/config/secrets.json` (mode `0600`, atomic writes) or read from
+the environment; `GET` returns only status and source, never the value. The
+configuration is suitable for systemd, future Docker, VPS, Proxmox, mini PCs and
+local installations, with no hardcoded paths beyond `MEMORA_DATA_DIR`.
 
-## Login e accesso
+## Login and access
 
-Al primo avvio, se non esiste `$MEMORA_DATA_DIR/config/auth.json`, Memora entra
-in modalità setup: le API applicative restano bloccate finché non viene scelta
-la prima password. Non esiste un nome utente: Memora è personale e single-user.
-La prima password impostata vince, quindi completa il setup subito dopo
-l'installazione.
+On first start, if `$MEMORA_DATA_DIR/config/auth.json` does not exist, Memora
+enters setup mode: application APIs remain blocked until the first password is
+chosen. There is no username: Memora is personal and single-user. The first
+password set wins, so complete setup immediately after installation.
 
-- password minima: 12 caratteri;
-- hash `scrypt` con salt casuale;
-- nessuna password in chiaro;
-- cookie `memora_session`, `HttpOnly`, `SameSite=Lax`;
-- sessione di 24 ore;
-- logout che invalida tutte le sessioni;
-- tutte le `/api/*` protette tranne `/api/health`, login, setup e stato auth;
-- rate limit sugli accessi falliti;
-- nessun token API nella v0.1.
+- minimum password length: 12 characters;
+- `scrypt` hash with a random salt;
+- no plaintext password;
+- `memora_session` cookie, `HttpOnly`, `SameSite=Lax`;
+- 24-hour session;
+- logout invalidates all sessions;
+- all `/api/*` protected except `/api/health`, login, setup and auth status;
+- rate limiting for failed logins;
+- no API tokens in v0.1.
 
-Per il reset della password, dalla macchina che ospita Memora:
+To reset the password, from the machine hosting Memora:
 
 ```bash
-MEMORA_DATA_DIR=/percorso/dati pnpm memora:set-password
+MEMORA_DATA_DIR=/path/to/data pnpm memora:set-password
 ```
 
-Il comando chiede la nuova password in modo nascosto e sostituisce
-`config/auth.json`. Riavvia Memora dopo il reset. Se il servizio è raggiungibile via HTTP sulla LAN, il cookie
-non ha il flag `Secure`; impostare `MEMORA_COOKIE_SECURE=true` solo quando
-l'accesso avviene tramite HTTPS. Tailscale cifra il trasporto, ma il login resta
-necessario.
+The command asks for the new password without echoing it and replaces
+`config/auth.json`. Restart Memora after the reset. If the service is reachable
+over HTTP on the LAN, the cookie does not have the `Secure` flag; set
+`MEMORA_COOKIE_SECURE=true` only when access uses HTTPS. Tailscale encrypts the
+transport, but login remains required.
 
-## Lingue dell’interfaccia
+## Interface languages
 
-La UI supporta:
+The UI supports:
 
 ```text
 Italiano
@@ -319,61 +338,59 @@ English
 Français
 ```
 
-La lingua viene rilevata dal browser, salvata in `localStorage` con la chiave
-`memora-language` e può essere cambiata dal selettore in
-**Amministrazione → Aspetto**. Il fallback è l’inglese.
+The language is detected from the browser, stored in `localStorage` under
+`memora-language` and can be changed from the selector in
+**Administration → Appearance**. The fallback is English.
 
-Il dizionario è in `apps/web/src/i18n/`: `it` è la lingua sorgente, mentre
-`en.ts` e `fr.ts` contengono le traduzioni. Per aggiungere una lingua si copia
-un dizionario e si registra il codice in `SUPPORTED_LANGUAGES`.
+The dictionary lives in `apps/web/src/i18n/`: `it` is the source language, while
+`en.ts` and `fr.ts` contain translations. To add a language, copy a dictionary
+and register the code in `SUPPORTED_LANGUAGES`.
 
-La lingua della UI non forza la lingua di Memo: l’assistente risponde nella
-lingua del messaggio dell’utente.
+The UI language does not force Memo's answer language: the assistant replies in
+the language of the user's message.
 
-## Ricerca web
+## Web search
 
-L’accesso web è **disattivato per default**. Si configura da
-**Amministrazione → Web** scegliendo Brave Search o SearXNG; la chiave Brave
-resta in `$MEMORA_DATA_DIR/config/web.json` con permessi `0600` e non viene mai
-restituita dall’API.
+Web access is **disabled by default**. Configure it in **Administration → Web**
+by choosing Brave Search or SearXNG; the Brave key remains in
+`$MEMORA_DATA_DIR/config/web.json` with `0600` permissions and is never returned
+by the API.
 
-Nella chat il pulsante **Web**, accanto agli allegati, abilita la ricerca per
-quella sessione. Le fonti consultate compaiono nella scheda **Fonti** del
-pannello laterale destro, insieme a File (solo nei progetti), Contesto e
-Artefatti. Il pannello è chiuso per default; su desktop si apre automaticamente
-sulla scheda pertinente quando arriva una nuova ricerca o viene creato un
-artefatto.
+In chat, the **Web** button next to attachments enables search for that session.
+Sources appear in the **Sources** tab of the right side panel, together with
+Files (project chats only), Context and Artifacts. The panel is closed by
+default; on desktop it opens automatically on the relevant tab when a new search
+arrives or an artifact is created.
 
-Sono supportiti:
+Supported behavior:
 
-- ricerca di pagine;
-- lettura del testo HTML con Readability;
-- estrazione testo da PDF;
-- fonti numerate con citazioni `[n]` nel testo, cliccabili verso la fonte;
-- blocco di URL privati/locali, redirect limitati, timeout e limiti di
-  dimensione.
+- page search;
+- HTML text extraction with Readability;
+- text extraction from PDFs;
+- numbered sources with clickable `[n]` citations in the answer;
+- blocking private/local URLs, limited redirects, timeouts and size limits.
 
-Il contenuto web è trattato come **dato non fidato**: non viene mai eseguito e
-non può modificare istruzioni, permessi o strumenti. `web_fetch` non usa
-JavaScript, cookie o sessioni.
+Web content is treated as **untrusted data**: it is never executed and cannot
+change instructions, permissions or tools. `web_fetch` does not use JavaScript,
+cookies or sessions.
 
-Ogni fonte riceve un numero stabile, mostrato come `[1]`, `[2]` nella scheda
-Fonti. Memo deve inserire il riferimento subito dopo ogni informazione ricavata
-dal web; se una frase usa più fonti può scrivere `[1][3]`. I riferimenti nella
-risposta sono cliccabili e aprono la fonte corrispondente. Passando il mouse o
-il focus su un riferimento compaiono sito, titolo e una breve descrizione. I
-numeri non vengono riutilizzati quando la cronologia supera le 50 fonti.
+Every source receives a stable number, shown as `[1]`, `[2]` in the Sources tab.
+Memo must insert the reference immediately after each piece of information
+obtained from the web; a sentence using multiple sources may write `[1][3]`.
+References in the answer are clickable and open the matching source. Hovering or
+focusing a reference shows the site, title and a short description. Numbers are
+not reused when history exceeds 50 sources.
 
-Nella scheda Fonti:
+In the Sources tab:
 
-- **Ricerca** indica un risultato del motore di ricerca, con titolo e snippet,
-  ma la pagina non è ancora stata letta;
-- **Letta** indica una pagina effettivamente recuperata e letta da Memo;
-- **PDF** indica un PDF letto e convertito in testo.
+- **Search** marks a search-engine result with title and snippet, but the page
+  has not been read yet;
+- **Read** marks a page actually fetched and read by Memo;
+- **PDF** marks a PDF read and converted to text.
 
 ## Development
 
-Servono due processi:
+Two processes are required:
 
 ```bash
 pnpm dev
@@ -382,34 +399,34 @@ pnpm --filter @memora/web dev
 
 - Fastify: `http://127.0.0.1:3000`
 - Vite: `http://127.0.0.1:5173`
-- Vite inoltra `/api` al backend tramite `VITE_PROXY_TARGET`.
+- Vite proxies `/api` to the backend through `VITE_PROXY_TARGET`.
 
 ## Production
 
-Un solo processo Fastify:
+A single Fastify process:
 
 ```bash
 pnpm build
 pnpm start
 ```
 
-`pnpm start` imposta `NODE_ENV=production`, non avvia Vite e non usa `tsx`.
-Fastify serve:
+`pnpm start` sets `NODE_ENV=production`, does not start Vite and does not use
+`tsx`. Fastify serves:
 
 ```text
-GET /api/*  → API Memora
+GET /api/*  → Memora API
 GET /*      → React build + SPA fallback (index.html)
 ```
 
-La build Vite attuale viene emessa in `apps/dist/web` (`apps/web/vite.config.ts`,
-`outDir: ../dist/web`). Le API sconosciute restano `404` JSON; gli asset
-mancanti restano `404` e non ricevono `index.html`.
+The Vite build is emitted to `apps/dist/web` (`apps/web/vite.config.ts`,
+`outDir: ../dist/web`). Unknown APIs remain JSON `404`; missing assets remain
+`404` and do not receive `index.html`.
 
-## Servizio systemd
+## systemd service
 
-Unità di esempio: `deploy/memora.service`.
+Example unit: `deploy/memora.service`.
 
-Installazione suggerita:
+Suggested installation:
 
 ```bash
 sudo cp deploy/memora.service /etc/systemd/system/memora.service
@@ -418,7 +435,7 @@ sudo systemctl enable --now memora
 sudo systemctl status memora
 ```
 
-Comandi operativi:
+Operational commands:
 
 ```bash
 sudo systemctl restart memora
@@ -426,210 +443,205 @@ sudo systemctl stop memora
 journalctl -u memora -f
 ```
 
-L'unit usa `User=memora`, `WorkingDirectory=/opt/memora` e
-`EnvironmentFile=/etc/memora/memora.env` come esempio generico. Adatta utente,
-directory e file di ambiente al deployment reale.
+The unit uses `User=memora`, `WorkingDirectory=/opt/memora` and
+`EnvironmentFile=/etc/memora/memora.env` as a generic example. Adapt the user,
+directory and environment file to the real deployment.
 
-`systemd` non espande `~`: `EnvironmentFile` deve usare un path assoluto.
-Nessuna API key deve essere scritta nell'unit. `NODE_ENV=production` è forzato
-anche nell'`ExecStart`, perché systemd lascia che `EnvironmentFile` sovrascriva
-`Environment=`.
+`systemd` does not expand `~`: `EnvironmentFile` must use an absolute path. Do
+not write API keys into the unit. `NODE_ENV=production` is also forced in
+`ExecStart`, because systemd lets `EnvironmentFile` override `Environment=`.
 
-## Accesso remoto sicuro
+## Secure remote access
 
-Il default è `MEMORA_HOST=127.0.0.1`: il servizio non è esposto automaticamente
-su Internet.
+The default is `MEMORA_HOST=127.0.0.1`: the service is not automatically exposed
+to the Internet.
 
-Da un altro computer, con SSH:
-
-```bash
-ssh -L 3000:127.0.0.1:3000 utente@server
-```
-
-Poi aprire `http://127.0.0.1:3000`.
-
-Via Tailscale, usare lo stesso tunnel SSH verso l'hostname o l'IP Tailscale:
+From another computer, through SSH:
 
 ```bash
-ssh -L 3000:127.0.0.1:3000 utente@nome-tailscale
+ssh -L 3000:127.0.0.1:3000 user@server
 ```
 
-Tailscale Serve non è configurato in questo task.
+Then open `http://127.0.0.1:3000`.
+
+Through Tailscale, use the same SSH tunnel to the Tailscale hostname or IP:
+
+```bash
+ssh -L 3000:127.0.0.1:3000 user@tailscale-name
+```
+
+Tailscale Serve is not configured by this project yet.
 
 ## Personal Assistant runtime
 
-Le normali chat Memora sono sessioni personal assistant, non coding agent del
-repository:
+Normal Memora chats are personal-assistant sessions, not repository coding
+agents:
 
-- CWD isolato: `$MEMORA_DATA_DIR/runtime/assistant`
-- built-in coding/filesystem tools disattivati (`noTools: "builtin"`)
-- niente AGENTS.md, project skills, prompt template, documentazione o source
-  code del repository nel context
-- memoria Second Brain e Memory Retrieval restano attivi
-- custom/integration tools esplicitamente configurate possono restare attive
+- isolated CWD: `$MEMORA_DATA_DIR/runtime/assistant`
+- built-in coding/filesystem tools disabled (`noTools: "builtin"`)
+- no AGENTS.md, project skills, prompt templates, documentation or repository
+  source code in context
+- Second Brain memory and Memory Retrieval remain active
+- explicitly configured custom/integration tools may remain active
 
-Le sessioni legacy restano visibili e riprendibili, applicando lo stesso runtime
-isolato al resume.
+Legacy sessions remain visible and resumable, applying the same isolated runtime
+on resume.
 
-Il Personal Assistant risponde naturalmente a decisioni e preferenze: non chiede
-conferma per salvare, non dichiara che una memoria è già registrata e non
-promette tool o ricerche aggiuntive. Le proposte sono gestite separatamente dal
-Memory Curator e riviste nella Memory Inbox. Quando il turno contiene una
-sezione «Memoria utilizzata», quelle fonti sono disponibili come contesto.
+The Personal Assistant responds naturally to decisions and preferences: it does
+not ask for confirmation before saving, does not claim a memory is already
+recorded and does not promise extra tools or research. Proposals are handled
+separately by the Memory Curator and reviewed in the Memory Inbox. When a turn
+contains a “Memory used” section, those sources are available as context.
 
-## Memoria
+## Memory
 
-Il confine di fiducia tra memoria, prompt e provider esterni è documentato in
-[`docs/MEMORY-SECURITY.md`](docs/MEMORY-SECURITY.md).
+The trust boundary between memory, prompts and external providers is documented
+in [`docs/MEMORY-SECURITY.md`](docs/MEMORY-SECURITY.md) (Italian).
 
-La qualità di retrieval e Curator è misurata con dataset sintetici e una baseline
-versionata. Comandi, metriche, risultati e limiti sono in
-[`evaluation/README.md`](evaluation/README.md).
+Retrieval and Curator quality are measured with synthetic datasets and a
+versioned baseline. Commands, metrics, results and limitations are in
+[`evaluation/README.md`](evaluation/README.md) (Italian).
 
-Ogni bullet scritto da Memora conserva provenienza e versione in un commento
-HTML nascosto; gli aggiornamenti mantengono lo storico `superseded` e il reindex
-indicizza solo le versioni attive. Formato e migrazione:
-[`docs/MEMORY-DATA-MODEL.md`](docs/MEMORY-DATA-MODEL.md).
+Every bullet written by Memora keeps provenance and version in a hidden HTML
+comment; updates preserve the `superseded` history and the reindex indexes only
+active versions. Format and migration:
+[`docs/MEMORY-DATA-MODEL.md`](docs/MEMORY-DATA-MODEL.md) (Italian).
 
-Le chiavi interne del JSONL e dei metadata Markdown usano il namespace
-`memora.*` e `memora-memory:v1`.
+Internal JSONL and Markdown metadata keys use the `memora.*` and
+`memora-memory:v1` namespaces.
 
-La coda Curator durevole, il recupero dopo riavvio e l'audit di consolidamento
-sono descritti in [`docs/MEMORY-CURATOR-ROBUSTNESS.md`](docs/MEMORY-CURATOR-ROBUSTNESS.md).
-Metriche, alert, backup, restore e degrado controllato sono in
-[`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+The durable Curator queue, restart recovery and consolidation audit are described
+in [`docs/MEMORY-CURATOR-ROBUSTNESS.md`](docs/MEMORY-CURATOR-ROBUSTNESS.md)
+(Italian). Metrics, alerts, backup, restore and controlled degradation are in
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md) (Italian).
 
-I progetti sono entità di prima classe. La sidebar è organizzata in **sezioni
-personalizzabili**; ogni sezione contiene progetti e ogni progetto contiene le
-proprie sessioni. Sezioni e progetti hanno un’icona e possono essere aperti o
-chiusi singolarmente; lo stato viene ricordato nel browser. Le azioni delle
-righe sono raccolte nel menu verticale `⋮`, visibile solo su hover o focus. Le
-chat possono essere messe in evidenza localmente: restano in cima al proprio
-gruppo e sono ricordate nel browser. Il modello completo
-è in [`tasks/05.9-projects.md`](tasks/05.9-projects.md).
+Projects are first-class entities. The sidebar is organized into **customizable
+sections**; each section contains projects and each project contains its
+sessions. Sections and projects have an icon and can be opened or closed
+individually; state is remembered in the browser. Row actions are collected in
+the vertical `⋮` menu, visible only on hover or focus. Chats can be pinned locally:
+they stay at the top of their group and are remembered in the browser. The full
+model is in [`tasks/05.9-projects.md`](tasks/05.9-projects.md) (Italian).
 
-Le sezioni sono salvate in `$MEMORA_DATA_DIR/config/project-sections.json`; ogni
-`project.json` può contenere `sectionId` e `icon`. I progetti senza sezione
-finiscono in **Senza sezione** e possono essere spostati dalle impostazioni del
-progetto.
+Sections are stored in `$MEMORA_DATA_DIR/config/project-sections.json`; each
+`project.json` may contain `sectionId` and `icon`. Projects without a section
+appear under **No section** and can be moved from project settings.
 
-La pianificazione per anteprime HTML evolute e artefatti Office leggeri
-(DOCX, XLSX, PPTX HTML-first) è in
-[`tasks/05.10-office-artifacts.md`](tasks/05.10-office-artifacts.md).
+The plan for advanced HTML previews and lightweight Office artifacts
+(DOCX, XLSX, HTML-first PPTX) is in
+[`tasks/05.10-office-artifacts.md`](tasks/05.10-office-artifacts.md) (Italian).
 
-### File progetto e allegati chat
+### Project files and chat attachments
 
-Il pannello laterale **a destra** è unico, chiuso per default e organizzato in
-quattro aree fisse: **File**, **Contesto**, **Artefatti** e **Fonti**. La scheda
-File compare solo quando la chat appartiene a un progetto; le fonti web sono in
-Fonti, mentre le fonti del progetto restano nel Contesto. I contatori delle aree
-si aggiornano durante il turno. Su desktop il pannello si apre automaticamente
-sulla scheda Fonti quando arriva una nuova ricerca e sulla scheda Artefatti,
-con il dettaglio del nuovo file, quando viene creato un artefatto. Su mobile
-l’auto-apertura è disabilitata.
+The **right side panel** is a single panel, closed by default and organized into
+four fixed areas: **Files**, **Context**, **Artifacts** and **Sources**. The
+Files tab appears only when the chat belongs to a project; web sources live in
+Sources, while project sources remain under Context. Area counters update during
+the turn. On desktop the panel opens automatically on Sources when a new search
+arrives and on Artifacts, with the new file detail, when an artifact is created.
+On mobile, auto-open is disabled.
 
-La scheda File espone il contenuto della directory
-`projects/<id>/`, con ricerca, metadati e anteprima per:
+The Files tab exposes the `projects/<id>/` directory with search, metadata and
+previews for:
 
-- Markdown e testo;
-- PDF, tramite il visualizzatore del browser;
-- HTML, in iframe sandboxed senza script;
-- Word `.docx`, convertito in HTML locale con Mammoth;
-- Excel `.xlsx`, con anteprima a fogli in sola lettura;
-- immagini comuni.
+- Markdown and text;
+- PDF through the browser viewer;
+- HTML in a sandboxed iframe without scripts;
+- Word `.docx`, converted to local HTML with Mammoth;
+- Excel `.xlsx`, with read-only sheet previews;
+- common images.
 
-I `.pptx` caricati nei file del progetto restano scaricabili ma non hanno
-anteprima: la preview PPTX è disponibile per le presentazioni generate da
-Memora.
+Uploaded `.pptx` files in project files remain downloadable but have no preview:
+PPTX preview is available for presentations generated by Memora.
 
-Il pulsante **Allega alla chat** copia il file negli allegati della sessione.
-Dal composer si possono anche caricare file con la graffetta. Limiti attuali:
-8 allegati per messaggio, 15 MB per file; formati `.md`, `.txt`, `.csv`, `.json`,
-`.pdf`, `.docx`, `.html`, `.htm` e immagini. Testo, PDF e `.docx` vengono
-estratti in locale e passati al modello come dati non fidati nel system prompt
-transitorio; le immagini vengono passate come blocchi immagine. Gli allegati
-non vengono eseguiti.
+**Attach to chat** copies the file into the session attachments. The composer can
+also upload files with the paperclip. Current limits: 8 attachments per message,
+15 MB per file; `.md`, `.txt`, `.csv`, `.json`, `.pdf`, `.docx`, `.html`, `.htm`
+and images. Text, PDF and `.docx` are extracted locally and passed to the model as
+untrusted data in the transient system prompt; images are passed as image blocks.
+Attachments are never executed.
 
-Se la chat appartiene a un progetto, un file caricato viene archiviato anche in
-`projects/<id>/files/`: diventa subito visibile nel pannello progetto, ma **non**
-entra automaticamente nella memoria o nel retrieval. La cartella `files/` è
-esclusa dal reindex; la promozione a fonte resta un’azione separata.
+When a chat belongs to a project, an uploaded file is also archived in
+`projects/<id>/files/`: it becomes immediately visible in the project panel but
+does **not** automatically enter memory or retrieval. The `files/` folder is
+excluded from reindexing; promotion to a source remains a separate action.
 
-I file caricati risiedono in `$MEMORA_DATA_DIR/chat-attachments/<sessionId>/`
-e vengono rimossi quando la sessione viene eliminata. I metadati degli allegati
-restano nel JSONL Pi come custom entry `memora.attachments`.
+Uploaded files live in `$MEMORA_DATA_DIR/chat-attachments/<sessionId>/` and are
+removed when the session is deleted. Attachment metadata remains in the Pi JSONL
+as the `memora.attachments` custom entry.
 
-La scheda **Contesto** permette di attivare per singola chat memoria globale,
-memoria del progetto e fonti del progetto. La scelta è salvata nella sessione
-(custom entry `memora.context`) e vale dal messaggio successivo; non modifica la
-configurazione del progetto.
+The **Context** tab enables global memory, project memory and project sources per
+chat. The choice is stored in the session (`memora.context` custom entry) and
+applies from the next message; it does not modify the project configuration.
 
-Il pannello laterale può essere espanso con il pulsante dedicato per anteprime più ampie. Quando un PDF/HTML è già stato creato, il codice HTML della risposta viene nascosto e sostituito dal riferimento all’artefatto. Le anteprime HTML usano un componente condiviso con viewport Auto/Desktop/Tablet/Mobile, zoom 50%–250%, ricarica e apertura del file originale, sempre in iframe sandboxed senza script o rete.
+The side panel can be expanded for larger previews. When a PDF/HTML artifact has
+already been created, the HTML code in the answer is hidden and replaced by the
+artifact reference. HTML previews use a shared component with Auto/Desktop/
+Tablet/Mobile viewports, 50%–250% zoom, reload and opening of the original file,
+always in a sandboxed iframe without scripts or network access.
 
-La scheda **Artefatti** elenca i deliverable creati dal modello. Il tool
-`create_artifact` produce Markdown, HTML, SVG, testo, JSON, CSV o codice senza
-eseguire Python. Gli artefatti stanno in `$MEMORA_DATA_DIR/artifacts/<sessionId>/`
-e possono essere aperti o scaricati; HTML/SVG restano in sandbox. Ogni riga
-dell’elenco offre download, eliminazione e allegato al prossimo messaggio della
-chat. Aprendo un artefatto, il nome e il selettore **Variante** (`v1`, `v2`,
-ecc.) sono subito sotto **← Artefatti**. Accanto ad **Apri** ci sono eliminazione,
-allegato alla chat e **Aggiungi al progetto**: Markdown/testo vengono importati
-nelle fonti indicizzate del progetto, gli altri formati in `files/`. La conferma
-di eliminazione usa una modale dedicata, non `window.confirm`. L’anteprima
-dispone dei controlli zoom (50%–250%).
+The **Artifacts** tab lists deliverables created by the model. The
+`create_artifact` tool produces Markdown, HTML, SVG, text, JSON, CSV or code
+without executing Python. Artifacts live in
+`$MEMORA_DATA_DIR/artifacts/<sessionId>/` and can be opened or downloaded;
+HTML/SVG remains sandboxed. Each row offers download, delete and attach to the
+next chat message. Opening an artifact shows its name and the **Variant** selector
+(`v1`, `v2`, etc.) directly below **← Artifacts**. Next to **Open** are delete,
+attach to chat and **Add to project**: Markdown/text is imported into the
+project's indexed sources, other formats into `files/`. Deletion confirmation
+uses a dedicated modal, not `window.confirm`. The preview offers 50%–250% zoom
+controls.
 
-Gli artefatti con lo stesso nome nella stessa chat non vengono duplicati: la
-versione precedente viene conservata in `.versions/` e la UI mostra `v1`, `v2`,
-ecc. sullo stesso artefatto.
+Artifacts with the same name in the same chat are not duplicated: the previous
+version is kept in `.versions/` and the UI shows `v1`, `v2`, etc. on the same
+artifact.
 
-### Controlli chat
+### Chat controls
 
-- ogni messaggio ha il pulsante **copia**: testo semplice per la domanda,
-  Markdown per la risposta;
-- le domande hanno **Modifica**: la modifica crea un nuovo ramo Pi, mantenendo
-  lo storico nel JSONL, e rigenera la risposta;
-- le risposte hanno **Riformula** e **PDF**;
-- dopo la risposta il composer torna automaticamente in focus.
+- every message has a **copy** button: plain text for the question, Markdown for
+  the answer;
+- questions have **Edit**: editing creates a new Pi branch, preserving history in
+  the JSONL, and regenerates the answer;
+- answers have **Regenerate** and **PDF**;
+- the composer automatically returns to focus after a response.
 
-Per i PDF esiste il tool `create_pdf`: riceve solo titolo, formato e nome file,
-non il documento. Dopo la chiamata il modello scrive il documento nella
-risposta finale e Memora lo renderizza lato server. Con `format: "html"` il
-modello può produrre una pagina HTML con CSS; Memora usa Chromium headless per
-una resa fedele e `html-to-pdfmake`/`pdfmake` come fallback leggero. In
-alternativa il pulsante **PDF** su una risposta crea un artefatto PDF dal testo
-già presente, senza un’altra chiamata al modello. Anche un artefatto
-HTML/Markdown può essere convertito con **Esporta PDF**. Limiti iniziali:
-30.000 caratteri Markdown, 60.000 caratteri HTML, 30 pagine, 5 MB. Il PDF non
-entra mai nel contesto del modello.
+PDFs use the `create_pdf` tool: it receives only title, format and filename, not
+the document. After the call the model writes the document in the final answer
+and Memora renders it server-side. With `format: "html"` the model can produce an
+HTML page with CSS; Memora uses headless Chromium for faithful rendering and
+`html-to-pdfmake`/`pdfmake` as a lightweight fallback. Alternatively, the **PDF**
+button on an answer creates a PDF artifact from existing text without another
+model call. An HTML/Markdown artifact can also be converted with **Export PDF**.
+Initial limits: 30,000 Markdown characters, 60,000 HTML characters, 30 pages,
+5 MB. The PDF never enters the model context.
 
-Il renderer HTML usa CSS inline e, quando Chromium è disponibile, supporta anche
-layout complessi. Il fallback PDFMake supporta un sottoinsieme CSS. L’anteprima
-PDF usa PDF.js e non dipende dal plugin PDF del browser.
+The HTML renderer uses inline CSS and, when Chromium is available, also supports
+complex layouts. The PDFMake fallback supports a CSS subset. PDF preview uses
+PDF.js and does not depend on the browser PDF plugin.
 
-Con il tool `create_docx` il modello scrive il documento in Markdown nella
-risposta finale; Memora genera un `.docx` Word e ne mostra l’anteprima
-semantica tramite Mammoth, senza inviare contenuto aggiuntivo al modello.
+With `create_docx` the model writes the document as Markdown in the final answer;
+Memora generates a Word `.docx` and shows a semantic preview through Mammoth
+without sending additional content to the model.
 
-Con `create_xlsx` il modello scrive una o più tabelle Markdown: ogni tabella
-diventa un foglio `.xlsx`, il titolo precedente diventa il nome del foglio e
-l’anteprima mostra schede, intestazioni e formattazione essenziale senza
-valutare formule.
+With `create_xlsx` the model writes one or more Markdown tables: each table
+becomes an `.xlsx` sheet, the preceding heading becomes the sheet name, and the
+preview shows tabs, headers and essential formatting without evaluating formulas.
 
-Con `create_pptx` il modello scrive un deck HTML con sezioni
-`<section class="slide">`: lo stesso HTML alimenta la preview e la conversione
-in `.pptx` tramite `jsdom` e `pptxgenjs`. Titoli, paragrafi, liste, tabelle e
-immagini `data:` sono supportati; layout CSS complessi restano visibili nella
-preview HTML ma non sono garantiti nel file PowerPoint.
+With `create_pptx` the model writes an HTML deck with
+`<section class="slide">` sections: the same HTML powers the preview and the
+`.pptx` conversion through `jsdom` and `pptxgenjs`. Titles, paragraphs, lists,
+tables and `data:` images are supported; complex CSS layouts remain visible in
+the HTML preview but are not guaranteed in the PowerPoint file.
 
-Per preparare Chromium su Debian:
+To prepare Chromium on Debian:
 
 ```bash
 pnpm pdf:browser:setup
 ```
 
-Le librerie vengono salvate in `$MEMORA_DATA_DIR/browser-libs/`. È possibile
-usare `MEMORA_PDF_BROWSER_LIBS` o `MEMORA_PDF_BROWSER_PATH` per path esterni.
-Senza Chromium il rendering continua con il fallback PDFMake.
+Libraries are saved in `$MEMORA_DATA_DIR/browser-libs/`. `MEMORA_PDF_BROWSER_LIBS`
+or `MEMORA_PDF_BROWSER_PATH` can point to external paths. Without Chromium,
+rendering continues with the PDFMake fallback.
 
 API:
 
@@ -654,59 +666,58 @@ POST /api/sessions/:id/artifacts/pdf
 POST /api/sessions/:id/artifacts/:artifactId/pdf
 ```
 
-Versioni superate, retention, cancellazione, backup e memoria storica sono
-documentati in [`docs/MEMORY-LIFECYCLE.md`](docs/MEMORY-LIFECYCLE.md).
+Superseded versions, retention, deletion, backup and historical memory are
+documented in [`docs/MEMORY-LIFECYCLE.md`](docs/MEMORY-LIFECYCLE.md) (Italian).
 
-Budget token, filtri, diversità e reranking del retrieval sono descritti in
-[`docs/MEMORY-RETRIEVAL-QUALITY.md`](docs/MEMORY-RETRIEVAL-QUALITY.md).
+Token budget, filters, diversity and retrieval reranking are described in
+[`docs/MEMORY-RETRIEVAL-QUALITY.md`](docs/MEMORY-RETRIEVAL-QUALITY.md) (Italian).
 
-La conversazione non è memoria. Dopo un turno, Memora può creare uno o più
-`MemoryCandidate` e mostrarli nella Memory Inbox. I candidati pending non sono
-indicizzati e non modificano il Second Brain. Solo dopo Approva il contenuto
-viene scritto in un file Markdown sotto `MEMORA_DATA_DIR` e reindicizzato.
+Conversation is not memory. After a turn, Memora can create one or more
+`MemoryCandidate` entries and show them in the Memory Inbox. Pending candidates
+are not indexed and do not modify the Second Brain. Only after approval is the
+content written to a Markdown file under `MEMORA_DATA_DIR` and reindexed.
 
-La sidebar espone due icone separate: **Second Brain** e **Impostazioni**.
-La pagina Second Brain raccoglie tutte le memorie Markdown globali e di progetto
-in un unico punto, con ricerca, filtro globale/progetto e modifica diretta del
-Markdown. Il pannello **Memoria della chat**, in basso, contiene la Memory Inbox
-e i collegamenti alle memorie globali/di progetto; non è più la pagina completa
-del Second Brain.
+The sidebar exposes two separate icons: **Second Brain** and **Settings**. The
+Second Brain page collects all global and project Markdown memories in one
+place, with search, global/project filtering and direct Markdown editing. The
+**Chat memory** panel at the bottom contains the Memory Inbox and links to
+global/project memories; it is no longer the full Second Brain page.
 
-Una risposta dell’assistente può essere promossa esplicitamente con il pulsante
-**Memoria**. La risposta diventa un candidato con provenienza
-`sourceKind: assistant`; non viene scritta automaticamente e richiede sempre
-l’approvazione nella Memory Inbox.
+An assistant answer can be explicitly promoted with the **Memory** button. The
+answer becomes a candidate with `sourceKind: assistant` provenance; it is not
+written automatically and always requires approval in the Memory Inbox.
 
-- fonte autorevole: Markdown;
-- indice ricostruibile: SQLite/FTS5;
-- candidate/audit: `memory-inbox/candidates.jsonl`;
-- nessuna scrittura automatica non approvata;
-- nessun segreto viene proposto o scritto automaticamente.
+- authoritative source: Markdown;
+- rebuildable index: SQLite/FTS5;
+- candidates/audit: `memory-inbox/candidates.jsonl`;
+- no automatic unapproved writes;
+- no secret is proposed or written automatically.
 
-Le memorie già approvate possono essere aperte, modificate o eliminate dalla
-sezione Second Brain. Il client usa solo il source ID: il backend risolve il
-file dall'indice, valida la directory Markdown e riscrive atomicamente solo il
-file target. Dopo edit/delete esegue il reindex, quindi la ricerca vede subito
-il nuovo contenuto o la sua assenza.
+Approved memories can be opened, edited or deleted from the Second Brain section.
+The client uses only the source ID: the backend resolves the file from the index,
+validates the Markdown directory and atomically rewrites only the target file.
+After edit/delete it reindexes, so search immediately sees the new content or its
+absence.
 
-I file core `memory/profile.md`, `memory/preferences.md` e `memory/decisions.md`
-sono modificabili; la UI non mostra la cancellazione completa perché possono
-contenere più memorie. Non esiste ancora il delete del singolo bullet.
+Core files `memory/profile.md`, `memory/preferences.md` and
+`memory/decisions.md` are editable; the UI does not show full deletion because
+they can contain multiple memories. Deleting a single bullet is not implemented
+yet.
 
-## Contribuire
+## Contributing
 
-Le linee guida, il setup di sviluppo e il Developer Certificate of Origin sono
-in [`CONTRIBUTING.md`](CONTRIBUTING.md). Prima di una modifica importante,
-aprire una issue per discutere il design.
+Guidelines, development setup and the Developer Certificate of Origin are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md). Before a significant change, open an issue
+to discuss the design.
 
-## Sicurezza
+## Security
 
-Non aprire issue pubbliche per vulnerabilità. Usare il private vulnerability
-reporting di GitHub; dettagli in [`SECURITY.md`](SECURITY.md).
+Do not open public issues for vulnerabilities. Use GitHub private vulnerability
+reporting; details are in [`SECURITY.md`](SECURITY.md).
 
-## Licenza
+## License
 
-Memora è distribuito secondo i termini di **AGPL-3.0-only**. I contributi sono
-accettati con la stessa licenza e richiedono sign-off DCO. I marchi **Memora** e
-**Memo** sono soggetti a [`TRADEMARKS.md`](TRADEMARKS.md); le note di terze parti
-sono in [`NOTICE`](NOTICE).
+Memora is distributed under the terms of **AGPL-3.0-only**. Contributions are
+accepted under the same license and require a DCO sign-off. The **Memora** and
+**Memo** names are covered by [`TRADEMARKS.md`](TRADEMARKS.md); third-party
+notices are in [`NOTICE`](NOTICE).

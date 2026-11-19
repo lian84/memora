@@ -1,154 +1,177 @@
-# Funzionalità di Memora
+# Memora Features
 
-Questa è la fonte funzionale unica del progetto. Descrive ciò che è già
-implementato, il comportamento atteso e i limiti noti. Il README rimanda qui;
-le decisioni architetturali sono in [`DECISIONS.md`](DECISIONS.md).
+**English** | [Italiano](FEATURES.it.md)
 
-Ultimo aggiornamento: 2026-11-19.
+This is the single functional registry for the project. It describes what is
+implemented, the expected behavior and the known limitations. The README links
+here; architectural decisions are in [`DECISIONS.md`](DECISIONS.md).
 
-## 1. Chat e sessioni
+Last updated: 2026-11-19.
 
-- [x] Web UI React servita da Fastify.
-- [x] Sessioni persistenti nel formato Pi JSONL.
-- [x] Streaming SSE dei turni con stato “Memo sta rispondendo…”.
-- [x] Rendering Markdown con tabelle, elenchi, codice e interruzioni `<br>` sicure.
-- [x] Interruzione della risposta, modifica di un messaggio utente e rigenerazione.
-- [x] Ripresa, rinomina, archiviazione, ripristino ed eliminazione delle chat.
-- [x] Titolo e cronologia della sessione.
-- [x] Allegati per messaggio: massimo 8 file, 15 MB ciascuno.
-- [x] Anteprima immagini e inclusione degli allegati immagini nel turno.
-- [x] Contesto per chat: memoria globale, memoria di progetto, fonti di progetto.
-- [x] Modello, provider e livello di reasoning configurabili per chat.
-- [x] Esportazione della risposta in PDF.
-- [x] Estrazione di memorie dalla risposta con revisione esplicita.
-- [x] Titoli automatici delle chat dal primo scambio richiesta/risposta: fallback locale immediato + titolo LLM asincrono.
-- [x] Turni eseguiti dal server anche quando la chat non è aperta o il browser viene chiuso.
-- [x] Turni concorrenti configurabili da Amministrazione (1–4, default 2) con coda esplicita; una sola risposta attiva per sessione.
-- [x] Indicatori sidebar: giallo per risposta in corso in un’altra chat, verde per risposta completata non letta.
-- [x] Client SSE riconnettibile: EventSource con replay `after` e ripresa del testo parziale su reload/cambio chat.
-- [x] Stato sintetico dei turni persistito in `$MEMORA_DATA_DIR/config/turns.json`; al riavvio i turni attivi diventano `interrupted`.
-- [x] Cleanup dei turni completati sostituiti e indicatore rosso per errore/interruzione.
-- [x] Messaggio in coda visibile subito e dopo il reload; il testo non viene persistito in `turns.json`.
-- [x] Stato “risposta letta” condiviso tra dispositivi in `config/turn-reads.json`.
-- [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta; niente Telegram).
-- [x] Test end-to-end HTTP con due client SSE e replay dopo riconnessione.
-- [x] Il rename manuale vince sempre sulla generazione automatica.
+## 1. Chat and sessions
 
-## 2. Memoria e Second Brain
+- [x] React web UI served by Fastify.
+- [x] Persistent sessions in Pi JSONL format.
+- [x] SSE turn streaming with a “Memo is responding…” state.
+- [x] Markdown rendering with tables, lists, code and safe `<br>` line breaks.
+- [x] Stop response, edit a user message and regenerate.
+- [x] Resume, rename, archive, restore and delete chats.
+- [x] Session title and history.
+- [x] Per-message attachments: at most 8 files, 15 MB each.
+- [x] Image preview and inclusion of image attachments in the turn.
+- [x] Per-chat context: global memory, project memory and project sources.
+- [x] Model, provider and reasoning level configurable per chat.
+- [x] Export an answer to PDF.
+- [x] Extract memories from an answer with explicit review.
+- [x] Automatic chat titles from the first request/response exchange: immediate
+  local fallback plus asynchronous LLM title.
+- [x] Turns continue server-side when the chat is not open or the browser is
+  closed.
+- [x] Concurrent turns configurable in Administration (1–4, default 2) with an
+  explicit queue; one active response per session.
+- [x] Sidebar indicators: yellow for a response running in another chat, green
+  for a completed unread response.
+- [x] Reconnecting SSE client: EventSource with `after` replay and partial text
+  recovery on reload or chat switch.
+- [x] Synthetic turn state persisted in `$MEMORA_DATA_DIR/config/turns.json`;
+  active turns become `interrupted` after a restart.
+- [x] Cleanup of superseded completed turns and a red indicator for
+  errors/interruptions.
+- [x] Queued message visible immediately and after reload; its text is not
+  persisted in `turns.json`.
+- [x] Shared read state across devices in `config/turn-reads.json`.
+- [x] Opt-in browser notifications when a response is ready (tab must remain
+  open; no Telegram integration).
+- [x] End-to-end HTTP tests with two SSE clients and replay after reconnection.
+- [x] Manual rename always wins over automatic title generation.
 
-- [x] Markdown come fonte autorevole; SQLite come indice ricostruibile.
-- [x] Ricerca full-text FTS5.
-- [x] Embeddings locali con Transformers.js e ricerca semantica/ibrida via sqlite-vec.
-- [x] Fusione RRF tra ricerca lessicale e semantica.
-- [x] Memoria globale e memoria per progetto.
-- [x] Memory Inbox con approvazione umana.
-- [x] Memory Curator opzionale per proporre fatti atomici.
-- [x] Proposte di memoria anche dalle risposte dell’assistente.
-- [x] Deduplicazione, rilevanza, privacy e blocco dei segreti.
-- [x] Consolidamento read-only, valutazione e feedback sulle soglie.
-- [x] Pagina Second Brain con ricerca, filtro globale/progetto e modifica Markdown.
-- [x] Visualizzazione delle fonti di memoria usate nel turno.
+## 2. Memory and Second Brain
 
-## 3. Progetti
+- [x] Markdown as the authoritative source; SQLite as a rebuildable index.
+- [x] FTS5 full-text search.
+- [x] Local embeddings with Transformers.js and semantic/hybrid search through
+  sqlite-vec.
+- [x] RRF fusion of lexical and semantic rankings.
+- [x] Global memory and per-project memory.
+- [x] Memory Inbox with human approval.
+- [x] Optional Memory Curator for proposing atomic facts.
+- [x] Memory proposals also generated from assistant answers.
+- [x] Deduplication, relevance, privacy checks and secret blocking.
+- [x] Read-only consolidation, evaluation and threshold feedback.
+- [x] Second Brain page with search, global/project filter and direct Markdown
+  editing.
+- [x] Display of the memory sources used in a turn.
 
-- [x] Progetti con `project.json`, `memory.md`, `sources/` e `files/`.
-- [x] Sezioni personalizzabili della sidebar, con nome, icona e ordine.
-- [x] Progetti assegnabili a una sezione e spostabili tra sezioni.
-- [x] Icone selezionabili per sezioni e progetti.
-- [x] Creazione, configurazione, cambio progetto e cancellazione con conferma tipizzata.
-- [x] `sources/` indicizzate; `files/` archivio non indicizzato.
-- [x] File di progetto con anteprima Markdown, testo, HTML, PDF, immagini, DOCX e XLSX.
-- [x] Allegato di un file di progetto al messaggio.
-- [x] Importazione di un artefatto nel progetto come fonte o file.
-- [x] Cestino dei progetti (`.trash/projects/`).
+## 3. Projects
 
-## 4. Artefatti
+- [x] Projects with `project.json`, `memory.md`, `sources/` and `files/`.
+- [x] Custom sidebar sections with name, icon and order.
+- [x] Projects assignable to a section and movable between sections.
+- [x] Selectable icons for sections and projects.
+- [x] Create, configure, switch and delete with typed confirmation.
+- [x] `sources/` indexed; `files/` archive not indexed.
+- [x] Project files with Markdown, text, HTML, PDF, image, DOCX and XLSX
+  previews.
+- [x] Attach a project file to a message.
+- [x] Import an artifact into a project as a source or file.
+- [x] Project trash (`.trash/projects/`).
 
-- [x] Artefatti per chat: Markdown, testo, HTML, SVG, JSON, CSV, codice.
-- [x] PDF con Chromium headless e fallback pdfmake.
-- [x] DOCX, XLSX e PPTX generati senza LibreOffice.
-- [x] Versionamento degli artefatti e anteprima delle versioni.
-- [x] Anteprima PDF, HTML sandboxed, DOCX con Mammoth, XLSX in tabella React.
-- [x] PPTX HTML-first: lo stesso deck HTML produce anteprima e file PowerPoint.
-- [x] Zoom 50–250% e pannelli ridimensionabili.
-- [x] Download, eliminazione, allegato alla chat e import nel progetto.
-- [x] Limiti di dimensione, numero di slide, righe e colonne.
+## 4. Artifacts
 
-## 5. Ricerca web
+- [x] Per-chat artifacts: Markdown, text, HTML, SVG, JSON, CSV and code.
+- [x] PDF through headless Chromium with pdfmake fallback.
+- [x] DOCX, XLSX and PPTX generation without LibreOffice.
+- [x] Artifact versioning and version previews.
+- [x] PDF preview, sandboxed HTML, DOCX through Mammoth and XLSX in a React
+  table.
+- [x] HTML-first PPTX: the same HTML deck produces both the preview and the
+  PowerPoint file.
+- [x] 50–250% zoom and resizable panels.
+- [x] Download, delete, attach to chat and import into a project.
+- [x] Limits for size, slide count, rows and columns.
 
-- [x] Accesso web disattivato per default.
-- [x] Provider Brave Search o SearXNG configurabile da Amministrazione.
-- [x] Abilitazione per singola chat con pulsante Web.
-- [x] Tool `web_search` e `web_fetch`.
-- [x] Estrazione HTML con Readability e testo da PDF.
-- [x] Fonti persistenti nella sessione, numerate in modo stabile e visibili nella scheda Fonti.
-- [x] Citazioni numeriche `[n]` per ogni informazione, cliccabili nella risposta.
-- [x] Tooltip della citazione con sito, titolo e breve descrizione.
-- [x] La scheda Fonti distingue **Ricerca** (risultato non letto), **Letta** (pagina letta) e **PDF**.
-- [x] I numeri non vengono riutilizzati quando la cronologia supera il limite delle fonti.
-- [x] Blocco SSRF, URL privati/metadata, credenziali negli URL e redirect eccessivi.
-- [x] Contenuto web trattato come dato non fidato.
-- [ ] Installer SearXNG nativo con opzione `--web=...` (prossimo milestone).
-- [ ] Docker/SearXNG opzionale (solo scelta esplicita).
+## 5. Web search
 
-## 6. Pannello laterale della chat
+- [x] Web access disabled by default.
+- [x] Brave Search or SearXNG provider configurable in Administration.
+- [x] Per-chat enablement with the Web button.
+- [x] `web_search` and `web_fetch` tools.
+- [x] HTML extraction with Readability and text extraction from PDFs.
+- [x] Sources persisted in the session, numbered stably and shown in the Sources
+  tab.
+- [x] Clickable numeric citations `[n]` for every piece of information.
+- [x] Citation tooltip with site, title and a short description.
+- [x] The Sources tab distinguishes **Search** (unread search result), **Read**
+  (page fetched and read) and **PDF**.
+- [x] Numbers are not reused when history exceeds the source limit.
+- [x] SSRF blocking, private/metadata URLs, credentials in URLs and excessive
+  redirects.
+- [x] Web content treated as untrusted data.
+- [ ] Native SearXNG installer with a `--web=...` option (next milestone).
+- [ ] Optional Docker/SearXNG (explicit choice only).
 
-- [x] Sidebar ad albero: sezioni espandibili, progetti e sessioni annidate.
-- [x] Stato aperto/chiuso di sezioni e progetti persistito nel browser.
-- [x] Azioni delle righe (rinomina, archivia/ripristina, elimina) in un menu contestuale a tre puntini, visibile solo su hover/focus.
-- [x] Evidenziazione locale delle chat, con ordinamento in cima al gruppo.
-- [x] Hover di sezioni, progetti e chat con contrasto dedicato per tema chiaro e scuro.
-- [x] Pannello unico a destra, collassato per default.
-- [x] Aree fisse in alto: **File**, **Contesto**, **Artefatti**, **Fonti**.
-- [x] **File** presente solo nelle chat di progetto.
-- [x] **Contesto** mostra solo le opzioni valide per la chat corrente.
-- [x] **Fonti** contiene le fonti web; le fonti del progetto restano nel Contesto.
-- [x] Contatori su Artefatti e Fonti.
-- [x] Auto-apertura su Fonti dopo una ricerca e su Artefatti dopo la creazione.
-- [x] Auto-apertura solo su desktop (> 900 px); su mobile il pannello resta chiuso.
-- [x] Aggiornamento durante il turno dagli eventi `tool_execution_end`.
-- [x] Refresh di sicurezza a fine turno e refresh manuale per area.
-- [x] Apertura diretta dell’artefatto appena creato.
-- [x] Larghezza ridimensionabile e persistita; espansione/riduzione.
-- [x] Tab raggiungibili da tastiera con frecce, Home ed End.
+## 6. Chat side panel
 
-## 7. Aspetto, lingua e accessibilità
+- [x] Tree sidebar: expandable sections, projects and nested sessions.
+- [x] Open/closed state of sections and projects persisted in the browser.
+- [x] Row actions (rename, archive/restore, delete) in a three-dot contextual
+  menu visible only on hover/focus.
+- [x] Local chat pinning, sorted to the top of each group.
+- [x] Dedicated hover contrast for sections, projects and chats in light and dark
+  themes.
+- [x] Single right-side panel, collapsed by default.
+- [x] Fixed areas at the top: **Files**, **Context**, **Artifacts**, **Sources**.
+- [x] **Files** only for project chats.
+- [x] **Context** shows only the options valid for the current chat.
+- [x] **Sources** contains web sources; project sources remain under Context.
+- [x] Counters for Artifacts and Sources.
+- [x] Auto-open Sources after a search and Artifacts after artifact creation.
+- [x] Auto-open only on desktop (> 900 px); on mobile the panel stays closed.
+- [x] In-turn updates from `tool_execution_end` events.
+- [x] Safety refresh at turn end and manual refresh per area.
+- [x] Direct opening of the newly created artifact.
+- [x] Resizable, persisted width; expand/reduce.
+- [x] Tabs reachable from the keyboard with arrows, Home and End.
 
-- [x] Tema chiaro, scuro o di sistema.
-- [x] Dimensione testo, densità, larghezza conversazione e movimento ridotto.
-- [x] Sidebar comprimibile con pulsante o `Ctrl+B`.
-- [x] Interfaccia Italiano / English / Français.
-- [x] Lingua UI separata dalla lingua della risposta di Memo.
-- [x] Focus visibile, dialoghi accessibili, `aria-*` per tab e pannelli.
-- [x] Anteprime HTML/SVG sempre sandboxed e senza JavaScript.
+## 7. Appearance, language and accessibility
 
-## 8. Amministrazione e sicurezza
+- [x] Light, dark or system theme.
+- [x] Text size, density, conversation width and reduced motion.
+- [x] Collapsible sidebar via button or `Ctrl+B`.
+- [x] Italian / English / French interface.
+- [x] UI language separate from the language used by Memo's answer.
+- [x] Visible focus, accessible dialogs, `aria-*` for tabs and panels.
+- [x] HTML/SVG previews always sandboxed and without JavaScript.
 
-- [x] Login single-user con password e sessione di 24 ore.
-- [x] Setup della prima password e reset solo da CLI.
-- [x] Cookie `HttpOnly`, `SameSite=Lax`, rate limit e controllo `Origin`.
-- [x] Segreti in environment o `config/secrets.json` con mode `0600`.
-- [x] Configurazione web in `config/web.json` con mode `0600`.
-- [x] Nessuna API key restituita dalle API.
-- [x] Provider/modello chat, Curator, embedding, retrieval, web, titoli automatici, concorrenza turni, notifiche browser e aspetto configurabili.
-- [x] Riavvio richiesto esplicitamente per le modifiche che non sono a caldo.
-- [x] Nessun `sudo` o `systemctl` eseguito dal processo web.
+## 8. Administration and security
 
-## 9. Runtime e operazioni
+- [x] Single-user password login with a 24-hour session.
+- [x] First-password setup and CLI-only reset.
+- [x] `HttpOnly` cookie, `SameSite=Lax`, rate limiting and `Origin` checks.
+- [x] Secrets in environment or `config/secrets.json` with mode `0600`.
+- [x] Web configuration in `config/web.json` with mode `0600`.
+- [x] No API key returned by the API.
+- [x] Chat provider/model, Curator, embeddings, retrieval, web, automatic titles,
+  turn concurrency, browser notifications and appearance configurable.
+- [x] Explicit restart required for changes that are not applied live.
+- [x] No `sudo` or `systemctl` executed by the web process.
 
-- [x] Monorepo pnpm con TypeScript strict.
-- [x] `MEMORA_DATA_DIR` per tutti i dati runtime.
-- [x] Build production con Fastify che serve la SPA.
-- [x] Servizio systemd di esempio.
-- [x] Smoke test di build e produzione.
-- [x] Script per embeddings, valutazione memoria, integrità, consolidamento, migrazione progetti e reset password.
-- [ ] `install.sh` e `update.sh` completi.
-- [ ] CI GitHub Actions e release `v0.1.0`.
-- [ ] Licenza AGPL-3.0-only, NOTICE, TRADEMARKS e CONTRIBUTING con DCO.
+## 9. Runtime and operations
 
-## Note
+- [x] pnpm monorepo with TypeScript strict mode.
+- [x] `MEMORA_DATA_DIR` for all runtime data.
+- [x] Production build with Fastify serving the SPA.
+- [x] Example systemd service.
+- [x] Build and production smoke tests.
+- [x] Scripts for embeddings, memory evaluation, integrity, consolidation,
+  project migration and password reset.
+- [ ] Complete `install.sh` and `update.sh`.
+- [x] GitHub Actions CI; `v0.1.0` release still pending.
+- [x] AGPL-3.0-only license, NOTICE, TRADEMARKS and CONTRIBUTING with DCO.
 
-- La memoria e il contenuto web sono dati non fidati: non possono modificare
-  istruzioni, permessi o strumenti.
-- SQLite è sempre ricostruibile dal Markdown; non è l’unica copia.
-- I dati reali non devono mai essere committati nel repository.
+## Notes
+
+- Memory and web content are untrusted data: they cannot change instructions,
+  permissions or tools.
+- SQLite is always rebuildable from Markdown; it is not the only copy.
+- Real data must never be committed to the repository.
