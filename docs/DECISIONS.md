@@ -462,7 +462,7 @@ visible, leaving little room for conversation.
 ---
 ## ADR-010 — Memory Writer with explicit approval
 **Date:** 2026-11-13
-**Status:** accepted
+**Status:** accepted — extended by ADR-044 for optional new-memory auto-saving
 
 ### Context
 The Second Brain already had authoritative Markdown, a rebuildable SQLite/FTS5
@@ -1603,3 +1603,42 @@ the HTTP path with multiple clients.
 - Browser notifications cannot reach a closed browser; future Telegram or Web Push
   integration can add external delivery.
 - Polling may still arrive with about 2 seconds of delay.
+
+---
+## ADR-044 — Conservative automatic approval of new memories
+**Date:** 2026-11-19
+**Status:** accepted
+
+### Context
+Manual review of every Curator proposal was creating friction: many suggestions
+were accurate and clearly worth keeping. Automatic approval of everything would
+weaken the safety model, especially for updates that can replace or remove
+existing knowledge.
+
+### Decision
+- Add `curator.autoApproveEnabled` (default **off**),
+  `curator.autoApproveMinConfidence` (default **0.90**) and
+  `curator.autoApproveMinSalience` (default **0.85**), editable in
+  **Administration → Curator** and applied live.
+- Auto-approval applies only to candidates with `action: "new"`, status
+  `pending`, no duplicate or conflict match, no sensitive value or
+  high-confidence PII, and both scores above the configured thresholds.
+- The target must be global memory (`memory/…`) or the current chat project
+  (`projects/<currentProjectId>/memory.md`). Cross-project writes are never
+  automatic.
+- Auto-approval uses the same target validation, Markdown write and reindex path
+  as manual approval. The resulting candidate records `approvedBy: "auto"` and
+  `autoApprovedAt`; an approval failure leaves the candidate pending.
+- Updates, conflicts, duplicates and personal data always remain under manual
+  review. Automatic approvals are visible in **Memory Inbox → Automatically
+  saved** and remain auditable in the candidate store.
+- No environment variable is introduced; this is an administrator preference.
+
+### Consequences
+- Common new facts can be retained without a manual click while risky changes
+  stay protected.
+- The thresholds can be tuned after observing real proposal quality.
+- Automatic approval is not reversible from the inbox yet; memories can still be
+  edited or removed from the Second Brain.
+- A future phase may evaluate guarded auto-updates or one-click undo, but it is
+  deliberately out of scope for this decision.

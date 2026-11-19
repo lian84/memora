@@ -18,6 +18,7 @@ import {
   writeMemoryMarkdown,
 } from './markdown-writer.js';
 import { deriveLegacyMemoryRecord, extractMemoryMetadata, type MemoryRecord } from './memory-metadata.js';
+import { containsPersonalData, containsPersonalDataPlaceholder } from './privacy.js';
 
 interface MemorySearchResultLike {
   relativePath: string;
@@ -38,8 +39,20 @@ export interface MemoryWriterConfig {
   /** Abilita l'estrazione automatica conservativa oltre alle richieste esplicite. */
   automaticExtraction?: boolean;
   curator?: MemoryCurator;
+  /** Approvazione automatica conservativa dei soli nuovi ricordi. */
+  autoApprove?: {
+    enabled?: boolean;
+    minConfidence?: number;
+    minSalience?: number;
+  };
   now?: () => number;
   idFactory?: () => string;
+}
+
+export interface AutoApproveSettings {
+  enabled: boolean;
+  minConfidence: number;
+  minSalience: number;
 }
 
 interface CandidateProposal {
@@ -280,6 +293,7 @@ export class MemoryWriter {
   private readonly now: () => number;
   private readonly idFactory: () => string;
   private readonly store: MemoryCandidateStore;
+  private autoApprove: AutoApproveSettings;
 
   constructor(config: MemoryWriterConfig) {
     this.dataDir = config.dataDir;
@@ -289,13 +303,22 @@ export class MemoryWriter {
     this.now = config.now ?? Date.now;
     this.idFactory = config.idFactory ?? crypto.randomUUID;
     this.store = new MemoryCandidateStore(config.dataDir);
+    this.autoApprove = normalizeAutoApproveSettings(config.autoApprove);
+  }
+
+  setAutoApprove(options: Partial<AutoApproveSettings>): void {
+    this.autoApprove = normalizeAutoApproveSettings({ ...this.autoApprove, ...options });
+  }
+
+  getAutoApprove(): AutoApproveSettings {
+    return { ...this.autoApprove };
   }
 
   async initialize(): Promise<void> {
     await this.store.initialize();
   }
 
-  /** Analizza un turno e crea zero o più candidati. Non scrive mai Markdown. */
+  /** Analizza un turno e crea zero o più candidati. Scrive Markdown solo tramite auto-approvazione esplicitamente abilitata. */
   async processTurn(input: MemoryTurnInput): Promise<{ created: MemoryCandidate[] }> {
     // Idempotenza per retry/ripresa: lo stesso turno non deve produrre due
     // candidati se il processo è caduto dopo la persistenza ma prima dell'ack.
@@ -303,7 +326,10 @@ export class MemoryWriter {
       const existing = (await this.store.listAll()).find(candidate =>
         (input.turnId !== undefined && candidate.turnId === input.turnId)
         || (input.turnId === undefined && input.sourceMessageId !== undefined && candidate.sourceMessageId === input.sourceMessageId));
-      if (existing) return { created: [] };
+      if (existing) {
+        const approved = await this.maybeAutoApprove(input, existing);
+        return approved.status !== existing.status ? { created: [approved] } : { created: [] };
+      }
     }
     const explicit = extractExplicitRequest(input.userText);
     if (this.curator && !detectSensitive(input.userText)) {
@@ -334,7 +360,8 @@ export class MemoryWriter {
           await validateMemoryTargetPath(this.dataDir, candidate.targetPath);
           await this.store.append(candidate);
           this.curator.reportCreated(curated.latencyMs, curated.httpStatus, curated.salience, curated.confidence);
-          return { created: [candidate] };
+          const approved = await this.maybeAutoApprove(input, candidate);
+          return { created: [approved] };
         }
         if (!explicit) return { created: [] };
       } catch {
@@ -562,6 +589,7 @@ export class MemoryWriter {
   async approve(
     id: string,
     overrides: CandidateUpdate = {},
+    options: { approvedBy?: 'user' | 'auto'; autoApprovalThresholds?: { confidence: number; salience: number } } = {},
   ): Promise<{ candidate: MemoryCandidate; reindexed: boolean; markdownChanged: boolean }> {
     const candidate = Object.keys(overrides).length > 0
       ? await this.updateCandidate(id, overrides)
@@ -584,13 +612,18 @@ export class MemoryWriter {
       await this.memoryService.reindex();
     }
 
+    const approvedAt = this.now();
     const approved: MemoryCandidate = {
       ...candidate,
       status: 'approved',
-      updatedAt: this.now(),
+      updatedAt: approvedAt,
       writtenPath: writeResult.relativePath,
-      writtenAt: this.now(),
+      writtenAt: approvedAt,
       skippedDuplicate: writeResult.skippedDuplicate,
+      approvedBy: options.approvedBy ?? 'user',
+      ...(options.approvedBy === 'auto'
+        ? { autoApprovedAt: approvedAt, ...(options.autoApprovalThresholds ? { autoApprovalThresholds: options.autoApprovalThresholds } : {}) }
+        : {}),
     };
     await this.store.append(approved);
 
@@ -631,6 +664,36 @@ export class MemoryWriter {
     };
     await this.store.append(rejected);
     return rejected;
+  }
+
+  private async maybeAutoApprove(input: MemoryTurnInput, candidate: MemoryCandidate): Promise<MemoryCandidate> {
+    if (!this.isAutoApprovable(input, candidate)) return candidate;
+    const thresholds = {
+      confidence: this.autoApprove.minConfidence,
+      salience: this.autoApprove.minSalience,
+    };
+    try {
+      const result = await this.approve(candidate.id, {}, { approvedBy: 'auto', autoApprovalThresholds: thresholds });
+      return result.candidate;
+    } catch {
+      // Un errore di scrittura non deve trasformare il turno in errore:
+      // il candidato resta pending e può essere revisionato manualmente.
+      return candidate;
+    }
+  }
+
+  private isAutoApprovable(input: MemoryTurnInput, candidate: MemoryCandidate): boolean {
+    if (!this.autoApprove.enabled) return false;
+    if (candidate.status !== 'pending' || candidate.action !== 'new') return false;
+    if (candidate.duplicateOf || candidate.conflictsWith || candidate.sensitive) return false;
+    if (detectSensitive(candidate.proposedText)) return false;
+    if (containsPersonalData(candidate.proposedText) || containsPersonalDataPlaceholder(candidate.proposedText)) return false;
+    if (candidate.confidenceScore === undefined || candidate.salienceScore === undefined) return false;
+    if (candidate.confidenceScore < this.autoApprove.minConfidence || candidate.salienceScore < this.autoApprove.minSalience) return false;
+    if (candidate.targetPath.startsWith('memory/')) return true;
+    return Boolean(input.projectId)
+      && candidate.projectId === input.projectId
+      && candidate.targetPath === `projects/${input.projectId}/memory.md`;
   }
 
   private async buildCandidate(
@@ -742,4 +805,14 @@ export class MemoryWriter {
     }
     return candidate;
   }
+}
+
+function normalizeAutoApproveSettings(options?: Partial<AutoApproveSettings>): AutoApproveSettings {
+  const score = (value: number | undefined, fallback: number): number =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+  return {
+    enabled: options?.enabled === true,
+    minConfidence: score(options?.minConfidence, 0.9),
+    minSalience: score(options?.minSalience, 0.85),
+  };
 }

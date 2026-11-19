@@ -55,8 +55,10 @@ export function MemoryCandidateProvenance({ candidate }: { candidate: MemoryCand
 }
 
 export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCountChange }: MemoryInboxProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [candidates, setCandidates] = useState<MemoryCandidate[]>([]);
+  const [autoApproved, setAutoApproved] = useState<MemoryCandidate[]>([]);
+  const [autoApprovedTotal, setAutoApprovedTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,6 +76,11 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
       const all = await listMemoryCandidates(undefined, projectId ?? undefined);
       const pending = all.filter((candidate) => candidate.status === 'pending' || candidate.status === 'conflict');
       setCandidates(pending);
+      const automatic = all
+        .filter(candidate => candidate.status === 'approved' && candidate.approvedBy === 'auto')
+        .sort((a, b) => (b.autoApprovedAt ?? b.updatedAt) - (a.autoApprovedAt ?? a.updatedAt));
+      setAutoApprovedTotal(automatic.length);
+      setAutoApproved(automatic.slice(0, 12));
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -165,7 +172,7 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
       <div className="memory-inbox-header">
         <div>
           <h3>Memory Inbox ({candidates.length})</h3>
-          <p>{t('Candidati da rivedere. Nulla viene scritto nel Second Brain senza approvazione.')}</p>
+          <p>{t('Candidati da rivedere. I nuovi ricordi possono essere approvati automaticamente se l’opzione è attiva.')}</p>
         </div>
         <button type="button" className="memory-inbox-refresh" onClick={() => void load()} disabled={loading}>
           {loading ? t('Aggiorno…') : t('Aggiorna')}
@@ -261,6 +268,25 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
           );
         })}
       </div>
+
+      {autoApproved.length > 0 && (
+        <details className="memory-auto-saved">
+          <summary>{t('Salvati automaticamente ({count})', { count: autoApprovedTotal })}</summary>
+          <p>{t('Ricordi approvati automaticamente. Puoi modificarli o rimuoverli dal Second Brain.')}</p>
+          <div className="memory-auto-saved-list">
+            {autoApproved.map(candidate => (
+              <article className="memory-auto-saved-item" key={candidate.id}>
+                <div className="memory-auto-saved-head">
+                  <span className="memory-candidate-category">{categoryLabels[candidate.category] ?? candidate.category}</span>
+                  <span>{formatTimestamp(candidate.autoApprovedAt ?? candidate.updatedAt, language) ?? '—'}</span>
+                </div>
+                <p>{candidate.proposedText}</p>
+                <code>{candidate.writtenPath ?? candidate.targetPath}</code>
+              </article>
+            ))}
+          </div>
+        </details>
+      )}
     </section>
   );
 }

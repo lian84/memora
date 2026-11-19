@@ -25,6 +25,10 @@ export interface RuntimeSettings {
     reasoningLevel: ReasoningLevel;
     minConfidence: number;
     minSalience: number;
+    /** Approva automaticamente solo nuovi ricordi sopra soglia. */
+    autoApproveEnabled?: boolean;
+    autoApproveMinConfidence?: number;
+    autoApproveMinSalience?: number;
   };
   chat: {
     provider: ChatProvider;
@@ -55,6 +59,9 @@ export const DEFAULT_RUNTIME_SETTINGS: RuntimeSettings = {
     reasoningLevel: 'low',
     minConfidence: 0.75,
     minSalience: 0.7,
+    autoApproveEnabled: false,
+    autoApproveMinConfidence: 0.9,
+    autoApproveMinSalience: 0.85,
   },
   chat: { provider: 'openrouter', defaultModel: 'openrouter/free', reasoningLevel: 'medium', autoTitleEnabled: true, maxConcurrentTurns: 2 },
 };
@@ -91,6 +98,9 @@ export interface AdminSettings {
       reasoningLevel: SettingField<ReasoningLevel>;
       minConfidence: SettingField<number>;
       minSalience: SettingField<number>;
+      autoApproveEnabled: SettingField<boolean>;
+      autoApproveMinConfidence: SettingField<number>;
+      autoApproveMinSalience: SettingField<number>;
     };
     chat: {
       provider: SettingField<ChatProvider>;

@@ -29,7 +29,7 @@ configurazione.
 - Chat con streaming, sessioni Pi persistenti e turni in background.
 - Second Brain file-first: Markdown autorevole, SQLite ricostruibile.
 - Embeddings locali opzionali e ricerca semantica/ibrida.
-- Memory Inbox con approvazione esplicita; Curator LLM opzionale.
+- Memory Inbox con approvazione esplicita di default e auto-salvataggio opzionale; Curator LLM opzionale.
 - Progetti, fonti indicizzate, file di progetto e artefatti versionati.
 - PDF, DOCX, XLSX e PPTX senza LibreOffice.
 - Ricerca web SSRF-safe tramite Brave o SearXNG, con citazioni numerate.
@@ -228,9 +228,17 @@ Il Curator riceve i bullet esistenti e deve classificare l'update come
 finale canonico completo, non il delta: per `augment` il controllo backend
 verifica che i fatti precedenti sopravvivano e rifiuta una proposta incompleta.
 Solo `replace`, `remove` e `correct` possono omettere un valore precedente,
-perché l'utente lo ha esplicitamente invalidato. Nessuna
-approvazione è automatica. Eventi e latenza sono loggati senza testo del turno;
-il Curator aggiunge al massimo una chiamata LLM per turno significativo.
+perché l'utente lo ha esplicitamente invalidato.
+
+Il salvataggio automatico si abilita da **Amministrazione → Curator**. Vale solo
+per i **nuovi** candidati sopra soglie separate di confidenza e rilevanza
+(default 0,90 e 0,85), senza duplicati/conflitti, senza contenuti sensibili o PII
+ad alta confidenza e con destinazione nella memoria globale o nel progetto della
+chat corrente. Aggiornamenti, conflitti, duplicati e dati personali restano
+sempre in revisione manuale. Le approvazioni automatiche vengono registrate con
+`approvedBy: auto` e compaiono in **Memory Inbox → Salvati automaticamente**.
+Eventi e latenza sono loggati senza testo del turno; il Curator aggiunge al
+massimo una chiamata LLM per turno significativo.
 I log strutturati distinguono request, response, parse, validation, decision e
 persistence, con status HTTP e codici sanitizzati ma senza prompt, risposta o
 chunk. OpenRouter riceve `reasoning.enabled=false`; OpenCode Go non accetta quel

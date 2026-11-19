@@ -3,11 +3,45 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { MemoryService, MemoryWriter, validateMemoryTargetPath } from './index';
+import type { CuratedMemory, MemoryCurator } from './index';
 
 function writeMemoryFile(root: string, relativePath: string, content: string): void {
   const absolute = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
   fs.writeFileSync(absolute, content, 'utf-8');
+}
+
+function curated(overrides: Partial<CuratedMemory> = {}): CuratedMemory {
+  return {
+    importance: 0.95,
+    durability: 0.95,
+    futureUtility: 0.95,
+    novelty: 0.95,
+    confidence: 0.95,
+    salience: 0.95,
+    memoryType: 'preference',
+    action: 'new',
+    entityType: 'user',
+    entityName: 'utente',
+    proposedText: 'Preferisco il tema scuro nell’interfaccia.',
+    heading: 'Preferenze',
+    category: 'preference',
+    targetPath: 'memory/preferences.md',
+    rationale: 'Preferenza stabile e utile in futuro.',
+    relatedSourceIds: [],
+    curatorProvider: 'test',
+    curatorModel: 'test-model',
+    latencyMs: 1,
+    ...overrides,
+  };
+}
+
+function fakeCurator(value: CuratedMemory | null): MemoryCurator {
+  return {
+    curate: async () => value,
+    reportCreated: () => undefined,
+    reportFailure: () => undefined,
+  } as unknown as MemoryCurator;
 }
 
 describe('MemoryWriter', () => {
@@ -129,6 +163,7 @@ describe('MemoryWriter', () => {
     expect(approved.markdownChanged).toBe(true);
     expect(approved.reindexed).toBe(true);
     expect(approved.candidate.status).toBe('approved');
+    expect(approved.candidate.approvedBy).toBe('user');
     expect(approved.candidate.writtenPath).toBe('projects/orione/memory.md');
 
     const markdown = fs.readFileSync(path.join(root, 'projects', 'orione', 'memory.md'), 'utf-8');
@@ -262,6 +297,96 @@ describe('MemoryWriter', () => {
       userText: 'Ciao, come va?',
     });
     expect(greeting.created).toEqual([]);
+  });
+
+  it('salva automaticamente un nuovo ricordo sopra soglia', async () => {
+    const autoWriter = new MemoryWriter({
+      dataDir: root,
+      memoryService,
+      curator: fakeCurator(curated()),
+      autoApprove: { enabled: true, minConfidence: 0.9, minSalience: 0.85 },
+    });
+    await autoWriter.initialize();
+
+    const result = await autoWriter.processTurn({
+      sessionId: 'session-autosave',
+      turnId: 'turn-autosave',
+      userText: 'Preferisco il tema scuro nell’interfaccia.',
+    });
+
+    expect(result.created).toHaveLength(1);
+    expect(result.created[0]).toMatchObject({
+      status: 'approved',
+      approvedBy: 'auto',
+      autoApprovalThresholds: { confidence: 0.9, salience: 0.85 },
+    });
+    expect(fs.readFileSync(path.join(root, 'memory', 'preferences.md'), 'utf-8')).toContain('tema scuro');
+  });
+
+  it('rispetta il default: l’auto-approvazione è disattivata', async () => {
+    const disabledWriter = new MemoryWriter({
+      dataDir: root,
+      memoryService,
+      curator: fakeCurator(curated()),
+    });
+    await disabledWriter.initialize();
+    const result = await disabledWriter.processTurn({ sessionId: 'session-auto-disabled', userText: 'Preferisco il tema scuro.' });
+    expect(result.created[0]?.status).toBe('pending');
+    expect(fs.existsSync(path.join(root, 'memory', 'preferences.md'))).toBe(false);
+  });
+
+  it('lascia in revisione auto-approvazioni sotto soglia, update e PII', async () => {
+    const low = new MemoryWriter({
+      dataDir: root,
+      memoryService,
+      curator: fakeCurator(curated({ confidence: 0.5, salience: 0.9 })),
+      autoApprove: { enabled: true, minConfidence: 0.9, minSalience: 0.85 },
+    });
+    await low.initialize();
+    const lowResult = await low.processTurn({ sessionId: 'session-low', userText: 'Preferisco il tema scuro.' });
+    expect(lowResult.created[0]?.status).toBe('pending');
+
+    const update = new MemoryWriter({
+      dataDir: root,
+      memoryService,
+      curator: fakeCurator(curated({ action: 'update', currentText: 'Preferisco il tema scuro.' })),
+      autoApprove: { enabled: true },
+    });
+    await update.initialize();
+    const updateResult = await update.processTurn({ sessionId: 'session-update', userText: 'Preferisco il tema chiaro.' });
+    expect(updateResult.created[0]?.status).toBe('pending');
+    expect(updateResult.created[0]?.approvedBy).toBeUndefined();
+
+    const pii = new MemoryWriter({
+      dataDir: root,
+      memoryService,
+      curator: fakeCurator(curated({ proposedText: 'La mia email è mario@example.com.' })),
+      autoApprove: { enabled: true },
+    });
+    await pii.initialize();
+    const piiResult = await pii.processTurn({ sessionId: 'session-pii', userText: 'Preferisco il tema scuro.' });
+    expect(piiResult.created[0]?.status).toBe('pending');
+    expect(fs.existsSync(path.join(root, 'memory', 'preferences.md'))).toBe(false);
+  });
+
+  it('non auto-approva un progetto diverso da quello della chat', async () => {
+    const autoWriter = new MemoryWriter({
+      dataDir: root,
+      memoryService,
+      curator: fakeCurator(curated({
+        action: 'new',
+        entityType: 'project',
+        entityName: 'Orione',
+        memoryType: 'project_fact',
+        category: 'project',
+        targetPath: 'projects/orione/memory.md',
+      })),
+      autoApprove: { enabled: true },
+    });
+    await autoWriter.initialize();
+    const result = await autoWriter.processTurn({ sessionId: 'session-project', userText: 'Il progetto Orione usa ametista.' });
+    expect(result.created[0]?.status).toBe('pending');
+    expect(fs.existsSync(path.join(root, 'projects', 'orione', 'memory.md'))).toBe(false);
   });
 
   it('riconosce un duplicato quasi esatto', async () => {

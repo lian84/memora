@@ -41,6 +41,9 @@ function settings(overrides: Partial<AdminSettings['settings']['memory']> = {}):
         reasoningLevel: field('low'),
         minConfidence: field(0.75),
         minSalience: field(0.7),
+        autoApproveEnabled: field(false),
+        autoApproveMinConfidence: field(0.9),
+        autoApproveMinSalience: field(0.85),
       },
       chat: {
         provider: field('openrouter'),
@@ -119,6 +122,7 @@ describe('AdminSettings UI', () => {
     expect(markup).toContain('Reindex Second Brain');
     expect(markup).toContain('Turni simultanei');
     expect(markup).toContain('Notifiche browser a risposta pronta');
+    expect(markup).toContain('Salvataggio automatico dei nuovi ricordi');
     expect(markup).toContain('Non esporre Memora pubblicamente senza autenticazione.');
   });
 
@@ -206,6 +210,15 @@ describe('AdminSettings UI', () => {
     expect(patch.embeddings?.model).toBeUndefined();
   });
 
+  test('mostra le soglie di auto-approvazione quando abilitata', () => {
+    const data = settings();
+    data.settings.curator.autoApproveEnabled = field(true);
+    const markup = renderToStaticMarkup(<AdminSettingsView {...baseProps} settings={data} draft={settingsValues(data)} />);
+    expect(markup).toContain('Salvataggio automatico dei nuovi ricordi');
+    expect(markup).toContain('Confidenza minima auto-salvataggio');
+    expect(markup).toContain('Rilevanza minima auto-salvataggio');
+  });
+
   test('valida i numeri e mostra un errore leggibile', () => {
     const invalid = settingsValues(settings());
     invalid.memory.topK = 0;
@@ -213,6 +226,9 @@ describe('AdminSettings UI', () => {
     const invalidTurns = settingsValues(settings());
     invalidTurns.chat.maxConcurrentTurns = 5;
     expect(validateSettingsDraft(invalidTurns)).toContain('concorrenza');
+    const invalidAutoApprove = settingsValues(settings());
+    invalidAutoApprove.curator.autoApproveMinConfidence = 1.1;
+    expect(validateSettingsDraft(invalidAutoApprove)).toContain('auto-approvazione');
     const markup = renderToStaticMarkup(<AdminSettingsView {...baseProps} error="topK deve essere un intero tra 1 e 50." />);
     expect(markup).toContain('topK deve essere un intero tra 1 e 50.');
   });

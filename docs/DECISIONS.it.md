@@ -344,7 +344,7 @@ La UI mescolava stili inline e CSS, la barra del modello occupava una riga separ
 ---
 ## ADR-010 — Memory Writer con approvazione esplicita
 **Data:** 2026-11-13
-**Stato:** accepted
+**Stato:** accepted — esteso da ADR-044 per l’auto-salvataggio opzionale dei nuovi ricordi
 
 ### Contesto
 Il Second Brain aveva già Markdown come fonte autorevole, SQLite/FTS5 come indice ricostruibile e retrieval automatico. Mancava la scrittura. Scrivere direttamente ogni informazione emersa dalla conversazione avrebbe reso la knowledge base rumorosa e difficile da correggere.
@@ -1440,3 +1440,44 @@ coprivano il manager ma non il percorso HTTP con più client.
 - Le notifiche browser non raggiungono un browser chiuso; una futura integrazione
   Telegram o Web Push potrà aggiungere la consegna esterna.
 - Il polling può ancora arrivare con circa 2 secondi di ritardo.
+
+---
+## ADR-044 — Auto-approvazione conservativa dei nuovi ricordi
+**Data:** 2026-11-19
+**Stato:** accepted
+
+### Contesto
+La revisione manuale di ogni proposta del Curator creava attrito: molte proposte
+erano accurate e chiaramente utili. Approvare tutto automaticamente avrebbe
+indebolito il modello di sicurezza, soprattutto per gli aggiornamenti che possono
+sostituire o rimuovere conoscenza esistente.
+
+### Decisione
+- Aggiungere `curator.autoApproveEnabled` (default **off**),
+  `curator.autoApproveMinConfidence` (default **0,90**) e
+  `curator.autoApproveMinSalience` (default **0,85**), modificabili da
+  **Amministrazione → Curator** e applicati a caldo.
+- L’auto-approvazione vale solo per candidati con `action: "new"`, stato
+  `pending`, nessun duplicato/conflitto, nessun segreto o PII ad alta confidenza
+  e entrambi gli score sopra le soglie configurate.
+- La destinazione deve essere la memoria globale (`memory/…`) o il progetto
+  corrente della chat (`projects/<currentProjectId>/memory.md`). Le scritture
+  cross-project non sono mai automatiche.
+- L’auto-approvazione usa lo stesso percorso di validazione, scrittura Markdown e
+  reindex dell’approvazione manuale. Il candidato risultante registra
+  `approvedBy: "auto"` e `autoApprovedAt`; un errore di scrittura lascia il
+  candidato pending.
+- Aggiornamenti, conflitti, duplicati e dati personali restano sempre in
+  revisione manuale. Le approvazioni automatiche sono visibili in **Memory Inbox
+  → Salvati automaticamente** e restano tracciate nel candidate store.
+- Non viene introdotta una variabile d’ambiente: è una preferenza
+  dell’amministratore.
+
+### Conseguenze
+- I nuovi fatti comuni possono essere conservati senza un click manuale, mentre
+  le modifiche rischiose restano protette.
+- Le soglie possono essere tarate osservando la qualità reale delle proposte.
+- L’auto-approvazione non è ancora annullabile dalla Inbox; le memorie restano
+  modificabili o eliminabili dal Second Brain.
+- Una fase futura potrà valutare auto-update protetti o undo in un click, ma è
+  deliberatamente fuori scope per questa decisione.

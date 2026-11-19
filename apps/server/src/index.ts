@@ -148,6 +148,11 @@ const memoryWriter = new MemoryWriter({
   memoryService,
   automaticExtraction: memoryWriterEnabled,
   curator,
+  autoApprove: {
+    enabled: initialSettings.curator.autoApproveEnabled === true,
+    minConfidence: initialSettings.curator.autoApproveMinConfidence ?? 0.9,
+    minSalience: initialSettings.curator.autoApproveMinSalience ?? 0.85,
+  },
 });
 await memoryWriter.initialize();
 const memoryWriterQueue = curatorEnabled ? new MemoryWriterQueue(memoryWriter, (event, depth) => {

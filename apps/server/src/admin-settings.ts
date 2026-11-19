@@ -33,6 +33,7 @@ interface QueueAdminService {
 
 interface MemoryWriterAdminService {
   getStats(): Promise<{ pending: number; conflict: number; approved: number; rejected: number; total: number; approvalRate: number | null }>;
+  setAutoApprove(options: { enabled: boolean; minConfidence: number; minSalience: number }): void;
 }
 
 interface MetricsAdminService {
@@ -68,7 +69,7 @@ export interface AdminRouteDependencies {
 
 /** Applies only settings that are safe and effective without replacing services. */
 export function applyLiveSettings(
-  deps: Pick<AdminRouteDependencies, 'memoryService' | 'curator' | 'agentService' | 'reloadCurator' | 'turns'>,
+  deps: Pick<AdminRouteDependencies, 'memoryService' | 'curator' | 'agentService' | 'reloadCurator' | 'turns' | 'memoryWriter'>,
   changed: string[],
   settings: RuntimeSettings,
 ): string[] {
@@ -111,6 +112,16 @@ export function applyLiveSettings(
   if (changed.includes('chat.maxConcurrentTurns') && deps.turns) {
     deps.turns.setMaxConcurrent(settings.chat.maxConcurrentTurns ?? 2);
     applied.push('chat.maxConcurrentTurns');
+  }
+  const autoApproveKeys = changed.filter(key =>
+    key === 'curator.autoApproveEnabled' || key === 'curator.autoApproveMinConfidence' || key === 'curator.autoApproveMinSalience');
+  if (autoApproveKeys.length > 0 && deps.memoryWriter) {
+    deps.memoryWriter.setAutoApprove({
+      enabled: settings.curator.autoApproveEnabled === true,
+      minConfidence: settings.curator.autoApproveMinConfidence ?? 0.9,
+      minSalience: settings.curator.autoApproveMinSalience ?? 0.85,
+    });
+    applied.push(...autoApproveKeys);
   }
   return applied;
 }

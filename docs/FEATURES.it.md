@@ -45,6 +45,7 @@ Ultimo aggiornamento: 2026-11-19.
 - [x] Memoria globale e memoria per progetto.
 - [x] Memory Inbox con approvazione umana.
 - [x] Memory Curator opzionale per proporre fatti atomici.
+- [x] Salvataggio automatico opzionale dei nuovi ricordi ad alta confidenza; aggiornamenti, conflitti, duplicati e PII restano in revisione manuale.
 - [x] Proposte di memoria anche dalle risposte dell’assistente.
 - [x] Deduplicazione, rilevanza, privacy e blocco dei segreti.
 - [x] Consolidamento read-only, valutazione e feedback sulle soglie.
@@ -133,7 +134,7 @@ Ultimo aggiornamento: 2026-11-19.
 - [x] Segreti in environment o `config/secrets.json` con mode `0600`.
 - [x] Configurazione web in `config/web.json` con mode `0600`.
 - [x] Nessuna API key restituita dalle API.
-- [x] Provider/modello chat, Curator, embedding, retrieval, web, titoli automatici, concorrenza turni, notifiche browser e aspetto configurabili.
+- [x] Provider/modello chat, Curator, auto-approvazione, embedding, retrieval, web, titoli automatici, concorrenza turni, notifiche browser e aspetto configurabili.
 - [x] Riavvio richiesto esplicitamente per le modifiche che non sono a caldo.
 - [x] Nessun `sudo` o `systemctl` eseguito dal processo web.
 

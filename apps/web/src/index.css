@@ -1560,3 +1560,15 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .message-avatar { width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; border-radius: 50%; background: var(--surface-muted); }
 .chat-empty-icon img { width: 32px; height: 32px; object-fit: contain; }
 .empty-state-icon img { width: 44px; height: 44px; object-fit: contain; }
+
+/* Auto-approved memories */
+.memory-auto-saved { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.memory-auto-saved summary { color: var(--text-soft); font-size: 11px; font-weight: 700; cursor: pointer; }
+.memory-auto-saved > p { margin: 6px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.memory-auto-saved-list { display: flex; flex-direction: column; gap: 6px; }
+.memory-auto-saved-item { padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.memory-auto-saved-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; }
+.memory-auto-saved-item p { margin: 6px 0; color: var(--text-soft); font-size: 11px; line-height: 1.45; }
+.memory-auto-saved-item code { display: block; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.admin-auto-approve { margin-top: 14px; padding: 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-muted); }
+.admin-auto-approve .admin-card-description { margin: 5px 0 0; }

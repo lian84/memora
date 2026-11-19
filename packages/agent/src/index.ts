@@ -1196,9 +1196,9 @@ export class AgentService {
     const sourcesUsed = sourcesRef?.sources ?? [];
     this.turnMemorySources.delete(sessionId);
 
-    // Il writer propone candidati, ma non scrive mai Markdown: l'approvazione
-    // resta un'azione esplicita dell'utente. Un errore del writer non deve
-    // interrompere la risposta già completata della chat.
+    // Il writer propone candidati e, se l'amministratore ha abilitato
+    // l'auto-approvazione conservativa, può scrivere solo nuovi ricordi idonei.
+    // Un errore del writer non deve interrompere la risposta già completata.
     let memoryCandidatesCreated: MemoryCandidate[] = [];
     let memoryWriterError: string | undefined;
     if (this.config.memoryWriter) {

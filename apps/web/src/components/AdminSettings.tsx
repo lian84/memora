@@ -153,6 +153,9 @@ export function settingsValues(settings: AdminSettingsData): RuntimeSettings {
       reasoningLevel: settings.settings.curator.reasoningLevel.value,
       minConfidence: settings.settings.curator.minConfidence.value,
       minSalience: settings.settings.curator.minSalience.value,
+      autoApproveEnabled: settings.settings.curator.autoApproveEnabled.value,
+      autoApproveMinConfidence: settings.settings.curator.autoApproveMinConfidence.value,
+      autoApproveMinSalience: settings.settings.curator.autoApproveMinSalience.value,
     },
     chat: {
       provider: settings.settings.chat.provider.value,
@@ -193,6 +196,8 @@ export function validateSettingsDraft(draft: RuntimeSettings): string | null {
   if (!Number.isFinite(draft.memory.diversity) || draft.memory.diversity < 0 || draft.memory.diversity > 1) return 'diversity deve essere tra 0 e 1.';
   if (!Number.isFinite(draft.curator.minConfidence) || draft.curator.minConfidence < 0 || draft.curator.minConfidence > 1) return 'Minimum confidence deve essere tra 0 e 1.';
   if (!Number.isFinite(draft.curator.minSalience) || draft.curator.minSalience < 0 || draft.curator.minSalience > 1) return 'Minimum salience deve essere tra 0 e 1.';
+  if (!Number.isFinite(draft.curator.autoApproveMinConfidence ?? 0.9) || (draft.curator.autoApproveMinConfidence ?? 0.9) < 0 || (draft.curator.autoApproveMinConfidence ?? 0.9) > 1) return 'La confidenza minima di auto-approvazione deve essere tra 0 e 1.';
+  if (!Number.isFinite(draft.curator.autoApproveMinSalience ?? 0.85) || (draft.curator.autoApproveMinSalience ?? 0.85) < 0 || (draft.curator.autoApproveMinSalience ?? 0.85) > 1) return 'La rilevanza minima di auto-approvazione deve essere tra 0 e 1.';
   if (!draft.embeddings.model.trim()) return 'Il modello embedding non può essere vuoto.';
   if (!draft.chat.defaultModel.trim()) return 'Il modello chat predefinito non può essere vuoto.';
   if (draft.curator.enabled && !draft.curator.model.trim()) return 'Seleziona un modello per il Memory Curator.';
@@ -651,6 +656,28 @@ export function AdminSettingsView({
             <input type="range" min={0} max={1} step={0.05} value={draft.curator.minSalience} disabled={disabled('curator', 'minSalience')} onChange={(event) => onDraftChange('curator', 'minSalience', Number(event.target.value))} />
             <small>Quanto l’informazione è considerata importante e durevole.</small>
           </label>
+        </div>
+        <div className="admin-auto-approve">
+          <label className="admin-toggle">
+            <input type="checkbox" checked={draft.curator.autoApproveEnabled === true} disabled={disabled('curator', 'autoApproveEnabled')} onChange={(event) => onDraftChange('curator', 'autoApproveEnabled', event.target.checked)} />
+            <span>{t('Salvataggio automatico dei nuovi ricordi')}</span>
+          </label>
+          <FieldLock field={field('curator', 'autoApproveEnabled')} />
+          <p className="admin-card-description">{t('Salva automaticamente solo i nuovi ricordi con confidenza e rilevanza alte. Aggiornamenti, conflitti, duplicati e dati personali restano in revisione manuale.')}</p>
+          {draft.curator.autoApproveEnabled === true && (
+            <div className="admin-grid-2">
+              <label className="admin-label">{t('Confidenza minima auto-salvataggio')}: {(draft.curator.autoApproveMinConfidence ?? 0.9).toFixed(2)}
+                <input type="range" min={0} max={1} step={0.05} value={draft.curator.autoApproveMinConfidence ?? 0.9} disabled={disabled('curator', 'autoApproveMinConfidence')} onChange={(event) => onDraftChange('curator', 'autoApproveMinConfidence', Number(event.target.value))} />
+                <small>{t('Soglia più alta = meno salvataggi automatici, maggiore prudenza.')}</small>
+                <FieldLock field={field('curator', 'autoApproveMinConfidence')} />
+              </label>
+              <label className="admin-label">{t('Rilevanza minima auto-salvataggio')}: {(draft.curator.autoApproveMinSalience ?? 0.85).toFixed(2)}
+                <input type="range" min={0} max={1} step={0.05} value={draft.curator.autoApproveMinSalience ?? 0.85} disabled={disabled('curator', 'autoApproveMinSalience')} onChange={(event) => onDraftChange('curator', 'autoApproveMinSalience', Number(event.target.value))} />
+                <small>{t('La rilevanza combina importanza, durabilità, utilità futura, novità e confidenza.')}</small>
+                <FieldLock field={field('curator', 'autoApproveMinSalience')} />
+              </label>
+            </div>
+          )}
         </div>
         <p className="admin-card-description">Provider e modello Curator vengono ricaricati a caldo se il Curator è già attivo; abilitarlo/disabilitarlo richiede un riavvio. Il livello reasoning è applicato subito e gli errori del provider non bloccano la chat.</p>
       </section>

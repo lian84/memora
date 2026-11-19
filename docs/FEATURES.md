@@ -55,6 +55,7 @@ Last updated: 2026-11-19.
 - [x] Global memory and per-project memory.
 - [x] Memory Inbox with human approval.
 - [x] Optional Memory Curator for proposing atomic facts.
+- [x] Optional automatic saving for new high-confidence memories; updates, conflicts, duplicates and PII remain under manual review.
 - [x] Memory proposals also generated from assistant answers.
 - [x] Deduplication, relevance, privacy checks and secret blocking.
 - [x] Read-only consolidation, evaluation and threshold feedback.
@@ -152,8 +153,8 @@ Last updated: 2026-11-19.
 - [x] Secrets in environment or `config/secrets.json` with mode `0600`.
 - [x] Web configuration in `config/web.json` with mode `0600`.
 - [x] No API key returned by the API.
-- [x] Chat provider/model, Curator, embeddings, retrieval, web, automatic titles,
-  turn concurrency, browser notifications and appearance configurable.
+- [x] Chat provider/model, Curator, automatic approval, embeddings, retrieval, web,
+  automatic titles, turn concurrency, browser notifications and appearance configurable.
 - [x] Explicit restart required for changes that are not applied live.
 - [x] No `sudo` or `systemctl` executed by the web process.
 

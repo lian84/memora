@@ -29,7 +29,7 @@ your configuration.
 - File-first Second Brain: authoritative Markdown and a rebuildable SQLite
   index.
 - Optional local embeddings with semantic and hybrid retrieval.
-- Memory Inbox with explicit approval; optional LLM Memory Curator.
+- Memory Inbox with explicit approval by default and optional auto-save; optional LLM Memory Curator.
 - Projects, indexed sources, project files and versioned artifacts.
 - PDF, DOCX, XLSX and PPTX generation without LibreOffice.
 - SSRF-safe web research through Brave or SearXNG, with numbered citations.
@@ -251,8 +251,15 @@ changes. The Curator receives existing bullets and must classify the update as
 canonical final state, not a delta: for `augment`, the backend checks that earlier
 facts survive and rejects an incomplete proposal. Only `replace`, `remove` and
 `correct` may omit a previous value because the user explicitly invalidated it.
-No approval is automatic. Events and latency are logged without turn text; the
-Curator adds at most one LLM call per meaningful turn. Structured logs distinguish
+Automatic saving can be enabled in **Administration → Curator**. It applies only
+to **new** candidates above separate confidence and relevance thresholds
+(default 0.90 and 0.85), with no duplicate/conflict match, no sensitive content
+or high-confidence PII, and a target in global memory or the current chat
+project. Updates, conflicts, duplicates and personal data always remain under
+manual review. Automatic approvals are recorded with `approvedBy: auto` and
+listed in **Memory Inbox → Automatically saved**. Events and latency are logged
+without turn text; the Curator adds at most one LLM call per meaningful turn.
+Structured logs distinguish
 request, response, parse, validation, decision and persistence, with HTTP status
 and sanitized codes but no prompt, answer or chunk. OpenRouter receives
 `reasoning.enabled=false`; OpenCode Go does not accept that parameter, so it is

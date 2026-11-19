@@ -124,6 +124,12 @@ export interface MemoryCandidate {
   sourceQuestion?: string;
   /** Turni recenti (utente/assistente) usati come contesto per la proposta. */
   sourceContext?: string[];
+  /** Revisione che ha portato il candidato allo stato approved. */
+  approvedBy?: 'user' | 'auto';
+  /** Timestamp dell'approvazione automatica. */
+  autoApprovedAt?: number;
+  /** Soglie applicate al salvataggio automatico. */
+  autoApprovalThresholds?: { confidence: number; salience: number };
 }
 
 export interface AssistantMemoryProposal {

@@ -31,6 +31,9 @@ type SettingKey =
   | 'curator.reasoningLevel'
   | 'curator.minConfidence'
   | 'curator.minSalience'
+  | 'curator.autoApproveEnabled'
+  | 'curator.autoApproveMinConfidence'
+  | 'curator.autoApproveMinSalience'
   | 'chat.provider'
   | 'chat.defaultModel'
   | 'chat.reasoningLevel'
@@ -139,6 +142,24 @@ const SETTING_DEFINITIONS: Record<SettingKey, SettingDefinition> = {
   },
   'curator.minSalience': {
     env: ['MEMORA_MEMORY_CURATOR_MIN_SALIENCE'],
+    requiresRestart: false,
+    validate: numberInRange(0, 1),
+    parseEnv: (value) => Number(value),
+  },
+  'curator.autoApproveEnabled': {
+    env: [],
+    requiresRestart: false,
+    validate: booleanValue,
+    parseEnv: (value) => parseBoolean(value),
+  },
+  'curator.autoApproveMinConfidence': {
+    env: [],
+    requiresRestart: false,
+    validate: numberInRange(0, 1),
+    parseEnv: (value) => Number(value),
+  },
+  'curator.autoApproveMinSalience': {
+    env: [],
     requiresRestart: false,
     validate: numberInRange(0, 1),
     parseEnv: (value) => Number(value),
@@ -315,6 +336,9 @@ export class AdminSettingsStore {
           reasoningLevel: this.field<ReasoningLevel>('curator.reasoningLevel'),
           minConfidence: this.field<number>('curator.minConfidence'),
           minSalience: this.field<number>('curator.minSalience'),
+          autoApproveEnabled: this.field<boolean>('curator.autoApproveEnabled'),
+          autoApproveMinConfidence: this.field<number>('curator.autoApproveMinConfidence'),
+          autoApproveMinSalience: this.field<number>('curator.autoApproveMinSalience'),
         },
         chat: {
           provider: this.field<ChatProvider>('chat.provider'),

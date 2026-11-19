@@ -168,6 +168,16 @@ describe('AdminSettingsStore', () => {
     await expect(store.patch({ chat: { maxConcurrentTurns: 5 } })).rejects.toMatchObject({ code: 'invalid_setting_value' });
     await expect(store.patch({ chat: { maxConcurrentTurns: 1.5 } })).rejects.toMatchObject({ code: 'invalid_setting_value' });
   });
+  it('persiste e valida le soglie di auto-approvazione', async () => {
+    const { store } = await fixture();
+    const result = await store.patch({ curator: { autoApproveEnabled: true, autoApproveMinConfidence: 0.92, autoApproveMinSalience: 0.88 } });
+    expect(result.changed).toEqual(['curator.autoApproveEnabled', 'curator.autoApproveMinConfidence', 'curator.autoApproveMinSalience']);
+    expect(store.getSettings().curator.autoApproveEnabled).toBe(true);
+    expect(store.getSettings().curator.autoApproveMinConfidence).toBe(0.92);
+    expect(store.getSettings().curator.autoApproveMinSalience).toBe(0.88);
+    await expect(store.patch({ curator: { autoApproveMinConfidence: 1.2 } })).rejects.toMatchObject({ code: 'invalid_setting_value' });
+  });
+
   it('accepts provider-specific bare model ids and rejects unknown providers', async () => {
     const { store } = await fixture();
     const result = await store.patch({ chat: { provider: 'opencode-go', defaultModel: 'deepseek-v4.1-flash' } });
