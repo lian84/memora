@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { getAuthStatus, login as loginRequest, logout as logoutRequest, setupPassword, type AuthStatus } from '../lib/api';
-import { useI18n } from '../i18n';
+import { LanguageSelector, useI18n } from '../i18n';
 
 interface AuthContextValue {
   logout: () => Promise<void>;
@@ -60,6 +60,7 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
   return (
     <main className="auth-screen">
       <section className="auth-card" aria-labelledby="auth-title">
+        <div className="auth-language"><LanguageSelector compact /></div>
         <AuthBrand />
         <span className="admin-eyebrow">{t(isSetup ? 'Primo accesso' : 'Accesso protetto')}</span>
         <h1 id="auth-title">{t(isSetup ? 'Crea la password di Memora' : 'Bentornato')}</h1>
