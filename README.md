@@ -613,6 +613,9 @@ an automatic loop; the previous artifact version remains available.
 
 ### Chat controls
 
+- when the model exposes reasoning, a compact **Reasoning** panel shows a live
+  preview and can be expanded to follow the full thought; completed reasoning is
+  restored from the Pi transcript after a reload;
 - every message has a **copy** button: plain text for the question, Markdown for
   the answer;
 - questions have **Edit**: editing creates a new Pi branch, preserving history in

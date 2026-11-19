@@ -14,6 +14,7 @@ Last updated: 2026-11-19.
 - [x] Persistent sessions in Pi JSONL format.
 - [x] SSE turn streaming with a “Memo is responding…” state.
 - [x] Markdown rendering with tables, lists, code and safe `<br>` line breaks.
+- [x] Collapsible reasoning panel for models that expose thinking: live preview, expandable full thought and history from the Pi transcript.
 - [x] Stop response, edit a user message and regenerate.
 - [x] Resume, rename, archive, restore and delete chats.
 - [x] Session title and history.

@@ -31,6 +31,7 @@ import {
   SetSessionModelResult,
   StreamEvent,
   normalizePiContent,
+  normalizePiReasoning,
   type ProviderModel,
   type ProjectRecord,
   type ReasoningLevel,
@@ -474,6 +475,7 @@ export class AgentService {
   async getSessionMessages(sessionId: SessionId): Promise<{
     role: 'user' | 'assistant';
     content: string;
+    reasoning?: string;
     timestamp: number;
   }[]> {
     const sessionFile = await this.findSessionFile(sessionId);
@@ -519,15 +521,17 @@ export class AgentService {
         const message = entry.message!;
         const timestamp = message.timestamp ? new Date(message.timestamp as string | number | Date).getTime() : Date.now();
         const attachments = message.role === 'user' ? attachmentsByTimestamp.get(timestamp) : undefined;
+        const reasoning = message.role === 'assistant' ? normalizePiReasoning(message.content) : '';
         return {
           entryId: entry.id,
           role: message.role as 'user' | 'assistant',
           content: normalizePiContent(message.content),
+          ...(reasoning ? { reasoning } : {}),
           timestamp,
           ...(attachments ? { attachments } : {}),
         };
       })
-      .filter((message) => message.role === 'user' || message.content.length > 0);
+      .filter((message) => message.role === 'user' || message.content.length > 0 || Boolean(message.reasoning));
   }
 
   /** Contesto memoria persistito per la chat. */

@@ -26,6 +26,14 @@ function getTextDelta(payload: unknown): string {
     : '';
 }
 
+function getThinkingDelta(payload: unknown): string {
+  if (!payload || typeof payload !== 'object') return '';
+  const assistantMessageEvent = (payload as { assistantMessageEvent?: unknown }).assistantMessageEvent;
+  if (!assistantMessageEvent || typeof assistantMessageEvent !== 'object') return '';
+  const event = assistantMessageEvent as { type?: unknown; delta?: unknown };
+  return event.type === 'thinking_delta' && typeof event.delta === 'string' ? event.delta : '';
+}
+
 function parseTurnEvent(data: string): TurnEvent | null {
   try {
     const value: unknown = JSON.parse(data);
@@ -45,6 +53,7 @@ interface UseSessionTurnOptions {
 export function useSessionTurn(sessionId: string | null, options: UseSessionTurnOptions = {}) {
   const [turn, setTurn] = useState<TurnInfo | null>(null);
   const [content, setContent] = useState('');
+  const [reasoning, setReasoning] = useState('');
   const turnRef = useRef<TurnInfo | null>(null);
   const seqRef = useRef(0);
   const sourceRef = useRef<EventSource | null>(null);
@@ -81,7 +90,9 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
       if (!parsed) return;
       if (typeof parsed.seq === 'number') seqRef.current = parsed.seq;
       const delta = parsed.type === 'message_update' ? getTextDelta(parsed.payload) : '';
+      const thinkingDelta = parsed.type === 'message_update' ? getThinkingDelta(parsed.payload) : '';
       if (delta) setContent(current => current + delta);
+      if (thinkingDelta) setReasoning(current => (current + thinkingDelta).slice(-200_000));
       if (parsed.type === 'turn_status') {
         const status = (parsed.payload as { status?: unknown } | null)?.status;
         if (status === 'queued' || status === 'running' || status === 'completed' || status === 'failed' || status === 'aborted') {
@@ -125,6 +136,7 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     turnRef.current = null;
     seqRef.current = 0;
     setContent('');
+    setReasoning('');
     if (!sessionId) return;
     let cancelled = false;
     stoppedRef.current = false;
@@ -148,6 +160,7 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     if (turnRef.current?.turnId !== latest.turnId) {
       seqRef.current = 0;
       setContent('');
+      setReasoning('');
     }
     turnRef.current = latest;
     setTurn(latest);
@@ -160,6 +173,7 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     turnRef.current = next;
     seqRef.current = 0;
     setContent('');
+    setReasoning('');
     setTurn(next);
     attach(next, 0);
     return next;
@@ -171,6 +185,7 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     turnRef.current = next;
     seqRef.current = 0;
     setContent('');
+    setReasoning('');
     setTurn(next);
     attach(next, 0);
     return next;
@@ -184,5 +199,5 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     setTurn(updated);
   }, [sessionId]);
 
-  return { turn, content, start, startEdit, sync, abort, isActive: turn?.status === 'running' || turn?.status === 'queued' };
+  return { turn, content, reasoning, start, startEdit, sync, abort, isActive: turn?.status === 'running' || turn?.status === 'queued' };
 }

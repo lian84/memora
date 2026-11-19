@@ -603,6 +603,9 @@ resta disponibile.
 
 ### Controlli chat
 
+- quando il modello espone il ragionamento, un pannello **Ragionamento** compatto
+  mostra un’anteprima live e può essere espanso per seguire tutto il pensiero;
+  dopo un reload il ragionamento completato viene ricostruito dal transcript Pi;
 - ogni messaggio ha il pulsante **copia**: testo semplice per la domanda,
   Markdown per la risposta;
 - le domande hanno **Modifica**: la modifica crea un nuovo ramo Pi, mantenendo

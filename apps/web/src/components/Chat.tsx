@@ -569,7 +569,7 @@ function messageTitle(content: string, html: string | null): string {
 
         {messages.map((message) => (
           <div className="message-row" key={message.id}>
-            <Message role={message.role} content={message.content} timestamp={message.timestamp} streaming={message.streaming} attachments={message.attachments} sessionId={sessionId} onExportPdf={message.role === 'assistant' && !isStreaming ? () => void handleExportPdf(message) : undefined} onSaveMemory={message.role === 'assistant' && !isStreaming ? () => void handleSaveMemory(message) : undefined} onRegenerate={message.role === 'assistant' && !isStreaming ? () => handleRegenerate(message) : undefined} onEditText={message.role === 'user' && message.entryId && !isStreaming ? (text: string) => handleEditMessage(message, text) : undefined} exportingPdf={pdfExportingId === message.id} hideHtmlCode={message.role === 'assistant' && artifacts.some(artifact => artifact.kind === 'pdf' || artifact.kind === 'html' || artifact.kind === 'pptx')} webSources={webSources} artifacts={artifactsForMessage(message)} onReviewArtifact={message.role === 'assistant' && !isStreaming ? (artifact) => void handleReviewArtifact(artifact) : undefined} reviewingArtifactId={reviewingArtifactId} />
+            <Message role={message.role} content={message.content} timestamp={message.timestamp} streaming={message.streaming} attachments={message.attachments} sessionId={sessionId} onExportPdf={message.role === 'assistant' && !isStreaming ? () => void handleExportPdf(message) : undefined} onSaveMemory={message.role === 'assistant' && !isStreaming ? () => void handleSaveMemory(message) : undefined} onRegenerate={message.role === 'assistant' && !isStreaming ? () => handleRegenerate(message) : undefined} onEditText={message.role === 'user' && message.entryId && !isStreaming ? (text: string) => handleEditMessage(message, text) : undefined} exportingPdf={pdfExportingId === message.id} hideHtmlCode={message.role === 'assistant' && artifacts.some(artifact => artifact.kind === 'pdf' || artifact.kind === 'html' || artifact.kind === 'pptx')} webSources={webSources} artifacts={artifactsForMessage(message)} onReviewArtifact={message.role === 'assistant' && !isStreaming ? (artifact) => void handleReviewArtifact(artifact) : undefined} reviewingArtifactId={reviewingArtifactId} reasoning={message.role === 'assistant' ? (message.id === lastAssistantMessageId && (!turnStream.isActive || activeAssistantIdRef.current === message.id) ? turnStream.reasoning || message.reasoning : message.reasoning) : undefined} reasoningStreaming={message.role === 'assistant' && message.id === lastAssistantMessageId && turnStream.isActive} />
           </div>
         ))}
 
@@ -612,6 +612,8 @@ function messageTitle(content: string, html: string | null): string {
               content={turnStream.content || t(effectiveTurnStatus === 'queued' ? 'In coda…' : 'Memo sta rispondendo…')}
               timestamp={Date.now()}
               streaming
+              reasoning={turnStream.reasoning}
+              reasoningStreaming={turnStream.isActive}
             />
           </div>
         )}

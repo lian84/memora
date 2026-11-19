@@ -1522,3 +1522,35 @@ un’anteprima nello stesso turno.
   revisione automatica potranno essere aggiunti in seguito.
 - La revisione dipende dai metadati del provider/modello e dalla disponibilità di
   Chromium/PDF.js sul server.
+
+---
+## ADR-046 — Ragionamento visibile durante e dopo il turno
+**Data:** 2026-11-19
+**Stato:** accepted
+
+### Contesto
+Alcuni modelli configurati espongono blocchi `thinking`/reasoning. La chat li
+scartava, quindi l’utente non poteva seguire una fase di ragionamento lunga e non
+aveva feedback durante l’attesa. Il ragionamento è già memorizzato da Pi nel
+transcript del messaggio assistant.
+
+### Decisione
+- Il client SSE legge gli eventi `thinking_delta` dai payload Pi
+  `message_update` e accumula il ragionamento separatamente dal testo visibile.
+- La UI mostra un pannello **Ragionamento** chiuso, con anteprima live dell’ultima
+  riga; premendolo si apre il pensiero completo in testo semplice, in un’area
+  scrollabile che segue lo stream.
+- Il pannello compare solo nei messaggi assistant e solo quando esiste
+  ragionamento. Non viene mai mescolato al Markdown della risposta né usato come
+  candidato memoria.
+- Il ragionamento completato viene estratto dai blocchi `thinking` Pi quando si
+  carica lo storico, quindi resta disponibile dopo un reload o da un altro
+  dispositivo.
+- Il ragionamento è output del modello, non istruzione né memoria autorevole. Non
+  viene esportato, indicizzato o inviato al Curator come parte della risposta.
+
+### Conseguenze
+- L’utente può seguire il pensiero durante l’attesa e consultarlo dopo.
+- La UI può esporre contenuti sensibili su cui il modello ha ragionato; restano
+  locali alla chat autenticata e seguono la retention della sessione.
+- I modelli che non restituiscono delta di thinking non mostrano il pannello.

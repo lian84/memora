@@ -1681,3 +1681,34 @@ after the tool call, so an in-turn preview is not available.
   automatic review can be added later.
 - Vision review depends on provider/model metadata and on Chromium/PDF.js being
   available on the server.
+
+---
+## ADR-046 — Visible reasoning during and after a turn
+**Date:** 2026-11-19
+**Status:** accepted
+
+### Context
+Some configured models expose `thinking`/reasoning blocks. The chat previously
+discarded them, so the user could not follow a long reasoning phase and had no
+feedback while waiting. The reasoning is already stored by Pi in the assistant
+message transcript.
+
+### Decision
+- The SSE client reads `thinking_delta` events from Pi `message_update` payloads
+  and accumulates reasoning separately from visible answer text.
+- The UI shows a collapsed **Reasoning** panel with a live last-line preview;
+  pressing it expands the full plain-text thought in a scrollable area that
+  follows the stream.
+- The panel is shown only for assistant messages and only when reasoning exists.
+  It is never mixed into the answer Markdown or used as a memory candidate.
+- Completed reasoning is extracted from Pi `thinking` blocks when loading
+  session history, so it remains available after a reload or another device.
+- Reasoning is treated as model output, not as an instruction or authoritative
+  memory. It is not exported, indexed, or sent to the Curator as part of the
+  answer.
+
+### Consequences
+- Users can follow the model's thought while waiting and inspect it later.
+- The UI can expose sensitive content that the model chose to think about; it
+  remains local to the authenticated chat and follows the session retention.
+- Models that return no thinking deltas simply do not show the panel.

@@ -28,6 +28,23 @@ export function normalizePiContent(content: unknown): string {
     .join('');
 }
 
+
+/** Estrae i blocchi thinking/ragionamento destinati alla UI, senza firme o metadati. */
+export function normalizePiReasoning(content: unknown): string {
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((block) => {
+      if (!block || typeof block !== 'object') return '';
+      const value = block as { type?: unknown; thinking?: unknown; text?: unknown };
+      if (value.type === 'thinking' && typeof value.thinking === 'string') return value.thinking;
+      if (value.type === 'reasoning' && typeof value.text === 'string') return value.text;
+      return '';
+    })
+    .filter(Boolean)
+    .join('\n\n')
+    .trim();
+}
+
 /** Identificatore di una sessione attiva */
 export type SessionId = string;
 

@@ -111,6 +111,8 @@ export interface MemoryHistoryRecord {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Ragionamento esposto dal modello, se presente nel transcript. */
+  reasoning?: string;
   timestamp: number;
   entryId?: string;
   attachments?: ChatAttachment[];

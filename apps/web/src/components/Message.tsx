@@ -3,6 +3,7 @@ import type { ChatArtifact, ChatAttachment, WebSource } from '@memora/shared';
 import { artifactUrl, chatAttachmentUrl } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 import { useI18n } from '../i18n';
+import { ReasoningPanel } from './ReasoningPanel';
 
 interface MessageProps {
   role: 'system' | 'user' | 'assistant';
@@ -21,6 +22,8 @@ interface MessageProps {
   artifacts?: ChatArtifact[];
   onReviewArtifact?: (artifact: ChatArtifact) => void;
   reviewingArtifactId?: string | null;
+  reasoning?: string;
+  reasoningStreaming?: boolean;
 }
 
 const roleLabel: Record<string, string> = {
@@ -29,7 +32,7 @@ const roleLabel: Record<string, string> = {
   assistant: 'Memo',
 };
 
-export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false, webSources = [], artifacts = [], onReviewArtifact, reviewingArtifactId = null }: MessageProps) {
+export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false, webSources = [], artifacts = [], onReviewArtifact, reviewingArtifactId = null, reasoning = '', reasoningStreaming = false }: MessageProps) {
   const { t, language } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(content);
@@ -111,6 +114,8 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
         <time className="message-time" dateTime={new Date(timestamp).toISOString()}>{time}</time>
         {streaming && <span className="message-streaming">{t('in corso')}</span>}
       </header>
+
+      {reasoning && <ReasoningPanel text={reasoning} streaming={reasoningStreaming} />}
 
       {editing ? (
         <div className="message-edit">

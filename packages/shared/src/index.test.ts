@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { APP_NAME, normalizePiContent } from './index';
+import { APP_NAME, normalizePiContent, normalizePiReasoning } from './index';
 
 test('APP_NAME exported', () => {
   expect(APP_NAME).toBe('memora');
@@ -54,4 +54,14 @@ test('memory_sources non entra nel testo assistant', () => {
       },
     ]),
   ).toBe('');
+});
+
+
+test('estrae il ragionamento senza firme né blocchi sconosciuti', () => {
+  expect(normalizePiReasoning([
+    { type: 'thinking', thinking: 'Primo passo.', thinkingSignature: 'firma' },
+    { type: 'text', text: 'Risposta' },
+    { type: 'reasoning', text: 'Secondo passo.' },
+    { type: 'future_block', value: 'ignorato' },
+  ])).toBe('Primo passo.\n\nSecondo passo.');
 });

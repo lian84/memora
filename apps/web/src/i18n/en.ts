@@ -257,6 +257,7 @@ export const en: Record<string, string> = {
   'Apri allegato': 'Open attachment',
   'Tu': 'You',
   'in corso': 'in progress',
+  'Ragionamento': 'Reasoning',
   'Copia non disponibile: seleziona il testo manualmente.': 'Copy unavailable: select the text manually.',
   'Salva e rigenera': 'Save and regenerate',
   'PDF…': 'PDF…',

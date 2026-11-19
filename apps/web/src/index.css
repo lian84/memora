@@ -1585,3 +1585,20 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .message-artifact-download > button { flex: 0 0 auto; padding: 3px 6px; border: 1px solid var(--accent-border); border-radius: 5px; background: var(--surface); color: var(--accent-strong); font-size: 9px; font-weight: 650; cursor: pointer; }
 .message-artifact-download > button:hover:not(:disabled) { background: var(--surface-muted); }
 .message-artifact-download > button:disabled { cursor: wait; opacity: .6; }
+
+/* Reasoning panel */
+.reasoning-panel { width: 100%; margin: 0 0 3px; }
+.reasoning-toggle { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; padding: 5px 7px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-muted); color: var(--muted); font-size: 10px; text-align: left; cursor: pointer; }
+.reasoning-toggle:hover { border-color: var(--accent-border); background: var(--accent-soft); }
+.reasoning-toggle:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.reasoning-icon { flex: 0 0 auto; display: flex; color: var(--accent); }
+.reasoning-label { flex: 0 0 auto; color: var(--text-soft); font-weight: 700; letter-spacing: .02em; }
+.reasoning-live { flex: 0 0 auto; padding: 1px 5px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 8px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; animation: reasoning-pulse 1.4s ease-in-out infinite; }
+.reasoning-preview { min-width: 0; overflow: hidden; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.reasoning-chevron { flex: 0 0 auto; margin-left: auto; transition: transform .16s ease; }
+.reasoning-chevron.is-open { transform: rotate(180deg); }
+.reasoning-body { max-height: 240px; margin-top: 4px; padding: 10px 12px; overflow: auto; border: 1px solid var(--border); border-left: 2px solid var(--accent-border); border-radius: 0 8px 8px 8px; background: var(--code-bg); color: var(--text-soft); outline: none; }
+.reasoning-body:focus-visible { outline: 2px solid var(--focus-ring); }
+.reasoning-body pre { margin: 0; color: var(--code-text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+@keyframes reasoning-pulse { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .reasoning-live { animation: none; } }
