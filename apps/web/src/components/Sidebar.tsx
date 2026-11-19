@@ -237,7 +237,10 @@ export function Sidebar({
     <aside className={`sidebar${mobileOpen ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label={t('Barra chat e sessioni')}>
       <header className="sidebar-header">
         <div>
-          <h1>{t('Memora')}</h1>
+          <h1 className="sidebar-brand" aria-label={t('Memora')}>
+            <img className="brand-logo brand-logo-light" src="/brand/memora-logo-light.png" alt="" aria-hidden="true" />
+            <img className="brand-logo brand-logo-dark" src="/brand/memora-logo-dark.png" alt="" aria-hidden="true" />
+          </h1>
           <p>{t('Chat & Progetti')}</p>
         </div>
         {onClose && (

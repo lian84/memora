@@ -50,6 +50,7 @@ export function notifyTurnFinished(options: TurnNotification): Notification | nu
   try {
     const notification = new Notification(options.title, {
       body: options.body,
+      icon: '/brand/memora-avatar.png',
       tag: `memora-turn-${options.sessionId}`,
       data: { sessionId: options.sessionId },
     });

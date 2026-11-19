@@ -672,10 +672,7 @@ export default function App() {
           {!adminOpen && !secondBrainOpen && !projectOpen && !selectedSessionId && (
             <section className="empty-state">
               <span className="empty-state-icon" aria-hidden="true">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-                  <path d="M8 9h8M8 13h5" />
-                </svg>
+                <img src="/brand/memora-avatar.png" alt="" />
               </span>
               <h2>
                 {archivedView

@@ -1500,3 +1500,13 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
 .admin-notification-setting small { display: block; color: var(--muted); font-size: 10px; line-height: 1.45; margin-top: 2px; }
 .admin-notification-setting .admin-alert { margin-top: 8px; margin-bottom: 0; }
 .message-row-pending { opacity: .8; }
+
+/* Brand assets */
+.sidebar-header h1.sidebar-brand { margin: 0 0 5px; line-height: 0; }
+.brand-logo { display: block; width: 148px; max-width: 100%; height: auto; }
+.brand-logo-dark { display: none; }
+html[data-theme="dark"] .brand-logo-light { display: none; }
+html[data-theme="dark"] .brand-logo-dark { display: block; }
+.message-avatar { width: 20px; height: 20px; flex: 0 0 20px; object-fit: contain; border-radius: 50%; background: var(--surface-muted); }
+.chat-empty-icon img { width: 32px; height: 32px; object-fit: contain; }
+.empty-state-icon img { width: 44px; height: 44px; object-fit: contain; }

@@ -514,10 +514,7 @@ function messageTitle(content: string, html: string | null): string {
         {messages.length === 0 && (
           <div className="chat-empty">
             <span className="chat-empty-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
-                <path d="M8 9h8M8 13h5" />
-              </svg>
+              <img src="/brand/memora-avatar.png" alt="" />
             </span>
             <h2>{t('Inizia la conversazione')}</h2>
             <p>{t('Scrivi un messaggio qui sotto. Memo userà il contesto del Second Brain quando utile.')}</p>

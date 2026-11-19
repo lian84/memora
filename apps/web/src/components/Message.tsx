@@ -103,6 +103,7 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
   return (
     <article className={`message message-${role}`}>
       <header className="message-header">
+        {role === 'assistant' && <img className="message-avatar" src="/brand/memora-avatar.png" alt="" aria-hidden="true" />}
         <span className="message-author">{t(roleLabel[role]!)}</span>
         <time className="message-time" dateTime={new Date(timestamp).toISOString()}>{time}</time>
         {streaming && <span className="message-streaming">{t('in corso')}</span>}
