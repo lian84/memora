@@ -1465,6 +1465,7 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
   background-image: radial-gradient(color-mix(in srgb, var(--text) 7%, transparent) .6px, transparent .6px);
   background-size: 18px 18px;
   opacity: .22;
+  -webkit-mask-image: linear-gradient(to bottom, black, transparent 72%);
   mask-image: linear-gradient(to bottom, black, transparent 72%);
 }
 .auth-card {
@@ -1475,6 +1476,7 @@ body.is-resizing-panel iframe, body.is-resizing-panel .pdf-preview-canvas { poin
   border-radius: 24px;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   box-shadow: 0 30px 80px color-mix(in srgb, var(--text) 14%, transparent), 0 1px 0 color-mix(in srgb, white 70%, transparent) inset;
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 .auth-card::before {
