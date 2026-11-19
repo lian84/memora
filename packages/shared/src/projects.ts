@@ -158,6 +158,12 @@ export interface ChatArtifact {
   createdAt: number;
   updatedAt: number;
   version: number;
+  /** Messaggio utente/assistente che ha originato l'artefatto. */
+  sourceMessageId?: string;
+  /** Timestamp del messaggio sorgente, se disponibile. */
+  sourceTimestamp?: number;
+  /** Turno logico sorgente, per future associazioni. */
+  sourceTurnId?: string;
 }
 
 export interface SpreadsheetCell {

@@ -1642,3 +1642,42 @@ existing knowledge.
   edited or removed from the Second Brain.
 - A future phase may evaluate guarded auto-updates or one-click undo, but it is
   deliberately out of scope for this decision.
+
+---
+## ADR-045 — In-chat artifact downloads and manual visual review
+**Date:** 2026-11-19
+**Status:** accepted
+
+### Context
+Artifacts were reachable from the side panel, but the assistant response did not
+offer a direct download. PDF and presentation quality also varied; a vision model
+could evaluate layout, but the current metadata-only tools generate content only
+after the tool call, so an in-turn preview is not available.
+
+### Decision
+- Artifacts carry an optional `sourceMessageId`, `sourceTurnId` and
+  `sourceTimestamp`, stored in a sidecar under the artifact directory. New
+  artifacts are associated with the current user message after the turn; later
+  versions preserve the original association.
+- Assistant messages show download cards for their artifacts. The card exposes
+  name, version, size, open and download actions, with a fallback for legacy
+  artifacts without source metadata.
+- Add a manual **Review preview** action for PDF, HTML and PPTX when the active
+  model reports image input support. The server renders a PNG preview (PDF.js for
+  PDF, Chromium for HTML/PPTX), stores it as a chat image attachment, and starts a
+  normal review turn with a visual checklist.
+- The review turn may create a new version of the same artifact. The previous
+  version remains available. There is no automatic review loop and no background
+  visual QA in this milestone.
+- DOCX and XLSX visual review are deferred until their preview renderers are
+  available. The feature is opt-in per action and adds no tokens when unused.
+
+### Consequences
+- Users can download deliverables directly from the answer and reload without
+  losing the artifact-message association.
+- Visual feedback is controlled and auditable, and cannot silently rewrite an
+  artifact.
+- PDF review currently uses the first page; contact sheets for long PDFs and
+  automatic review can be added later.
+- Vision review depends on provider/model metadata and on Chromium/PDF.js being
+  available on the server.

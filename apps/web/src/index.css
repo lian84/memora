@@ -1572,3 +1572,16 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .memory-auto-saved-item code { display: block; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .admin-auto-approve { margin-top: 14px; padding: 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-muted); }
 .admin-auto-approve .admin-card-description { margin: 5px 0 0; }
+
+/* Artifact downloads inside assistant answers */
+.message-artifacts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.message-artifact-download { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px 10px; border: 1px solid var(--accent-border); border-radius: 9px; background: var(--accent-soft); }
+.message-artifact-download-kind { flex: 0 0 auto; padding: 2px 5px; border-radius: 4px; background: var(--surface); color: var(--accent-strong); font-size: 9px; font-weight: 800; }
+.message-artifact-download-main { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 1px; }
+.message-artifact-download-main strong { overflow: hidden; color: var(--text); font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.message-artifact-download-main small { color: var(--muted); font-size: 9px; }
+.message-artifact-download > a { flex: 0 0 auto; color: var(--accent-strong); font-size: 10px; font-weight: 650; text-decoration: none; }
+.message-artifact-download > a:hover { text-decoration: underline; }
+.message-artifact-download > button { flex: 0 0 auto; padding: 3px 6px; border: 1px solid var(--accent-border); border-radius: 5px; background: var(--surface); color: var(--accent-strong); font-size: 9px; font-weight: 650; cursor: pointer; }
+.message-artifact-download > button:hover:not(:disabled) { background: var(--surface-muted); }
+.message-artifact-download > button:disabled { cursor: wait; opacity: .6; }

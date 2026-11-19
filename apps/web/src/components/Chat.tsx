@@ -12,7 +12,7 @@ import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpd
 import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
 import type { ChatMessage, SSEEvent, TurnInfo, TurnStatus, WebStatus } from '../lib/api';
-import { abortSession, attachArtifactToSession, attachProjectFileToSession, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -76,6 +76,8 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [artifactsError, setArtifactsError] = useState<string | null>(null);
   const [pdfExportingId, setPdfExportingId] = useState<string | null>(null);
   const [pdfNotice, setPdfNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [reviewingArtifactId, setReviewingArtifactId] = useState<string | null>(null);
+  const reviewStartedAtRef = useRef(0);
   const [memoryNotice, setMemoryNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [memoryDialogMessage, setMemoryDialogMessage] = useState<DisplayChatMessage | null>(null);
   const [composerFocus, setComposerFocus] = useState(0);
@@ -495,11 +497,55 @@ function messageTitle(content: string, html: string | null): string {
     void handleSend('Riformula la risposta precedente in modo più chiaro, completo e ben organizzato, mantenendo lo stesso contenuto e gli stessi fatti.');
   }, [sessionId, handleSend]);
 
+  const handleReviewArtifact = useCallback(async (artifact: ChatArtifact) => {
+    if (!sessionId || reviewingArtifactId) return;
+    reviewStartedAtRef.current = Date.now();
+    setReviewingArtifactId(artifact.id);
+    setAttachmentError(null);
+    try {
+      const preview = await createArtifactPreviewAttachment(sessionId, artifact.id);
+      const timestamp = Date.now();
+      const assistantId = `stream-${timestamp}-${Math.random().toString(36).slice(2)}`;
+      activeAssistantIdRef.current = assistantId;
+      activeTurnIdRef.current = null;
+      completedTurnRef.current = null;
+      turnStartedAtRef.current = timestamp;
+      autoOpenedArtifactsRef.current = new Set();
+      setMemorySources([]);
+      const prompt = t('Rivedi l’anteprima allegata dell’artefatto “{name}”. Valuta impaginazione, leggibilità, margini, tabelle, gerarchia visiva, testo tagliato e contenuto mancante. Se necessario, crea una versione migliorata con lo stesso nome file usando lo strumento adatto; mantieni tutti i fatti e scrivi il contenuto completo nella risposta finale.', { name: artifact.name });
+      onStartTurn(prompt, assistantId, timestamp, [preview]);
+      await turnStream.start(prompt, [preview.id]);
+    } catch (err) {
+      activeAssistantIdRef.current = null;
+      setReviewingArtifactId(null);
+      setAttachmentError(err instanceof Error ? err.message : String(err));
+    }
+  }, [onStartTurn, reviewingArtifactId, sessionId, t, turnStream]);
+
+  useEffect(() => {
+    if (!reviewingArtifactId || !turnStream.turn) return;
+    if (turnStream.turn.updatedAt < reviewStartedAtRef.current) return;
+    const status = turnStream.turn.status;
+    if (status === 'completed' || status === 'failed' || status === 'aborted' || status === 'interrupted') setReviewingArtifactId(null);
+  }, [reviewingArtifactId, turnStream.turn]);
+
   const handleAbort = useCallback(() => {
     if (turnStream.isActive) void turnStream.abort();
     else if (sessionId && (turnStatus === 'running' || turnStatus === 'queued')) void abortSession(sessionId);
     setComposerFocus(value => value + 1);
   }, [sessionId, turnStatus, turnStream]);
+
+  const lastAssistantMessageId = [...messages].reverse().find(message => message.role === 'assistant')?.id;
+  const artifactsForMessage = (message: DisplayChatMessage): ChatArtifact[] => {
+    if (message.role !== 'assistant') return [];
+    const linked = artifacts.filter(artifact =>
+      artifact.sourceMessageId === message.entryId
+      || (artifact.sourceTimestamp !== undefined && Math.abs(artifact.sourceTimestamp - message.timestamp) < 1500)
+      || (artifact.sourceMessageId !== undefined && artifact.sourceMessageId === String(message.timestamp)));
+    if (linked.length > 0) return linked;
+    // Compatibilità con artefatti creati prima dell'associazione al messaggio.
+    return message.id === lastAssistantMessageId ? artifacts.filter(artifact => !artifact.sourceMessageId) : [];
+  };
 
   return (
     <div className={`chat-layout${panelOpen ? ' has-side-panel' : ''}`}>
@@ -523,7 +569,7 @@ function messageTitle(content: string, html: string | null): string {
 
         {messages.map((message) => (
           <div className="message-row" key={message.id}>
-            <Message role={message.role} content={message.content} timestamp={message.timestamp} streaming={message.streaming} attachments={message.attachments} sessionId={sessionId} onExportPdf={message.role === 'assistant' && !isStreaming ? () => void handleExportPdf(message) : undefined} onSaveMemory={message.role === 'assistant' && !isStreaming ? () => void handleSaveMemory(message) : undefined} onRegenerate={message.role === 'assistant' && !isStreaming ? () => handleRegenerate(message) : undefined} onEditText={message.role === 'user' && message.entryId && !isStreaming ? (text: string) => handleEditMessage(message, text) : undefined} exportingPdf={pdfExportingId === message.id} hideHtmlCode={message.role === 'assistant' && artifacts.some(artifact => artifact.kind === 'pdf' || artifact.kind === 'html' || artifact.kind === 'pptx')} webSources={webSources} />
+            <Message role={message.role} content={message.content} timestamp={message.timestamp} streaming={message.streaming} attachments={message.attachments} sessionId={sessionId} onExportPdf={message.role === 'assistant' && !isStreaming ? () => void handleExportPdf(message) : undefined} onSaveMemory={message.role === 'assistant' && !isStreaming ? () => void handleSaveMemory(message) : undefined} onRegenerate={message.role === 'assistant' && !isStreaming ? () => handleRegenerate(message) : undefined} onEditText={message.role === 'user' && message.entryId && !isStreaming ? (text: string) => handleEditMessage(message, text) : undefined} exportingPdf={pdfExportingId === message.id} hideHtmlCode={message.role === 'assistant' && artifacts.some(artifact => artifact.kind === 'pdf' || artifact.kind === 'html' || artifact.kind === 'pptx')} webSources={webSources} artifacts={artifactsForMessage(message)} onReviewArtifact={message.role === 'assistant' && !isStreaming ? (artifact) => void handleReviewArtifact(artifact) : undefined} reviewingArtifactId={reviewingArtifactId} />
           </div>
         ))}
 

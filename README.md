@@ -603,6 +603,14 @@ Artifacts with the same name in the same chat are not duplicated: the previous
 version is kept in `.versions/` and the UI shows `v1`, `v2`, etc. on the same
 artifact.
 
+Artifacts created in a turn are also shown as download cards directly inside the
+assistant response, not only in the side panel. Each card is associated with its
+source message, so the link remains correct after a reload. For PDF, HTML and
+PPTX artifacts, a vision-capable model can be asked to **Review preview**: Memora
+renders a PNG preview, sends it as an image attachment with the source context and
+lets the model create an improved version. This action is manual and never starts
+an automatic loop; the previous artifact version remains available.
+
 ### Chat controls
 
 - every message has a **copy** button: plain text for the question, Markdown for

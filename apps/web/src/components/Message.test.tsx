@@ -87,3 +87,31 @@ test('anche modifica e copia della domanda sono in fondo', () => {
   expect(markup.indexOf('Modifica domanda')).toBeGreaterThan(footer);
   expect(markup.indexOf('Copia domanda in testo')).toBeGreaterThan(footer);
 });
+
+test('mostra il download degli artefatti dentro la risposta', () => {
+  const markup = renderToStaticMarkup(
+    <Message
+      role="assistant"
+      content="Ecco il report."
+      timestamp={1}
+      sessionId="session-1"
+      artifacts={[{
+        id: 'artifact-1',
+        sessionId: 'session-1',
+        name: 'report.pdf',
+        kind: 'pdf',
+        mimeType: 'application/pdf',
+        size: 245_000,
+        createdAt: 1,
+        updatedAt: 1,
+        version: 2,
+        sourceMessageId: 'message-1',
+      }]}
+    />,
+  );
+  expect(markup).toContain('report.pdf');
+  expect(markup).toContain('v2');
+  expect(markup).toContain('/api/sessions/session-1/artifacts/artifact-1');
+  expect(markup).toContain('download="report.pdf"');
+  expect(markup).toContain('Scarica');
+});

@@ -75,6 +75,8 @@ Ultimo aggiornamento: 2026-11-19.
 - [x] PPTX HTML-first: lo stesso deck HTML produce anteprima e file PowerPoint.
 - [x] Zoom 50–250% e pannelli ridimensionabili.
 - [x] Download, eliminazione, allegato alla chat e import nel progetto.
+- [x] Card di download dentro la risposta dell’assistente, associata al messaggio sorgente.
+- [x] Revisione visuale manuale di PDF/HTML/PPTX con modello vision e output versionato.
 - [x] Limiti di dimensione, numero di slide, righe e colonne.
 
 ## 5. Ricerca web

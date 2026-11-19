@@ -89,6 +89,8 @@ Last updated: 2026-11-19.
   PowerPoint file.
 - [x] 50–250% zoom and resizable panels.
 - [x] Download, delete, attach to chat and import into a project.
+- [x] Download cards inside the assistant response, linked to the source message.
+- [x] Manual visual review of PDF/HTML/PPTX with a vision-capable model and versioned output.
 - [x] Limits for size, slide count, rows and columns.
 
 ## 5. Web search

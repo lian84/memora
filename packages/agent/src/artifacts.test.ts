@@ -33,6 +33,28 @@ describe('ArtifactStore', () => {
     expect((await fs.stat(path.join(root, 'artifacts', 'session-1'))).mode & 0o777).toBe(0o700);
   });
 
+  it('associa gli artefatti al messaggio e ricarica la provenienza', async () => {
+    const { store } = await fixture();
+    const saved = await store.save('session-1', {
+      name: 'report.pdf',
+      kind: 'pdf',
+      content: Buffer.from('pdf'),
+      source: { messageId: 'message-1', turnId: 'turn-1', timestamp: 123 },
+    });
+    expect(saved).toMatchObject({ sourceMessageId: 'message-1', sourceTurnId: 'turn-1', sourceTimestamp: 123 });
+    const legacy = await store.save('session-1', { name: 'legacy.md', kind: 'markdown', content: '# Legacy' });
+    expect(legacy.sourceMessageId).toBeUndefined();
+    await store.assignSource('session-1', { messageId: 'message-2', turnId: 'turn-2', timestamp: 456, since: 0 });
+    expect((await store.get('session-1', saved.id)).sourceMessageId).toBe('message-1');
+    expect((await store.get('session-1', legacy.id)).sourceMessageId).toBe('message-2');
+    await store.remove('session-1', legacy.id);
+    expect(await store.list('session-1')).toHaveLength(1);
+
+    const updated = await store.save('session-1', { name: 'report.pdf', kind: 'pdf', content: Buffer.from('pdf-v2'), source: { messageId: 'message-3', turnId: 'turn-3' } });
+    expect(updated.version).toBe(2);
+    expect(updated.sourceMessageId).toBe('message-1');
+  });
+
   it('salva artefatti Office e la preview HTML sidecar', async () => {
     const { store } = await fixture();
     const docx = await store.save('session-1', { name: 'documento.docx', kind: 'docx', content: Buffer.from('docx') });

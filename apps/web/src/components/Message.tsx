@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChatAttachment, WebSource } from '@memora/shared';
-import { chatAttachmentUrl } from '../lib/api';
+import type { ChatArtifact, ChatAttachment, WebSource } from '@memora/shared';
+import { artifactUrl, chatAttachmentUrl } from '../lib/api';
 import { renderMarkdown } from '../lib/markdown';
 import { useI18n } from '../i18n';
 
@@ -18,6 +18,9 @@ interface MessageProps {
   exportingPdf?: boolean;
   hideHtmlCode?: boolean;
   webSources?: WebSource[];
+  artifacts?: ChatArtifact[];
+  onReviewArtifact?: (artifact: ChatArtifact) => void;
+  reviewingArtifactId?: string | null;
 }
 
 const roleLabel: Record<string, string> = {
@@ -26,7 +29,7 @@ const roleLabel: Record<string, string> = {
   assistant: 'Memo',
 };
 
-export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false, webSources = [] }: MessageProps) {
+export function Message({ role, content, timestamp, streaming = false, attachments = [], sessionId, onExportPdf, onSaveMemory, onRegenerate, onEditText, exportingPdf = false, hideHtmlCode = false, webSources = [], artifacts = [], onReviewArtifact, reviewingArtifactId = null }: MessageProps) {
   const { t, language } = useI18n();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(content);
@@ -141,6 +144,29 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
             dangerouslySetInnerHTML={{ __html: renderMarkdown(streaming && !visibleContent ? t('Memo sta rispondendo…') : visibleContent, { citations: role === 'assistant' ? citationMap : undefined }) }}
           />
           {htmlBlock && <div className="message-html-artifact-note">{t('Documento generato · PDF disponibile nella scheda Artefatti.')}</div>}
+          {artifacts.length > 0 && (
+            <div className="message-artifacts" aria-label={t('Artefatti della risposta')}>
+              {artifacts.map(artifact => {
+                const href = sessionId ? artifactUrl(sessionId, artifact.id) : undefined;
+                return (
+                  <div className="message-artifact-download" key={artifact.id}>
+                    <span className="message-artifact-download-kind">{artifact.name.split('.').pop()?.toUpperCase() ?? 'FILE'}</span>
+                    <span className="message-artifact-download-main">
+                      <strong>{artifact.name}</strong>
+                      <small>v{artifact.version} · {formatSize(artifact.size)}</small>
+                    </span>
+                    {href && <a href={href} download={artifact.name} title={t('Scarica')} aria-label={`${t('Scarica')} ${artifact.name}`}>{t('Scarica')}</a>}
+                    {href && <a href={href} target="_blank" rel="noreferrer" title={t('Apri')} aria-label={`${t('Apri')} ${artifact.name}`}>{t('Apri')}</a>}
+                    {onReviewArtifact && ['pdf', 'html', 'pptx'].includes(artifact.kind) && (
+                      <button type="button" className="message-artifact-review" onClick={() => onReviewArtifact(artifact)} disabled={reviewingArtifactId === artifact.id}>
+                        {reviewingArtifactId === artifact.id ? t('Analizzo…') : t('Rivedi anteprima')}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="message-footer">
             <span className="message-actions">
               {role === 'user' && onEditText && (

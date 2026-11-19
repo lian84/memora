@@ -1481,3 +1481,44 @@ sostituire o rimuovere conoscenza esistente.
   modificabili o eliminabili dal Second Brain.
 - Una fase futura potrà valutare auto-update protetti o undo in un click, ma è
   deliberatamente fuori scope per questa decisione.
+
+---
+## ADR-045 — Download in chat e revisione visuale manuale
+**Data:** 2026-11-19
+**Stato:** accepted
+
+### Contesto
+Gli artefatti erano raggiungibili dal pannello laterale, ma la risposta
+dell’assistente non offriva un download diretto. La qualità di PDF e presentazioni
+variava; un modello con visione potrebbe valutare l’impaginazione, ma i tool
+metadata-only generano il contenuto solo dopo la tool call, quindi non esiste
+un’anteprima nello stesso turno.
+
+### Decisione
+- Gli artefatti possono avere `sourceMessageId`, `sourceTurnId` e
+  `sourceTimestamp`, salvati in un sidecar nella directory dell’artefatto. I
+  nuovi artefatti vengono associati al messaggio utente corrente dopo il turno;
+  le versioni successive mantengono l’associazione originale.
+- Le risposte dell’assistente mostrano card di download per i propri artefatti.
+  La card espone nome, versione, dimensione, apertura e download, con fallback per
+  artefatti legacy senza metadati sorgente.
+- Aggiungere un’azione manuale **Rivedi anteprima** per PDF, HTML e PPTX quando il
+  modello attivo dichiara il supporto immagini. Il server genera un’anteprima PNG
+  (PDF.js per i PDF, Chromium per HTML/PPTX), la salva come allegato immagine e
+  avvia un normale turno di revisione con una checklist visuale.
+- Il turno di revisione può creare una nuova versione dello stesso artefatto. La
+  versione precedente resta disponibile. Non c’è alcun loop automatico né QA
+  visuale in background in questa milestone.
+- La revisione visuale di DOCX e XLSX è rimandata finché non saranno disponibili
+  i rispettivi renderer. La funzione è opt-in per singola azione e non consuma
+  token se non viene usata.
+
+### Conseguenze
+- L’utente può scaricare i deliverable direttamente dalla risposta e ricaricare
+  senza perdere l’associazione artefatto-messaggio.
+- Il feedback visuale è controllato e verificabile; non può riscrivere
+  silenziosamente un artefatto.
+- La revisione PDF usa per ora la prima pagina; contact sheet per PDF lunghi e
+  revisione automatica potranno essere aggiunti in seguito.
+- La revisione dipende dai metadati del provider/modello e dalla disponibilità di
+  Chromium/PDF.js sul server.

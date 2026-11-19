@@ -592,6 +592,15 @@ Gli artefatti con lo stesso nome nella stessa chat non vengono duplicati: la
 versione precedente viene conservata in `.versions/` e la UI mostra `v1`, `v2`,
 ecc. sullo stesso artefatto.
 
+Gli artefatti creati in un turno compaiono anche come card di download direttamente
+nella risposta dell’assistente, oltre che nel pannello laterale. Ogni card è
+associata al messaggio sorgente, quindi il collegamento resta corretto dopo un
+reload. Per artefatti PDF, HTML e PPTX un modello con supporto immagini può essere
+usato con **Rivedi anteprima**: Memora genera un’anteprima PNG, la invia come
+allegato immagine insieme al contesto e lascia al modello creare una versione
+migliorata. L’azione è manuale e non avvia loop automatici; la versione precedente
+resta disponibile.
+
 ### Controlli chat
 
 - ogni messaggio ha il pulsante **copia**: testo semplice per la domanda,

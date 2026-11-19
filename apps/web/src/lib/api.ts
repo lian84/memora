@@ -814,6 +814,12 @@ export async function deleteChatAttachment(sessionId: string, attachmentId: stri
   await request(`/api/sessions/${encodeURIComponent(sessionId)}/attachments/${encodeURIComponent(attachmentId)}`, { method: 'DELETE' });
 }
 
+export async function createArtifactPreviewAttachment(sessionId: string, artifactId: string): Promise<ChatAttachment> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/artifacts/${encodeURIComponent(artifactId)}/preview-attachment`, { method: 'POST' });
+  const data = await res.json() as { attachment: ChatAttachment };
+  return data.attachment;
+}
+
 export async function attachArtifactToSession(sessionId: string, artifactId: string): Promise<ChatAttachment> {
   const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/attachments/from-artifact`, {
     method: 'POST',

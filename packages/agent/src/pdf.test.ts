@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderHtmlPdf, renderMarkdownPdf } from './pdf.js';
+import { renderHtmlPdf, renderMarkdownPdf, renderPdfPreviewImage } from './pdf.js';
 
 describe('renderMarkdownPdf', () => {
   it('genera un PDF valido da Markdown con titolo, elenco e codice', async () => {
@@ -39,5 +39,15 @@ describe('renderHtmlPdf', () => {
 
   it('rimuove script e rifiuta HTML vuoto', async () => {
     await expect(renderHtmlPdf({ title: 'X', html: '<script>alert(1)</script>' })).rejects.toThrow('empty_html');
+  });
+});
+
+
+describe('renderPdfPreviewImage', () => {
+  it('rende la prima pagina PDF in PNG per la revisione visuale', async () => {
+    const pdf = await renderMarkdownPdf({ title: 'Anteprima', markdown: '# Titolo\n\nContenuto visibile.' });
+    const image = await renderPdfPreviewImage(pdf.buffer);
+    expect(image.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+    expect(image.byteLength).toBeGreaterThan(1000);
   });
 });

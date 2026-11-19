@@ -580,6 +580,30 @@ app.get<{ Params: { id: string; artifactId: string }; Querystring: { version?: s
   }
 });
 
+app.post<{ Params: { id: string; artifactId: string } }>('/api/sessions/:id/artifacts/:artifactId/preview-attachment', async (req, reply) => {
+  try {
+    if (!(await agentService.hasSession(req.params.id))) return reply.status(404).send({ error: 'session_not_found' });
+    if (!agentService.sessionSupportsImageInput(req.params.id)) {
+      return reply.status(409).send({ error: 'vision_model_required', message: 'Il modello attivo non supporta immagini' });
+    }
+    const preview = await agentService.renderArtifactPreviewImage(req.params.id, req.params.artifactId);
+    const attachment = await chatAttachmentStore.save(req.params.id, { filename: preview.filename, data: preview.buffer });
+    return reply.status(201).send({ attachment });
+  } catch (err) {
+    if (err instanceof AgentServiceError) {
+      if (err.code === 'session_not_found') return reply.status(404).send({ error: err.code });
+      if (err.code === 'artifact_preview_unsupported') return reply.status(400).send({ error: err.code, message: err.message });
+    }
+    if (err && typeof err === 'object' && 'code' in err) {
+      const code = String((err as { code?: unknown }).code);
+      if (code === 'artifact_not_found') return reply.status(404).send({ error: code });
+      if (code === 'artifact_preview_unsupported') return reply.status(400).send({ error: code });
+    }
+    app.log.error(err);
+    return reply.status(500).send({ error: 'artifact_preview_attachment_failed' });
+  }
+});
+
 app.get<{ Params: { id: string; artifactId: string } }>('/api/sessions/:id/artifacts/:artifactId', async (req, reply) => {
   try {
     const artifact = await agentService.getArtifact(req.params.id, req.params.artifactId);

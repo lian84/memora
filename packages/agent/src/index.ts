@@ -39,7 +39,7 @@ import {
   REASONING_LEVELS,
 } from '@memora/shared';
 
-import { ArtifactStore } from './artifacts.js';
+import { ArtifactStore, type ArtifactSource } from './artifacts.js';
 import { mergeWebSourcesWithNumbers } from './web-sources.js';
 import { fallbackSessionTitle, sanitizeSessionTitle, TITLE_SYSTEM_PROMPT } from './title-generation.js';
 export { renderDocxFromMarkdown } from './office-docx.js';
@@ -47,7 +47,7 @@ export { readXlsxPreview, renderXlsxFromMarkdown } from './office-xlsx.js';
 export { renderPptxFromMarkdown } from './office-pptx.js';
 export { WebError, WebService } from './web.js';
 export { mergeWebSourcesWithNumbers } from './web-sources.js';
-import { renderHtmlPdf, renderMarkdownPdf } from './pdf.js';
+import { renderHtmlPdf, renderHtmlPreviewImage, renderMarkdownPdf, renderPdfPreviewImage } from './pdf.js';
 import { renderDocxFromMarkdown } from './office-docx.js';
 import { readXlsxPreview, renderXlsxFromMarkdown } from './office-xlsx.js';
 import { renderPptxFromMarkdown } from './office-pptx.js';
@@ -905,16 +905,16 @@ export class AgentService {
     return { sessionId, archived };
   }
 
-  async createPdfArtifact(sessionId: SessionId, input: { title: string; markdown?: string; html?: string; format?: 'markdown' | 'html'; filename?: string }): Promise<ChatArtifact> {
+  async createPdfArtifact(sessionId: SessionId, input: { title: string; markdown?: string; html?: string; format?: 'markdown' | 'html'; filename?: string; source?: ArtifactSource }): Promise<ChatArtifact> {
     if (!(await this.hasSession(sessionId))) throw new AgentServiceError('session_not_found', `Sessione non trovata: ${sessionId}`);
     const rendered = input.format === 'html'
       ? await renderHtmlPdf({ title: input.title, html: input.html ?? '', author: 'Memora', dataDir: this.config.dataDir })
       : await renderMarkdownPdf({ title: input.title, markdown: input.markdown ?? '', author: 'Memora' });
     const filename = input.filename?.trim() || `${input.title.trim() || 'documento'}.pdf`;
-    return this.artifactStore.save(sessionId, { name: filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`, kind: 'pdf', content: rendered.buffer });
+    return this.artifactStore.save(sessionId, { name: filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`, kind: 'pdf', content: rendered.buffer, ...(input.source ? { source: input.source } : {}) });
   }
 
-  async createDocxArtifact(sessionId: SessionId, input: { title: string; markdown: string; filename?: string }): Promise<ChatArtifact> {
+  async createDocxArtifact(sessionId: SessionId, input: { title: string; markdown: string; filename?: string; source?: ArtifactSource }): Promise<ChatArtifact> {
     if (!(await this.hasSession(sessionId))) throw new AgentServiceError('session_not_found', `Sessione non trovata: ${sessionId}`);
     if (!input.markdown.trim()) throw new AgentServiceError('empty_docx', 'Il documento DOCX è vuoto');
     const rendered = await renderDocxFromMarkdown(input.markdown, { title: input.title });
@@ -923,10 +923,11 @@ export class AgentService {
       name: filename.toLowerCase().endsWith('.docx') ? filename : `${filename}.docx`,
       kind: 'docx',
       content: rendered,
+      ...(input.source ? { source: input.source } : {}),
     });
   }
 
-  async createXlsxArtifact(sessionId: SessionId, input: { title: string; markdown: string; filename?: string }): Promise<ChatArtifact> {
+  async createXlsxArtifact(sessionId: SessionId, input: { title: string; markdown: string; filename?: string; source?: ArtifactSource }): Promise<ChatArtifact> {
     if (!(await this.hasSession(sessionId))) throw new AgentServiceError('session_not_found', `Sessione non trovata: ${sessionId}`);
     if (!input.markdown.trim()) throw new AgentServiceError('empty_xlsx', 'Il foglio XLSX è vuoto');
     const rendered = await renderXlsxFromMarkdown(input.markdown);
@@ -935,10 +936,11 @@ export class AgentService {
       name: filename.toLowerCase().endsWith('.xlsx') ? filename : `${filename}.xlsx`,
       kind: 'xlsx',
       content: rendered,
+      ...(input.source ? { source: input.source } : {}),
     });
   }
 
-  async createPptxArtifact(sessionId: SessionId, input: { title: string; markdown: string; filename?: string }): Promise<ChatArtifact> {
+  async createPptxArtifact(sessionId: SessionId, input: { title: string; markdown: string; filename?: string; source?: ArtifactSource }): Promise<ChatArtifact> {
     if (!(await this.hasSession(sessionId))) throw new AgentServiceError('session_not_found', `Sessione non trovata: ${sessionId}`);
     if (!input.markdown.trim()) throw new AgentServiceError('empty_pptx', 'La presentazione PPTX è vuota');
     const rendered = await renderPptxFromMarkdown({ markdown: input.markdown, title: input.title });
@@ -947,6 +949,7 @@ export class AgentService {
       name: filename.toLowerCase().endsWith('.pptx') ? filename : `${filename}.pptx`,
       kind: 'pptx',
       content: rendered.buffer,
+      ...(input.source ? { source: input.source } : {}),
     });
     try {
       await this.artifactStore.savePreview(sessionId, artifact.id, rendered.previewHtml);
@@ -998,6 +1001,32 @@ export class AgentService {
 
   async getArtifactPreview(sessionId: SessionId, artifactId: string): Promise<string | null> {
     return this.artifactStore.getPreview(sessionId, artifactId);
+  }
+
+  /** Indica se il modello attivo della sessione accetta input immagine. */
+  sessionSupportsImageInput(sessionId: SessionId): boolean {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return false;
+    const model = entry.modelRuntime.getModel(entry.provider, entry.modelId) as { input?: unknown } | undefined;
+    return Array.isArray(model?.input) && model.input.includes('image');
+  }
+
+  /** Rende un'anteprima PNG di un artefatto per la revisione visuale manuale. */
+  async renderArtifactPreviewImage(sessionId: SessionId, artifactId: string): Promise<{ filename: string; buffer: Buffer }> {
+    const artifact = await this.artifactStore.get(sessionId, artifactId);
+    const filename = `anteprima-${artifact.id}.png`;
+    if (artifact.kind === 'pdf') {
+      return { filename, buffer: await renderPdfPreviewImage(artifact.buffer) };
+    }
+    if (artifact.kind === 'html') {
+      return { filename, buffer: await renderHtmlPreviewImage(artifact.buffer.toString('utf8'), { dataDir: this.config.dataDir }) };
+    }
+    if (artifact.kind === 'pptx') {
+      const preview = await this.artifactStore.getPreview(sessionId, artifactId);
+      if (!preview) throw new AgentServiceError('artifact_preview_unsupported', 'Anteprima PPTX non disponibile');
+      return { filename, buffer: await renderHtmlPreviewImage(preview, { dataDir: this.config.dataDir }) };
+    }
+    throw new AgentServiceError('artifact_preview_unsupported', 'Questo tipo di artefatto non supporta la revisione visuale');
   }
 
   async saveArtifactPreview(sessionId: SessionId, artifactId: string, html: string): Promise<void> {
@@ -1067,6 +1096,7 @@ export class AgentService {
     }
 
     const { session } = entry;
+    const turnStartedAt = Date.now();
     entry.attachmentsRef.attachments = attachments;
     const images = attachments
       .filter(attachment => attachment.kind === 'image' && attachment.imageData)
@@ -1094,6 +1124,25 @@ export class AgentService {
       streamUnsub();
       entry.attachmentsRef.attachments = [];
       if (!promptCompleted) this.pendingArtifactRequests.delete(sessionId);
+    }
+
+    const lastAssistant = findLastMessage(session.messages, 'assistant');
+    const sourceMessageId = getMessageReference(lastAssistant);
+    const sourceTimestamp = getMessageTimestamp(lastAssistant);
+    const turnSource: ArtifactSource | undefined = sourceMessageId
+      ? { messageId: sourceMessageId, turnId: `${sessionId}:${sourceMessageId}`, ...(sourceTimestamp !== undefined ? { timestamp: sourceTimestamp } : {}) }
+      : undefined;
+    if (turnSource) {
+      try {
+        await this.artifactStore.assignSource(sessionId, {
+          messageId: turnSource.messageId,
+          turnId: turnSource.turnId,
+          timestamp: turnSource.timestamp,
+          since: turnStartedAt,
+        });
+      } catch {
+        // L'associazione è un miglioramento UI, non deve bloccare il turno.
+      }
     }
 
     let titlePromise: Promise<void> = Promise.resolve();
@@ -1147,26 +1196,26 @@ export class AgentService {
       if (markdown && pendingArtifact.kind === 'pdf') {
         try {
           await this.createPdfArtifact(sessionId, pendingArtifact.format === 'html'
-            ? { title: pendingArtifact.title, html: markdown, format: 'html', ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}) }
-            : { title: pendingArtifact.title, markdown, format: 'markdown', ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}) });
+            ? { title: pendingArtifact.title, html: markdown, format: 'html', ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}), ...(turnSource ? { source: turnSource } : {}) }
+            : { title: pendingArtifact.title, markdown, format: 'markdown', ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}), ...(turnSource ? { source: turnSource } : {}) });
         } catch {
           // La risposta testuale resta valida anche se il rendering PDF fallisce.
         }
       } else if (markdown && pendingArtifact.kind === 'docx') {
         try {
-          await this.createDocxArtifact(sessionId, { title: pendingArtifact.title, markdown, ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}) });
+          await this.createDocxArtifact(sessionId, { title: pendingArtifact.title, markdown, ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}), ...(turnSource ? { source: turnSource } : {}) });
         } catch {
           // La risposta testuale resta valida anche se il rendering DOCX fallisce.
         }
       } else if (markdown && pendingArtifact.kind === 'xlsx') {
         try {
-          await this.createXlsxArtifact(sessionId, { title: pendingArtifact.title, markdown, ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}) });
+          await this.createXlsxArtifact(sessionId, { title: pendingArtifact.title, markdown, ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}), ...(turnSource ? { source: turnSource } : {}) });
         } catch {
           // La risposta testuale resta valida anche se il rendering XLSX fallisce.
         }
       } else if (markdown && pendingArtifact.kind === 'pptx') {
         try {
-          await this.createPptxArtifact(sessionId, { title: pendingArtifact.title, markdown, ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}) });
+          await this.createPptxArtifact(sessionId, { title: pendingArtifact.title, markdown, ...(pendingArtifact.filename ? { filename: pendingArtifact.filename } : {}), ...(turnSource ? { source: turnSource } : {}) });
         } catch {
           // La risposta testuale resta valida anche se il rendering PPTX fallisce.
         }
@@ -1471,7 +1520,7 @@ export class AgentService {
             label: 'Crea artefatto',
             description: 'Crea un artefatto modificabile e scaricabile per l’utente. Usalo quando l’utente chiede un documento, una pagina HTML, un SVG, un JSON, un CSV o un frammento di codice da conservare.',
             promptSnippet: 'Crea artefatti per documenti, pagine HTML, SVG, JSON, CSV o codice che l’utente vuole conservare.',
-            promptGuidelines: ['Usa create_artifact quando l’utente chiede esplicitamente un artefatto o un deliverable separato dalla risposta conversazionale.'],
+            promptGuidelines: ['Usa create_artifact quando l’utente chiede esplicitamente un artefatto o un deliverable separato dalla risposta conversazionale.', 'Prima di creare un artefatto, definisci struttura, gerarchia e pubblico; evita contenuti generici o ripetitivi.'],
             parameters: Type.Object({
               name: Type.String({ description: 'Nome file leggibile, con estensione coerente col tipo' }),
               kind: Type.Union([Type.Literal('markdown'), Type.Literal('html'), Type.Literal('svg'), Type.Literal('text'), Type.Literal('json'), Type.Literal('csv'), Type.Literal('code')]),
@@ -1494,7 +1543,7 @@ export class AgentService {
             label: 'Crea PDF',
             description: 'Registra la creazione di un PDF. Dopo la chiamata scrivi il documento completo nella risposta finale: Memora userà quel testo per generare il PDF, senza rimandarlo al modello. Usa format html per documenti impaginati con CSS inline.',
             promptSnippet: 'Crea PDF di documenti, report o riepiloghi quando l’utente lo chiede.',
-            promptGuidelines: ['Quando chiami create_pdf, scrivi subito dopo tutto il documento nella risposta finale: il tool riceve solo titolo, formato e nome file.', 'Per PDF impaginati usa format html e scrivi HTML con CSS inline; evita layout basati su flex/grid perché il renderer supporta solo un sottoinsieme CSS.'],
+            promptGuidelines: ['Quando chiami create_pdf, scrivi subito dopo tutto il documento nella risposta finale: il tool riceve solo titolo, formato e nome file.', 'Per PDF impaginati usa format html e scrivi HTML con CSS inline; evita layout basati su flex/grid perché il renderer supporta solo un sottoinsieme CSS.', 'Progetta il PDF come un documento editoriale: titolo chiaro, sezioni brevi, margini generosi, massimo due famiglie di font, palette coerente, tabelle leggibili e page-break sensati.', 'Evita titoli enormi, pagine semivuote, blocchi di testo troppo larghi e immagini o font esterni: il PDF deve restare leggibile anche stampato.'],
             parameters: Type.Object({
               title: Type.String({ description: 'Titolo del documento PDF' }),
               filename: Type.Optional(Type.String({ description: 'Nome file opzionale, con estensione .pdf' })),
@@ -1518,7 +1567,7 @@ export class AgentService {
             label: 'Crea documento Word',
             description: 'Registra la creazione di un documento Word. Dopo la chiamata scrivi tutto il documento in Markdown nella risposta finale: Memora userà quel testo per generare il DOCX, senza rimandarlo al modello.',
             promptSnippet: 'Crea documenti Word quando l’utente chiede un file .docx o un documento da scaricare.',
-            promptGuidelines: ['Quando chiami create_docx, scrivi subito dopo il documento completo in Markdown nella risposta finale: il tool riceve solo titolo e nome file.', 'Usa heading, paragrafi, liste e tabelle Markdown; non inserire HTML nel contenuto destinato al DOCX.'],
+            promptGuidelines: ['Quando chiami create_docx, scrivi subito dopo il documento completo in Markdown nella risposta finale: il tool riceve solo titolo e nome file.', 'Usa heading, paragrafi, liste e tabelle Markdown; non inserire HTML nel contenuto destinato al DOCX.', 'Mantieni una gerarchia di heading coerente, paragrafi brevi e tabelle con poche colonne; il documento deve essere leggibile senza formattazione manuale.'],
             parameters: Type.Object({
               title: Type.String({ description: 'Titolo del documento Word' }),
               filename: Type.Optional(Type.String({ description: 'Nome file opzionale, con estensione .docx' })),
@@ -1540,7 +1589,7 @@ export class AgentService {
             label: 'Crea foglio Excel',
             description: 'Registra la creazione di un foglio Excel. Dopo la chiamata scrivi nella risposta finale una o più tabelle Markdown: la tabella diventa un foglio e il titolo che la precede diventa il nome del foglio.',
             promptSnippet: 'Crea fogli Excel quando l’utente chiede un file .xlsx, una tabella o un foglio di calcolo.',
-            promptGuidelines: ['Quando chiami create_xlsx, scrivi subito dopo le tabelle Markdown nella risposta finale: il tool riceve solo titolo e nome file.', 'Metti il titolo del foglio in un heading Markdown prima di ogni tabella; non usare HTML o formule Excel.'],
+            promptGuidelines: ['Quando chiami create_xlsx, scrivi subito dopo le tabelle Markdown nella risposta finale: il tool riceve solo titolo e nome file.', 'Metti il titolo del foglio in un heading Markdown prima di ogni tabella; non usare HTML o formule Excel.', 'Usa intestazioni esplicite, poche colonne, valori brevi e righe omogenee; evita celle gigantesche o dati senza unità di misura.'],
             parameters: Type.Object({
               title: Type.String({ description: 'Titolo del foglio Excel' }),
               filename: Type.Optional(Type.String({ description: 'Nome file opzionale, con estensione .xlsx' })),
@@ -1562,7 +1611,7 @@ export class AgentService {
             label: 'Crea presentazione PowerPoint',
             description: 'Registra la creazione di una presentazione PowerPoint. Dopo la chiamata scrivi un deck HTML con sezioni class="slide": Memora userà lo stesso HTML per la preview e per generare il file .pptx.',
             promptSnippet: 'Crea presentazioni PowerPoint quando l’utente chiede un file .pptx o una presentazione.',
-            promptGuidelines: ['Quando chiami create_pptx, scrivi subito dopo un unico blocco HTML nella risposta finale: il tool riceve solo titolo e nome file.', 'Usa sezioni <section class="slide">, titoli h1/h2, paragrafi, liste e tabelle; non usare JavaScript, URL esterni o immagini remote.'],
+            promptGuidelines: ['Quando chiami create_pptx, scrivi subito dopo un unico blocco HTML nella risposta finale: il tool riceve solo titolo e nome file.', 'Usa sezioni <section class="slide">, titoli h1/h2, paragrafi, liste e tabelle; non usare JavaScript, URL esterni o immagini remote.', 'Progetta slide 16:9 con una sola idea per slide: titolo leggibile, massimo 5–6 punti brevi, testo grande e gerarchia visiva costante.', 'Evita muri di testo, tabelle troppo larghe e slide senza titolo.'],
             parameters: Type.Object({
               title: Type.String({ description: 'Titolo della presentazione' }),
               filename: Type.Optional(Type.String({ description: 'Nome file opzionale, con estensione .pptx' })),

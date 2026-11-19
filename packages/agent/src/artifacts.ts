@@ -65,6 +65,12 @@ function kindFromFilename(filename: string): ArtifactKind {
   return KIND_BY_EXTENSION[extension] ?? 'text';
 }
 
+export interface ArtifactSource {
+  messageId?: string;
+  turnId?: string;
+  timestamp?: number;
+}
+
 export class ArtifactStore {
   constructor(private readonly dataDir: string) {}
 
@@ -84,10 +90,16 @@ export class ArtifactStore {
     } catch {
       // Prima versione: nessuna directory storico.
     }
-    return { id, sessionId, name, kind, mimeType: MIME_TYPES[kind], size, createdAt: timestamp, updatedAt: timestamp, version };
+    const source = await this.readSource(sessionId, id);
+    return {
+      id, sessionId, name, kind, mimeType: MIME_TYPES[kind], size, createdAt: timestamp, updatedAt: timestamp, version,
+      ...(source.messageId ? { sourceMessageId: source.messageId } : {}),
+      ...(source.turnId ? { sourceTurnId: source.turnId } : {}),
+      ...(source.timestamp !== undefined ? { sourceTimestamp: source.timestamp } : {}),
+    };
   }
 
-  async save(sessionId: string, input: { name: string; kind: ArtifactKind; content: string | Buffer }): Promise<ChatArtifact> {
+  async save(sessionId: string, input: { name: string; kind: ArtifactKind; content: string | Buffer; source?: ArtifactSource }): Promise<ChatArtifact> {
     if (!Object.prototype.hasOwnProperty.call(EXTENSIONS, input.kind)) throw new ArtifactError('invalid_artifact_kind', 'Tipo artefatto non valido');
     const buffer = typeof input.content === 'string' ? Buffer.from(input.content, 'utf8') : input.content;
     if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0) throw new ArtifactError('empty_artifact', 'Artefatto vuoto');
@@ -105,7 +117,10 @@ export class ArtifactStore {
     if (existing) {
       const absolutePath = path.join(directory, existing.name);
       const existingBuffer = await fs.readFile(absolutePath);
-      if (crypto.createHash('sha256').update(existingBuffer).digest('hex') === crypto.createHash('sha256').update(buffer).digest('hex')) return this.toInfo(sessionId, existing.name, existingBuffer.byteLength, Date.now());
+      if (crypto.createHash('sha256').update(existingBuffer).digest('hex') === crypto.createHash('sha256').update(buffer).digest('hex')) {
+        if (input.source) await this.writeSourceIfMissing(sessionId, existing.name.split('__')[0]!, input.source);
+        return this.toInfo(sessionId, existing.name, existingBuffer.byteLength, Date.now());
+      }
       const id = existing.name.split('__')[0]!;
       const versionsDir = path.join(directory, '.versions', id);
       await fs.mkdir(versionsDir, { recursive: true, mode: 0o700 });
@@ -116,12 +131,14 @@ export class ArtifactStore {
       await fs.writeFile(temporary, buffer, { mode: 0o600 });
       await fs.rename(temporary, absolutePath);
       await fs.rm(this.previewPath(sessionId, id), { force: true });
+      if (input.source) await this.writeSourceIfMissing(sessionId, id, input.source);
       const stat = await fs.stat(absolutePath);
       return this.toInfo(sessionId, existing.name, stat.size, stat.birthtimeMs || stat.mtimeMs);
     }
     const id = crypto.randomUUID();
     const absolutePath = path.join(directory, `${id}__${name}`);
     await fs.writeFile(absolutePath, buffer, { mode: 0o600, flag: 'wx' });
+    if (input.source) await this.writeSource(sessionId, id, input.source);
     const stat = await fs.stat(absolutePath);
     return this.toInfo(sessionId, path.basename(absolutePath), stat.size, stat.birthtimeMs || stat.mtimeMs);
   }
@@ -218,6 +235,59 @@ export class ArtifactStore {
     };
   }
 
+  /** Associa gli artefatti creati durante un turno al messaggio sorgente. */
+  async assignSource(sessionId: string, input: { messageId?: string; turnId?: string; timestamp?: number; since: number }): Promise<void> {
+    if (!input.messageId && !input.turnId) return;
+    let entries;
+    try { entries = await fs.readdir(this.directory(sessionId), { withFileTypes: true }); }
+    catch { return; }
+    for (const entry of entries) {
+      if (!entry.isFile() || entry.name.startsWith('.')) continue;
+      const id = entry.name.split('__')[0];
+      if (!id) continue;
+      const absolutePath = path.join(this.directory(sessionId), entry.name);
+      let stat;
+      try { stat = await fs.stat(absolutePath); } catch { continue; }
+      const createdAt = stat.birthtimeMs || stat.mtimeMs;
+      if (createdAt < input.since && stat.mtimeMs < input.since) continue;
+      const existing = await this.readSource(sessionId, id);
+      if (existing.messageId || existing.turnId) continue;
+      await this.writeSource(sessionId, id, { messageId: input.messageId, turnId: input.turnId, timestamp: input.timestamp });
+    }
+  }
+
+  private sourcePath(sessionId: string, artifactId: string): string {
+    if (!ARTIFACT_ID.test(artifactId)) throw new ArtifactError('invalid_artifact_id', 'ID artefatto non valido');
+    return path.join(this.directory(sessionId), '.meta', `${artifactId}.json`);
+  }
+
+  private async readSource(sessionId: string, artifactId: string): Promise<ArtifactSource> {
+    try {
+      const parsed = JSON.parse(await fs.readFile(this.sourcePath(sessionId, artifactId), 'utf8')) as Partial<ArtifactSource>;
+      return {
+        ...(typeof parsed.messageId === 'string' && parsed.messageId.length <= 200 ? { messageId: parsed.messageId } : {}),
+        ...(typeof parsed.turnId === 'string' && parsed.turnId.length <= 200 ? { turnId: parsed.turnId } : {}),
+        ...(typeof parsed.timestamp === 'number' && Number.isFinite(parsed.timestamp) ? { timestamp: parsed.timestamp } : {}),
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  private async writeSourceIfMissing(sessionId: string, artifactId: string, source: ArtifactSource): Promise<void> {
+    const existing = await this.readSource(sessionId, artifactId);
+    if (existing.messageId || existing.turnId) return;
+    await this.writeSource(sessionId, artifactId, source);
+  }
+
+  private async writeSource(sessionId: string, artifactId: string, source: ArtifactSource): Promise<void> {
+    const target = this.sourcePath(sessionId, artifactId);
+    await fs.mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
+    const temporary = `${target}.tmp-${crypto.randomUUID()}`;
+    await fs.writeFile(temporary, `${JSON.stringify(source, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+    await fs.rename(temporary, target);
+  }
+
   private previewPath(sessionId: string, artifactId: string): string {
     if (!ARTIFACT_ID.test(artifactId)) throw new ArtifactError('invalid_artifact_id', 'ID artefatto non valido');
     return path.join(this.directory(sessionId), '.previews', `${artifactId}.html`);
@@ -264,6 +334,7 @@ export class ArtifactStore {
     await fs.unlink(absolutePath);
     await fs.rm(path.join(directory, '.versions', artifactId), { recursive: true, force: true });
     await fs.rm(this.previewPath(sessionId, artifactId), { force: true });
+    await fs.rm(this.sourcePath(sessionId, artifactId), { force: true });
   }
 
   async removeSession(sessionId: string): Promise<void> {

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import PDFDocument from 'pdfkit';
+import { createCanvas } from '@napi-rs/canvas';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import inlineCss from 'inline-css';
@@ -202,6 +203,81 @@ function withBrowserQueue<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
+export interface PreviewImageOptions {
+  /** Larghezza massima in pixel CSS. */
+  maxWidth?: number;
+  /** Altezza massima dello screenshot HTML. */
+  maxHeight?: number;
+  /** Data dir per le librerie Chromium locali. */
+  dataDir?: string;
+}
+
+/** Rende la prima pagina di un PDF in PNG, senza dipendere da un browser. */
+export async function renderPdfPreviewImage(buffer: Buffer, pageNumber = 1): Promise<Buffer> {
+  if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0) throw new Error('empty_pdf');
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    disableFontFace: true,
+    useSystemFonts: false,
+  });
+  const pdf = await task.promise;
+  try {
+    if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > pdf.numPages) throw new Error('invalid_pdf_page');
+    const page = await pdf.getPage(pageNumber);
+    const base = page.getViewport({ scale: 1 });
+    const scale = Math.min(2, 1200 / base.width);
+    const viewport = page.getViewport({ scale });
+    const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+    const context = canvas.getContext('2d');
+    await page.render({ canvasContext: context as never, viewport, canvas: canvas as never }).promise;
+    return canvas.toBuffer('image/png');
+  } finally {
+    await task.destroy().catch(() => undefined);
+  }
+}
+
+async function launchPreviewBrowser(dataDir?: string) {
+  const libs = memoraEnv('PDF_BROWSER_LIBS') ?? `${dataDir ?? memoraEnv('DATA_DIR') ?? 'data'}/browser-libs/usr/lib/x86_64-linux-gnu`;
+  const executablePath = memoraEnv('PDF_BROWSER_PATH') ?? await chromium.executablePath();
+  const env = {
+    ...process.env,
+    ...(fs.existsSync(libs) ? { LD_LIBRARY_PATH: [libs, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') } : {}),
+    FONTCONFIG_PATH: process.env.FONTCONFIG_PATH ?? `${tmpdir()}/fonts`,
+    HOME: process.env.HOME ?? tmpdir(),
+  };
+  return puppeteer.launch({
+    args: chromium.args,
+    executablePath,
+    headless: true,
+    env,
+  });
+}
+
+/** Rende un frammento HTML in PNG per la revisione visuale dell'artefatto. */
+export async function renderHtmlPreviewImage(html: string, options: PreviewImageOptions = {}): Promise<Buffer> {
+  const cleaned = sanitizeHtmlForPdf(html).trim();
+  if (!cleaned) throw new Error('empty_html');
+  if (cleaned.length > MAX_HTML_CHARS) throw new Error('html_too_large');
+  const width = Math.min(Math.max(options.maxWidth ?? 1200, 320), 1600);
+  const height = Math.min(Math.max(options.maxHeight ?? 1600, 320), 2400);
+  const browser = await launchPreviewBrowser(options.dataDir);
+  try {
+    const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on('request', request => { void request.abort(); });
+    await page.setViewport({ width, height, deviceScaleFactor: 1 });
+    await page.setContent(cleaned, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+    await page.emulateMediaType('screen');
+    const image = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width, height } });
+    if (image.length > 4 * 1024 * 1024) throw new Error('preview_image_too_large');
+    return Buffer.from(image);
+  } finally {
+    await browser.close().catch(() => undefined);
+  }
+}
+
 /** Converte HTML in PDF con Chromium headless; fallback a pdfmake se il browser non è disponibile. */
 export async function renderHtmlPdf(input: HtmlPdfRenderInput): Promise<PdfRenderResult> {
   try {
@@ -216,21 +292,7 @@ async function renderHtmlPdfBrowser(input: HtmlPdfRenderInput): Promise<PdfRende
   if (!html) throw new Error('empty_html');
   if (html.length > MAX_HTML_CHARS) throw new Error('html_too_large');
 
-  const dataDir = input.dataDir ?? memoraEnv('DATA_DIR') ?? 'data';
-  const libs = memoraEnv('PDF_BROWSER_LIBS') ?? `${dataDir}/browser-libs/usr/lib/x86_64-linux-gnu`;
-  const executablePath = memoraEnv('PDF_BROWSER_PATH') ?? await chromium.executablePath();
-  const env = {
-    ...process.env,
-    ...(fs.existsSync(libs) ? { LD_LIBRARY_PATH: [libs, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':') } : {}),
-    FONTCONFIG_PATH: process.env.FONTCONFIG_PATH ?? `${tmpdir()}/fonts`,
-    HOME: process.env.HOME ?? tmpdir(),
-  };
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath,
-    headless: true,
-    env,
-  });
+  const browser = await launchPreviewBrowser(input.dataDir);
   try {
     const page = await browser.newPage();
     await page.setJavaScriptEnabled(false);
