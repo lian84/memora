@@ -107,23 +107,6 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
         <span className="message-author">{t(roleLabel[role]!)}</span>
         <time className="message-time" dateTime={new Date(timestamp).toISOString()}>{time}</time>
         {streaming && <span className="message-streaming">{t('in corso')}</span>}
-        <span className="message-actions">
-          {role === 'user' && onEditText && (
-            <button type="button" className="message-action" onClick={startEdit} title={t('Modifica domanda')} aria-label={t('Modifica domanda')}>✎</button>
-          )}
-          <button type="button" className="message-action" onClick={() => void copy()} title={copied ? t('Copiato') : role === 'user' ? t('Copia domanda (testo)') : t('Copia risposta (Markdown)')} aria-label={copied ? t('Copiato') : role === 'user' ? t('Copia domanda in testo') : t('Copia risposta in Markdown')}>{copied ? '✓' : '⧉'}</button>
-          {role === 'assistant' && onSaveMemory && (
-            <button type="button" className="message-action is-text" onClick={onSaveMemory} title={t('Salva questa risposta come memoria')} aria-label={t('Salva risposta come memoria')}>{t('Memoria')}</button>
-          )}
-          {role === 'assistant' && onRegenerate && (
-            <button type="button" className="message-action is-text" onClick={onRegenerate} title={t('Chiedi di riformulare')} aria-label={t('Riformula risposta')}>{t('Riformula')}</button>
-          )}
-          {role === 'assistant' && onExportPdf && (
-            <button type="button" className="message-action is-text" onClick={onExportPdf} disabled={exportingPdf || !content.trim()} title={t('Esporta questa risposta in PDF')}>
-              {exportingPdf ? t('PDF…') : t('PDF')}
-            </button>
-          )}
-        </span>
       </header>
 
       {editing ? (
@@ -158,6 +141,25 @@ export function Message({ role, content, timestamp, streaming = false, attachmen
             dangerouslySetInnerHTML={{ __html: renderMarkdown(streaming && !visibleContent ? t('Memo sta rispondendo…') : visibleContent, { citations: role === 'assistant' ? citationMap : undefined }) }}
           />
           {htmlBlock && <div className="message-html-artifact-note">{t('Documento generato · PDF disponibile nella scheda Artefatti.')}</div>}
+          <div className="message-footer">
+            <span className="message-actions">
+              {role === 'user' && onEditText && (
+                <button type="button" className="message-action" onClick={startEdit} title={t('Modifica domanda')} aria-label={t('Modifica domanda')}>✎</button>
+              )}
+              <button type="button" className="message-action" onClick={() => void copy()} title={copied ? t('Copiato') : role === 'user' ? t('Copia domanda (testo)') : t('Copia risposta (Markdown)')} aria-label={copied ? t('Copiato') : role === 'user' ? t('Copia domanda in testo') : t('Copia risposta in Markdown')}>{copied ? '✓' : '⧉'}</button>
+              {role === 'assistant' && onSaveMemory && (
+                <button type="button" className="message-action is-text" onClick={onSaveMemory} title={t('Salva questa risposta come memoria')} aria-label={t('Salva risposta come memoria')}>{t('Memoria')}</button>
+              )}
+              {role === 'assistant' && onRegenerate && (
+                <button type="button" className="message-action is-text" onClick={onRegenerate} title={t('Chiedi di riformulare')} aria-label={t('Riformula risposta')}>{t('Riformula')}</button>
+              )}
+              {role === 'assistant' && onExportPdf && (
+                <button type="button" className="message-action is-text" onClick={onExportPdf} disabled={exportingPdf || !content.trim()} title={t('Esporta questa risposta in PDF')}>
+                  {exportingPdf ? t('PDF…') : t('PDF')}
+                </button>
+              )}
+            </span>
+          </div>
         </>
       )}
     </article>

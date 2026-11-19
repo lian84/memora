@@ -57,3 +57,33 @@ test('collega le citazioni numeriche alle fonti web', () => {
   expect(markup).toContain('Example title');
   expect(markup).toContain('Breve descrizione della fonte.');
 });
+
+test('le azioni del messaggio sono in fondo, dopo il contenuto', () => {
+  const markup = renderToStaticMarkup(
+    <Message
+      role="assistant"
+      content="Risposta di prova"
+      timestamp={1}
+      onSaveMemory={() => undefined}
+      onRegenerate={() => undefined}
+      onExportPdf={() => undefined}
+    />,
+  );
+  const content = markup.indexOf('class="message-content"');
+  const footer = markup.indexOf('class="message-footer"');
+  const memory = markup.indexOf('>Memoria<');
+  expect(content).toBeGreaterThan(-1);
+  expect(footer).toBeGreaterThan(content);
+  expect(memory).toBeGreaterThan(footer);
+});
+
+test('anche modifica e copia della domanda sono in fondo', () => {
+  const markup = renderToStaticMarkup(
+    <Message role="user" content="Domanda" timestamp={1} onEditText={() => undefined} />,
+  );
+  const content = markup.indexOf('class="message-content"');
+  const footer = markup.indexOf('class="message-footer"');
+  expect(footer).toBeGreaterThan(content);
+  expect(markup.indexOf('Modifica domanda')).toBeGreaterThan(footer);
+  expect(markup.indexOf('Copia domanda in testo')).toBeGreaterThan(footer);
+});

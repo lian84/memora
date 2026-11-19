@@ -31,6 +31,15 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
     return () => window.clearTimeout(timer);
   }, [focusKey]);
 
+  useEffect(() => {
+    const element = textareaRef.current;
+    if (!element) return;
+    const maxHeight = 180;
+    element.style.height = 'auto';
+    element.style.height = `${Math.min(element.scrollHeight, maxHeight)}px`;
+    element.style.overflowY = element.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  }, [text]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
