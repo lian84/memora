@@ -156,7 +156,7 @@ Task 01 richiede l'integrazione di `@earendil-works/pi-coding-agent` come dipend
 ### Consequenze
 - `tsc --build`, `eslint`, `vitest run` passano su un clone pulito con il solo `pnpm install`.
 - Nessuna API key nel repository.
-- Nessun percorso hardcoded (`/home/user`, `/opt/memora`, `~/.pi`).
+- Nessun percorso hardcoded (`$HOME`, directory del progetto, `~/.pi`).
 - Le sessioni risiedono in `$MEMORA_DATA_DIR/pi-sessions/` (formato JSONL nativo Pi).
 - L'SDK rimane aggiornabile come dipendenza esterna (versione bloccata a 1.5.2 per riproducibilità).
 
@@ -420,7 +420,7 @@ Dopo l'approvazione, l'utente poteva creare e recuperare memorie ma non gestirle
 **Stato:** accepted
 
 ### Contesto
-Una domanda personale su “Vega” ha prodotto una risposta contaminata da task, test E2E, SQLite, source ID e dettagli del repository Memora. La causa era che le sessioni usavano `/opt/memora` come cwd, caricavano AGENTS.md/project resources e mantenevano i built-in coding tools attivi. Il repository dell'applicazione non deve essere conoscenza dell'assistente personale.
+Una domanda personale ha prodotto una risposta contaminata da task, test E2E, SQLite, source ID e dettagli del repository Memora. La causa era che le sessioni usavano la directory del repository come cwd, caricavano AGENTS.md/project resources e mantenevano i built-in coding tools attivi. Il repository dell'applicazione non deve essere conoscenza dell'assistente personale.
 
 ### Decisione
 - Le sessioni personal assistant usano un CWD isolato: `$MEMORA_DATA_DIR/runtime/assistant`, sovrascrivibile con `MEMORA_ASSISTANT_CWD`.

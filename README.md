@@ -1,39 +1,93 @@
 # Memora
 
-Memora è un assistente personale self-hosted costruito sopra Pi.
+> Self-hosted, file-first personal AI assistant built on Pi.
+> La documentazione del progetto è in italiano.
 
-Il registro completo delle funzionalità implementate, con stato e limiti noti,
-è in [`docs/FEATURES.md`](docs/FEATURES.md); il README resta la panoramica di
-primo livello.
+[![CI](https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg)](https://github.com/lian84/memora/actions/workflows/ci.yml)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
 
-## Obiettivo
-Pi resta il motore agentico. Memora aggiunge:
-- Web UI / PWA
-- sessioni centralizzate
-- second brain in Markdown
-- ricerca nella memoria
-- Memory Inbox con approvazione esplicita dei ricordi
-- profili operativi
-- Telegram
-- automazioni
-- integrazioni future
+Memora è un assistente personale self-hosted costruito sopra
+[Pi](https://github.com/earendil-works/pi). Riunisce chat persistenti, un Second
+Brain in Markdown, memoria con approvazione umana, progetti, artefatti e ricerca
+web in un'unica interfaccia.
 
-## Principi
-1. Pi è il motore, non va forkato.
+Il registro completo delle funzionalità, con stato e limiti noti, è in
+[`docs/FEATURES.md`](docs/FEATURES.md). Le decisioni architetturali sono in
+[`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+## Stato
+
+Memora è in sviluppo **pre-release**. Il codice è utilizzabile e testato, ma
+l'installazione e le migrazioni non sono ancora considerate stabili. Non
+esporre il servizio su Internet senza HTTPS, reverse proxy e una revisione della
+configurazione.
+
+## Funzionalità principali
+
+- Chat con streaming, sessioni Pi persistenti e turni in background.
+- Second Brain file-first: Markdown autorevole, SQLite ricostruibile.
+- Embeddings locali opzionali e ricerca semantica/ibrida.
+- Memory Inbox con approvazione esplicita; Curator LLM opzionale.
+- Progetti, fonti indicizzate, file di progetto e artefatti versionati.
+- PDF, DOCX, XLSX e PPTX senza LibreOffice.
+- Ricerca web SSRF-safe tramite Brave o SearXNG, con citazioni numerate.
+- Login single-user, notifiche browser e interfaccia IT/EN/FR.
+- Layout responsive, pannello laterale e amministrazione runtime.
+
+## Requisiti
+
+- Node.js 24
+- pnpm 12.21
+- Debian 13 o una distribuzione compatibile per il runtime completo
+- Chromium headless opzionale per il rendering PDF
+- Modello di embedding locale opzionale per la ricerca semantica
+
+## Avvio rapido
+
+```bash
+git clone https://github.com/lian84/memora.git
+cd memora
+cp .env.example .env
+pnpm install
+pnpm dev
+```
+
+Apri `http://127.0.0.1:3000`, completa il primo accesso e configura provider,
+modello e credenziali da **Amministrazione**.
+
+Build production:
+
+```bash
+pnpm build
+pnpm start
+```
+
+## Documentazione
+
+- [Funzionalità](docs/FEATURES.md)
+- [Architettura](ARCHITECTURE.md)
+- [Decisioni](docs/DECISIONS.md)
+- [Operazioni](docs/OPERATIONS.md)
+- [Sicurezza](docs/SECURITY.md)
+- [Roadmap](ROADMAP.md)
+
+## Principi di progetto
+
+1. Pi è il motore agentico e resta una dipendenza esterna, non un fork.
 2. La memoria importante resta leggibile in Markdown.
 3. Le sessioni restano nel formato Pi JSONL.
-4. Le credenziali non entrano nel repository.
-5. Prima LAN/Tailscale, niente esposizione pubblica.
-6. Il coding sul Mac resta separato: Pi + Safehouse.
-7. Memora deve restare utile anche cambiando modello o frontend.
-8. Memora è progettato per essere pubblicato come open source e installato da altri utenti.
-   Nessun percorso hardcoded; separazione tra codice, configurazione, dati e segreti.
-   I dati runtime risiedono in `MEMORA_DATA_DIR` (configurabile).
+4. Le credenziali non entrano mai nel repository.
+5. Il deployment predefinito resta locale/LAN; l'esposizione pubblica richiede
+   HTTPS e una configurazione esplicita.
+6. Memora deve restare utile cambiando modello o frontend.
+7. Codice, configurazione, dati e segreti sono separati; i dati runtime vivono
+   in `MEMORA_DATA_DIR`.
+8. Nessun percorso specifico dell'utente o della macchina è hardcoded.
 
 Le risposte possono continuare in background: la concorrenza è configurabile
 da Amministrazione (1–4, default 2) e gli altri turni vengono accodati.
 Chiudere il browser non interrompe il turno; un riavvio di Memora sì. La sidebar
-mostra un pallino giallo per una risposta in corso in un’altra chat e verde per
+mostra un pallino giallo per una risposta in corso in un'altra chat e verde per
 una risposta completata non ancora letta. Lo stato letto è condiviso tra
 dispositivi, mentre le notifiche browser a risposta pronta sono opt-in e
 richiedono la scheda aperta (Telegram non è ancora implementato). Tornando
@@ -41,16 +95,7 @@ nella chat, il client si ricollega agli eventi già prodotti e riprende il testo
 parziale. Dopo un riavvio del server i turni in corso vengono marcati come
 interrotti.
 
-## MVP
-1. Web UI.
-2. Creazione sessione Pi.
-3. Messaggio con streaming.
-4. Ripresa sessione.
-5. Indicizzazione Markdown.
-6. Recupero ricordi rilevanti.
-7. Visualizzazione delle fonti usate.
-
-## Stack iniziale
+## Stack
 - Debian 13
 - Node.js 24 LTS
 - TypeScript
@@ -87,7 +132,7 @@ pnpm memory:feedback      # tuning advisory delle soglie
 pnpm projects:migrate     # dry-run project.json per i progetti legacy
 ```
 
-Variabili d'ambiente (vedi `.env.example`). Tutte le variabili usano il prefisso `MEMORA_*`.
+Variabili d'ambiente (vedi `.env.example`). Le variabili Memora usano il prefisso `MEMORA_*`; le credenziali provider e `NODE_ENV` mantengono i nomi standard.
 - `NODE_ENV` (`development` oppure `production`)
 - `MEMORA_HOST` (default `127.0.0.1`)
 - `MEMORA_PORT` (default `3000`)
@@ -110,7 +155,7 @@ Variabili d'ambiente (vedi `.env.example`). Tutte le variabili usano il prefisso
 Le variabili di configurazione runtime hanno precedenza su
 `$MEMORA_DATA_DIR/config/settings.json`. Un valore impostato dall'ambiente è
 mostrato come bloccato nella pagina Impostazioni. Il pannello è organizzato in
-pagine: Aspetto, Generale, Chat, Memoria, Curator e Sistema. Embeddings e
+pagine: Aspetto, Generale, Chat, Memoria, Curator, Web e Sistema. Embeddings e
 dati/provider sono raggruppati nelle pagine Memoria e Sistema.
 Token budget e diversità sono modificabili da **Memoria** e si applicano live.
 La pagina **Aspetto** gestisce tema chiaro/scuro/sistema, dimensione del testo,
@@ -648,5 +693,20 @@ I file core `memory/profile.md`, `memory/preferences.md` e `memory/decisions.md`
 sono modificabili; la UI non mostra la cancellazione completa perché possono
 contenere più memorie. Non esiste ancora il delete del singolo bullet.
 
-## Ordine di lavoro
-Leggere: `AGENTS.md`, `PROJECT_SPEC.md`, `ARCHITECTURE.md`, `ROADMAP.md`, poi `tasks/00-bootstrap.md`.
+## Contribuire
+
+Le linee guida, il setup di sviluppo e il Developer Certificate of Origin sono
+in [`CONTRIBUTING.md`](CONTRIBUTING.md). Prima di una modifica importante,
+aprire una issue per discutere il design.
+
+## Sicurezza
+
+Non aprire issue pubbliche per vulnerabilità. Usare il private vulnerability
+reporting di GitHub; dettagli in [`SECURITY.md`](SECURITY.md).
+
+## Licenza
+
+Memora è distribuito secondo i termini di **AGPL-3.0-only**. I contributi sono
+accettati con la stessa licenza e richiedono sign-off DCO. I marchi **Memora** e
+**Memo** sono soggetti a [`TRADEMARKS.md`](TRADEMARKS.md); le note di terze parti
+sono in [`NOTICE`](NOTICE).

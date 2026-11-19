@@ -34,5 +34,14 @@
     "pptxgenjs": "^4.0.1",
     "puppeteer-core": "^25.18.1",
     "typebox": "1.3.27"
-  }
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lian84/memora.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lian84/memora/issues"
+  },
+  "homepage": "https://github.com/lian84/memora#readme"
 }

@@ -44,7 +44,7 @@ $MEMORA_DATA_DIR/
 ## Diagramma di alto livello
 
 ```text
-Browser / PWA
+Browser Web
       |
       v
 Fastify API + SSE (bind su MEMORA_HOST:MEMORA_PORT)

@@ -18,5 +18,14 @@
     "@memora/shared": "workspace:*",
     "better-sqlite3": "^13.2.0",
     "sqlite-vec": "0.1.9"
-  }
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lian84/memora.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lian84/memora/issues"
+  },
+  "homepage": "https://github.com/lian84/memora#readme"
 }

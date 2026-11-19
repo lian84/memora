@@ -1,0 +1,12 @@
+Memora
+Copyright (C) 2026 lian84
+
+Memora is licensed under the GNU Affero General Public License v3.0 only
+(AGPL-3.0-only). See LICENSE.
+
+This product includes and builds on @earendil-works/pi-coding-agent,
+Copyright (c) Mario Zechner, distributed under the MIT License. Pi remains an
+independent upstream project and is not modified or forked by this repository.
+
+Other third-party dependencies remain under their respective licenses. Package
+manifests and pnpm-lock.yaml identify the exact dependency versions.

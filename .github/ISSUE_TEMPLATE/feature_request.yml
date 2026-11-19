@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose an improvement or new capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem or limitation should be addressed?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Project constraints
+      options:
+        - label: This proposal keeps Markdown as the authoritative memory format.
+        - label: This proposal does not require secrets or personal data in the repository.
+        - label: This proposal respects the single-user, self-hosted model.

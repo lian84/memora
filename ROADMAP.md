@@ -1,7 +1,7 @@
 # Roadmap
 
 > Stato: Phase 0–5 completate. Backlog canonico dettagliato in `tasks/06`–`tasks/10`:
-> 43 punti aperti (Telegram, automazioni, integrazioni, hardening, release).
+> Backlog canonico (Telegram, automazioni, integrazioni, hardening, release).
 
 ## Phase 0 — Bootstrap
 - [x] monorepo
@@ -75,12 +75,12 @@
 - [ ] security review
 
 ## Phase 10 — Open Source Release
-- [ ] LICENSE (scelta prima della prima release pubblica)
-- [ ] CONTRIBUTING.md
-- [ ] SECURITY.md pubblico
+- [x] LICENSE (AGPL-3.0-only)
+- [x] CONTRIBUTING.md (DCO)
+- [x] SECURITY.md pubblico
 - [ ] install script (`install.sh`)
 - [ ] configurazione di esempio (`.env.example`, file di esempio)
-- [ ] CI GitHub Actions
+- [x] CI GitHub Actions
 - [ ] release/versioning
 - [ ] upgrade/migrations
 - [ ] backup/restore

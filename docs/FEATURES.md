@@ -4,7 +4,7 @@ Questa è la fonte funzionale unica del progetto. Descrive ciò che è già
 implementato, il comportamento atteso e i limiti noti. Il README rimanda qui;
 le decisioni architetturali sono in [`DECISIONS.md`](DECISIONS.md).
 
-Ultimo aggiornamento: 2026-11-18.
+Ultimo aggiornamento: 2026-11-19.
 
 ## 1. Chat e sessioni
 
