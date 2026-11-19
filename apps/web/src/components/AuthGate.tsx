@@ -15,6 +15,17 @@ export function useAuth(): AuthContextValue {
   return value;
 }
 
+function AuthBrand() {
+  const { t } = useI18n();
+  return (
+    <div className="auth-brand">
+      <img className="auth-logo auth-logo-light" src="/brand/memora-logo-light.png" alt={t('Memora')} />
+      <img className="auth-logo auth-logo-dark" src="/brand/memora-logo-dark.png" alt={t('Memora')} />
+      <span className="auth-brand-tagline">{t('assistente personale')}</span>
+    </div>
+  );
+}
+
 function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuthenticated: () => void }) {
   const { t } = useI18n();
   const [password, setPassword] = useState('');
@@ -49,13 +60,7 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
   return (
     <main className="auth-screen">
       <section className="auth-card" aria-labelledby="auth-title">
-        <div className="auth-brand">
-          <span className="auth-mark" aria-hidden="true">M</span>
-          <div>
-            <strong>{t('Memora')}</strong>
-            <span>{t('assistente personale')}</span>
-          </div>
-        </div>
+        <AuthBrand />
         <span className="admin-eyebrow">{t(isSetup ? 'Primo accesso' : 'Accesso protetto')}</span>
         <h1 id="auth-title">{t(isSetup ? 'Crea la password di Memora' : 'Bentornato')}</h1>
         <p>
@@ -130,11 +135,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setStatus(current => current ? { ...current, authenticated: false } : { setupRequired: false, authenticated: false });
   };
 
-  if (loading) return <main className="auth-screen"><div className="auth-card auth-loading">{t('Caricamento Memora…')}</div></main>;
+  if (loading) return <main className="auth-screen"><div className="auth-card auth-loading"><AuthBrand />{t('Caricamento Memora…')}</div></main>;
   if (error || !status) {
     return (
       <main className="auth-screen">
         <div className="auth-card">
+          <AuthBrand />
           <h1>{t('Memora non disponibile')}</h1>
           <div className="auth-error" role="alert">{error ?? t('Stato di autenticazione non disponibile.')}</div>
           <button type="button" className="auth-submit" onClick={() => void loadStatus()}>{t('Riprova')}</button>
