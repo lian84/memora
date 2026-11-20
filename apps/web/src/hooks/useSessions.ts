@@ -20,24 +20,16 @@ export function useSessions() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const currentFilterRef = useRef(false);
   const latestLoadRef = useRef(0);
 
-  /**
-   * Carica una sola vista alla volta. Le risposte vecchie non possono
-   * sovrascrivere la vista richiesta più recentemente (ad esempio dopo il
-   * passaggio attive/archiviate).
-   */
-  const load = useCallback(async (onlyArchived = currentFilterRef.current): Promise<boolean> => {
-    const previousFilter = currentFilterRef.current;
-    currentFilterRef.current = onlyArchived;
+  /** Carica tutte le sessioni; l'archiviazione viene filtrata per progetto nella sidebar. */
+  const load = useCallback(async (): Promise<boolean> => {
     const loadId = ++latestLoadRef.current;
 
-    if (previousFilter !== onlyArchived) setSessions([]);
     setLoading(true);
     setError(null);
     try {
-      const data = await listSessions(onlyArchived);
+      const data = await listSessions({ includeArchived: true });
       if (loadId !== latestLoadRef.current) return false;
       setSessions(data);
       return true;
@@ -113,10 +105,7 @@ export function useSessions() {
       setError(null);
       try {
         await setSessionArchived(sessionId, archived);
-        const refreshed = await load();
-        if (!refreshed && archived !== currentFilterRef.current) {
-          setSessions((current) => current.filter((session) => session.sessionId !== sessionId));
-        }
+        await load();
       } catch (err) {
         const error = asError(err);
         setError(error.message);

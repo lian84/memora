@@ -1834,3 +1834,32 @@ just because the prompt is frozen.
 - Prompt/skill edits require an explicit refresh for existing chats.
 - No chat changes behavior without the user's action.
 - A deleted profile cannot be refreshed; the old snapshot continues to work.
+
+---
+## ADR-050 — Project-scoped archived chats
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+The global archived-sessions view forced users to leave the project context to
+find an archived chat. In project-based workflows an archived chat should stay
+attached to its project but disappear from the normal list unless requested.
+
+### Decision
+- Remove the global archived view and its sidebar toggle.
+- `GET /api/sessions?includeArchived=true` returns active and archived sessions;
+  `?archived=true` remains available as a compatibility filter.
+- Add `showArchivedSessions` to the project configuration, default `false`.
+- The project session list hides archived chats unless the project setting is
+  enabled. When enabled, archived chats remain in the project with an archived
+  visual state and the normal restore action.
+- Archived chats without a project remain visible in “Senza progetto” so they
+  can still be restored; there is no project setting to hide them.
+- The project setting changes visibility only, not the session metadata or the
+  model context.
+
+### Consequences
+- Archiving a project chat does not detach it from the project.
+- Users can opt in per project to see archived chats without a global mode.
+- Unprojected archived chats remain reachable.
+- Older clients that use `?archived=true` keep working.

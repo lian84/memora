@@ -16,7 +16,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Rendering Markdown con tabelle, elenchi, codice e interruzioni `<br>` sicure.
 - [x] Pannello ragionamento richiudibile per i modelli che espongono il thinking: anteprima live, pensiero completo espandibile e storico dal transcript Pi.
 - [x] Interruzione della risposta, modifica di un messaggio utente e rigenerazione.
-- [x] Ripresa, rinomina, archiviazione, ripristino ed eliminazione delle chat.
+- [x] Ripresa, rinomina, archiviazione, ripristino ed eliminazione delle chat; le chat archiviate di progetto restano nel progetto e compaiono solo se il progetto abilita la vista archiviate.
 - [x] Titolo e cronologia della sessione.
 - [x] Allegati per messaggio: massimo 8 file, 15 MB ciascuno.
 - [x] Anteprima immagini e inclusione degli allegati immagini nel turno.

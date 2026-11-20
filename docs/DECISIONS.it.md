@@ -1677,3 +1677,36 @@ colore, invece, non devono restare vecchi solo perché il prompt è congelato.
 - Nessuna chat cambia comportamento senza un’azione dell’utente.
 - Un profilo eliminato non può essere aggiornato; lo snapshot precedente
   continua a funzionare.
+
+---
+## ADR-050 — Chat archiviate con visibilità per progetto
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+La vista globale delle sessioni archiviate costringeva a uscire dal contesto del
+progetto per trovare una chat archiviata. In un flusso per progetti, una chat
+archiviata deve restare nel progetto ma sparire dall’elenco normale finché non
+viene richiesta.
+
+### Decisione
+- Rimuovere la vista globale delle archiviate e il relativo toggle nella sidebar.
+- `GET /api/sessions?includeArchived=true` restituisce attive e archiviate;
+  `?archived=true` resta disponibile come filtro di compatibilità.
+- Aggiungere `showArchivedSessions` alla configurazione del progetto, default
+  `false`.
+- La lista del progetto nasconde le chat archiviate finché l’impostazione non è
+  attiva. Quando è attiva, le chat restano nel progetto con stato visivo
+  archiviato e la normale azione di ripristino.
+- Le chat archiviate senza progetto restano visibili in “Senza progetto” per
+  poter essere ripristinate; non esiste un’impostazione di progetto per
+  nasconderle.
+- L’impostazione cambia solo la visibilità nella sidebar, non i metadata o il
+  contesto del modello.
+
+### Conseguenze
+- Archiviare una chat di progetto non la stacca dal progetto.
+- L’utente può scegliere per progetto se vedere le archiviate, senza una modalità
+  globale.
+- Le chat archiviate senza progetto restano raggiungibili.
+- I client precedenti che usano `?archived=true` continuano a funzionare.

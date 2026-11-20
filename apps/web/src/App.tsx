@@ -85,7 +85,6 @@ export default function App() {
   const [selectedModelId, setSelectedModelId] = useState<string>(storedSelection?.modelId ?? '');
   const [selectedReasoningLevel, setSelectedReasoningLevel] = useState<ReasoningLevel>(storedSelection?.reasoningLevel ?? 'medium');
   const [messages, setMessages] = useState<DisplayChatMessage[]>([]);
-  const [archivedView, setArchivedView] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [memoryRevision, setMemoryRevision] = useState(0);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -121,12 +120,12 @@ export default function App() {
       void listAgentProfiles().then(setAgentProfiles).catch(() => setAgentProfiles([]));
       // I metadati visivi delle sessioni (icona/nome/colore) sono risolti dal
       // profilo corrente; ricarica la lista per aggiornare le chat esistenti.
-      void load(archivedView);
+      void load();
     };
     refreshAgentProfiles();
     window.addEventListener('memora-agent-profiles-changed', refreshAgentProfiles);
     return () => window.removeEventListener('memora-agent-profiles-changed', refreshAgentProfiles);
-  }, [archivedView, load]);
+  }, [load]);
 
   useEffect(() => {
     void getAdminStatus()
@@ -187,6 +186,11 @@ export default function App() {
 
   const selectedProject = projects.find(project => project.id === selectedProjectId) ?? null;
   const selectedSession = sessions.find((session) => session.sessionId === selectedSessionId);
+  const visibleSessions = useMemo(() => sessions.filter(session => {
+    if (!session.archived) return true;
+    if (!session.projectId) return true;
+    return projects.find(project => project.id === session.projectId)?.showArchivedSessions === true;
+  }), [projects, sessions]);
   const chatProject = selectedSession?.projectId
     ? projects.find(project => project.id === selectedSession.projectId) ?? null
     : selectedProject;
@@ -297,7 +301,7 @@ export default function App() {
             onOpen: () => handleSelectSessionRef.current(turn.sessionId),
           });
         }
-        if (finishedNow.length > 0) void load(archivedView);
+        if (finishedNow.length > 0) void load();
       } catch {
         // Il polling dei turni non deve disturbare la chat.
       }
@@ -305,7 +309,7 @@ export default function App() {
     void refresh();
     const timer = window.setInterval(() => { void refresh(); }, 2000);
     return () => { cancelled = true; window.clearInterval(timer); };
-  }, [archivedView, load, loadMessages, markRead, selectedSessionId, t]);
+  }, [load, loadMessages, markRead, selectedSessionId, t]);
 
   const turnStatuses = useMemo(() => Object.fromEntries(
     Object.values(turnsBySession).map(turn => [turn.sessionId, turn.status]),
@@ -403,18 +407,8 @@ export default function App() {
       localStorage.removeItem(SESSION_STORAGE_KEY);
     }
     setMemoryRevision(revision => revision + 1);
-    void load(archivedView);
-  }, [archivedView, load, selectedProjectId, selectedSession?.projectId]);
-
-  const handleToggleArchivedView = useCallback(() => {
-    setArchivedView((prev) => {
-      const next = !prev;
-      // Il toggle è anche il cambio del filtro backend: non riusare la lista
-      // della vista precedente e non affidarsi a uno snapshot React stale.
-      void load(next);
-      return next;
-    });
-  }, [load]);
+    void load();
+  }, [load, selectedProjectId, selectedSession?.projectId]);
 
   const handleSelectSession = useCallback(
     async (sessionId: string) => {
@@ -461,11 +455,8 @@ export default function App() {
     setSessionInUrl(id);
     localStorage.setItem(SESSION_STORAGE_KEY, id);
     setMessages([]);
-    // Una nuova chat appartiene sempre alla vista attive, anche se l'utente
-    // stava guardando l'archivio quando ha premuto “Nuova chat”.
-    setArchivedView(false);
     setSidebarOpen(false);
-    await load(false);
+    await load();
     return id;
   }, [create, load, selectedModelId, selectedProvider, selectedReasoningLevel, selectedProjectId]);
 
@@ -550,10 +541,10 @@ export default function App() {
   const handleTurnComplete = useCallback(() => {
     // Al primo turno Pi materializza il JSONL della nuova chat: ricarica la
     // lista per sostituire la bozza in memoria con la sessione persistita.
-    void load(archivedView);
+    void load();
     if (selectedSessionId) void loadMessages(selectedSessionId);
     setMemoryRevision((revision) => revision + 1);
-  }, [load, archivedView, selectedSessionId, loadMessages]);
+  }, [load, selectedSessionId, loadMessages]);
 
   const handleTruncateFromMessage = useCallback((messageId: string) => {
     setMessages(current => {
@@ -580,8 +571,6 @@ export default function App() {
         selectedSessionId={selectedSessionId}
         loading={loading}
         error={error}
-        archivedView={archivedView}
-        onToggleArchivedView={handleToggleArchivedView}
         mobileOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         settingsActive={adminOpen}
@@ -627,7 +616,7 @@ export default function App() {
           </button>
 
           <div className="topbar-heading">
-            <span className="topbar-eyebrow">{adminOpen ? t('Configurazione runtime') : secondBrainOpen ? t('Memoria personale') : projectOpen ? t('Progetto') : archivedView ? t('Archivio sessioni') : t('Conversazione')}</span>
+            <span className="topbar-eyebrow">{adminOpen ? t('Configurazione runtime') : secondBrainOpen ? t('Memoria personale') : projectOpen ? t('Progetto') : t('Conversazione')}</span>
             <h1 title={selectedSessionTitle}>{selectedSessionTitle}</h1>
           </div>
 
@@ -688,26 +677,16 @@ export default function App() {
                 <img src="/brand/memora-avatar.png" alt="" />
               </span>
               <h2>
-                {archivedView
-                  ? sessions.length === 0 ? t('Nessuna chat archiviata') : t('Seleziona una chat archiviata')
-                  : sessions.length === 0 ? (selectedProject ? t('Nessuna chat per {name}', { name: selectedProject.name }) : t('Benvenuto in Memora')) : t('Seleziona una chat')}
+                {visibleSessions.length === 0 ? (selectedProject ? t('Nessuna chat per {name}', { name: selectedProject.name }) : t('Benvenuto in Memora')) : t('Seleziona una chat')}
               </h2>
               <p>
-                {archivedView
-                  ? t('Le conversazioni archiviate restano disponibili qui.')
-                  : sessions.length === 0
-                    ? t('Crea una nuova conversazione per iniziare a usare Memora.')
-                    : t('Scegli una conversazione dalla sidebar oppure iniziane una nuova.')}
+                {visibleSessions.length === 0
+                  ? t('Crea una nuova conversazione per iniziare a usare Memora.')
+                  : t('Scegli una conversazione dalla sidebar oppure iniziane una nuova.')}
               </p>
-              {archivedView ? (
-                <button type="button" className="empty-state-action" onClick={handleToggleArchivedView}>
-                  Torna alle chat attive
-                </button>
-              ) : (
-                <button type="button" className="empty-state-action" onClick={() => void handleNewSession()} disabled={loading}>
-                  Nuova chat
-                </button>
-              )}
+              <button type="button" className="empty-state-action" onClick={() => void handleNewSession()} disabled={loading}>
+                Nuova chat
+              </button>
             </section>
           )}
 
@@ -718,7 +697,7 @@ export default function App() {
               onStartTurn={handleStartTurn}
               onStreamingUpdate={handleStreamingUpdate}
               onTurnComplete={handleTurnComplete}
-              onSessionTitle={() => void load(archivedView)}
+              onSessionTitle={() => void load()}
               onTruncateFromMessage={handleTruncateFromMessage}
               project={chatProject}
               projects={projects}
@@ -727,7 +706,7 @@ export default function App() {
               onSessionUnavailable={handleRecoverSession}
               agentProfiles={agentProfiles}
               agent={selectedSession?.agent ?? null}
-              onAgentChange={() => void load(archivedView)}
+              onAgentChange={() => void load()}
               allowAgentPicker={Boolean(selectedSession?.draft || selectedSession?.messageCount === 0)}
             />
           )}

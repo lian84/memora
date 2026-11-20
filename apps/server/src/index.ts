@@ -333,8 +333,11 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id/web/sources', async (req,
 app.get('/api/sessions', async (req, reply) => {
   try {
     // `archived=true` è una vista filtrata: non include le sessioni attive.
-    const onlyArchived = (req.query as { archived?: string }).archived === 'true';
-    const sessions = await agentService.listSessions(onlyArchived);
+    // `includeArchived=true` restituisce attive e archiviate per la sidebar dei progetti.
+    const query = req.query as { archived?: string; includeArchived?: string };
+    const onlyArchived = query.archived === 'true';
+    const includeArchived = query.includeArchived === 'true';
+    const sessions = await agentService.listSessions(onlyArchived, includeArchived);
     return reply.send({ sessions });
   } catch (err) {
     app.log.error(err);

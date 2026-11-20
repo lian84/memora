@@ -32,6 +32,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   const [sectionId, setSectionId] = useState(project.sectionId ?? '');
   const [icon, setIcon] = useState<ProjectIcon>(project.icon ?? 'folder');
   const [includeGlobal, setIncludeGlobal] = useState(project.retrieval.includeGlobal);
+  const [showArchivedSessions, setShowArchivedSessions] = useState(project.showArchivedSessions === true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         prompt,
         sectionId: sectionId || null,
         icon,
+        showArchivedSessions,
         retrieval: { ...project.retrieval, includeGlobal },
       });
       onSaved(updated);
@@ -243,6 +245,10 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         <label className="admin-toggle">
           <input type="checkbox" checked={includeGlobal} onChange={event => setIncludeGlobal(event.target.checked)} />
           <span>{t('Includi la memoria globale nelle chat del progetto')}</span>
+        </label>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={showArchivedSessions} onChange={event => setShowArchivedSessions(event.target.checked)} />
+          <span>{t('Mostra le chat archiviate di questo progetto')}</span>
         </label>
         <div className="admin-actions">
           <button type="button" className="admin-primary" onClick={() => void saveProject()} disabled={saving}>{saving ? t('Salvo…') : t('Salva progetto')}</button>

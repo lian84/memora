@@ -23,27 +23,7 @@ const baseProps = {
   selectedSessionId: null,
   loading: false,
   error: null,
-  archivedView: false,
-  onToggleArchivedView: () => undefined,
 };
-
-test('la vista attiva usa una sola icona archive accessibile', () => {
-  const markup = renderToStaticMarkup(<Sidebar {...baseProps} />);
-
-  expect(markup).toContain('aria-label="Mostra chat archiviate"');
-  expect(markup).toContain('title="Chat archiviate"');
-  expect(markup).toContain('aria-pressed="false"');
-  expect(markup).not.toContain('>Archiviate<');
-});
-
-test('la vista archiviate evidenzia il toggle e consente il ritorno alle chat attive', () => {
-  const markup = renderToStaticMarkup(<Sidebar {...baseProps} archivedView />);
-
-  expect(markup).toContain('aria-label="Torna alle chat attive"');
-  expect(markup).toContain('title="Torna alle chat attive"');
-  expect(markup).toContain('aria-pressed="true"');
-  expect(markup).not.toContain('>Archiviate<');
-});
 
 test('una nuova chat in memoria compare subito come bozza eliminabile', () => {
   const markup = renderToStaticMarkup(
@@ -108,4 +88,27 @@ test('mostra l’icona del profilo agente accanto alla sessione', () => {
   );
   expect(markup).toContain('Chat con Commercialista');
   expect(markup).toContain('session-agent-icon');
+});
+
+test('marca come archiviata una chat archiviata visibile', () => {
+  const markup = renderToStaticMarkup(
+    <Sidebar {...baseProps} sessions={[{ ...session, archived: true }]} />,
+  );
+  expect(markup).toContain('is-archived');
+});
+
+test('nasconde le chat archiviate del progetto salvo impostazione esplicita', () => {
+  const archivedProject = {
+    version: 1 as const, id: 'orione', name: 'Orione', description: '', status: 'active' as const, prompt: '',
+    showArchivedSessions: false,
+    defaults: {}, retrieval: { includeGlobal: true, includeProjectMemory: true, includeProjectSources: true },
+    sources: { include: ['**/*.md'], exclude: [] }, createdAt: 1, updatedAt: 1, source: 'file' as const, icon: 'rocket' as const,
+  };
+  const archivedSession = { ...session, sessionId: 'archived-project-session', projectId: 'orione', archived: true, firstMessage: 'Chat archiviata progetto' };
+  const hidden = renderToStaticMarkup(<Sidebar {...baseProps} projects={[archivedProject]} sessions={[archivedSession]} selectedProjectId="orione" />);
+  expect(hidden).not.toContain('Chat archiviata progetto');
+
+  const shown = renderToStaticMarkup(<Sidebar {...baseProps} projects={[{ ...archivedProject, showArchivedSessions: true }]} sessions={[archivedSession]} selectedProjectId="orione" />);
+  expect(shown).toContain('Chat archiviata progetto');
+  expect(shown).toContain('is-archived');
 });

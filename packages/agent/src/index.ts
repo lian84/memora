@@ -862,7 +862,7 @@ export class AgentService {
    * @param onlyArchived Se true restituisce esclusivamente le sessioni archiviate;
    *                    se false restituisce esclusivamente quelle attive.
    */
-  async listSessions(onlyArchived = false): Promise<SessionInfo[]> {
+  async listSessions(onlyArchived = false, includeArchived = false): Promise<SessionInfo[]> {
     const infos = await SessionManager.listAll(this.sessionDir);
     const persistedIds = new Set(infos.map((info) => info.id));
     let currentProfiles = new Map<string, AgentProfileSummary>();
@@ -875,7 +875,7 @@ export class AgentService {
     const result: SessionInfo[] = [];
     for (const info of infos) {
       const meta = await this.readSessionMeta(info.id, info.path);
-      if (meta.archived !== onlyArchived) continue;
+      if (!includeArchived && meta.archived !== onlyArchived) continue;
       result.push({
         sessionId: info.id,
         sessionFile: info.path,
@@ -896,7 +896,7 @@ export class AgentService {
     // nella vista attiva permette alla UI di mostrarle subito, senza creare
     // file vuoti o entry artificiali nel JSONL.
     const drafts: SessionInfo[] = [];
-    if (!onlyArchived) {
+    if (!onlyArchived || includeArchived) {
       for (const [sessionId, entry] of this.sessions) {
         if (persistedIds.has(sessionId)) continue;
         drafts.unshift({

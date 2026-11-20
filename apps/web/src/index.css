@@ -1706,3 +1706,7 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .agent-refresh-row button { height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 10px; font-weight: 600; cursor: pointer; }
 .agent-refresh-row button:hover { border-color: color-mix(in srgb, var(--agent-color, var(--accent)) 40%, var(--border)); background: color-mix(in srgb, var(--agent-color, var(--accent)) 8%, var(--surface)); color: var(--agent-color, var(--accent)); }
 @media (max-width: 640px) { .agent-refresh-row { margin-left: 14px; margin-right: 14px; } }
+
+.session-row.is-archived { opacity: .58; }
+.session-row.is-archived.is-selected { opacity: 1; }
+.session-row.is-archived .session-title { font-style: italic; }

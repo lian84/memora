@@ -39,8 +39,6 @@ interface SidebarProps {
   selectedSessionId: string | null;
   loading: boolean;
   error: string | null;
-  archivedView: boolean;
-  onToggleArchivedView: () => void;
   /** Drawer aperto su viewport mobile. */
   mobileOpen?: boolean;
   onClose?: () => void;
@@ -76,8 +74,6 @@ export function Sidebar({
   selectedSessionId,
   loading,
   error,
-  archivedView,
-  onToggleArchivedView,
   mobileOpen = false,
   onClose,
   onOpenSettings,
@@ -109,12 +105,6 @@ export function Sidebar({
   const handleCreate = useCallback(async () => {
     await onCreate();
   }, [onCreate]);
-
-  const handleToggleView = useCallback(() => {
-    onToggleArchivedView();
-    setRenameInput(null);
-    setRenameValue('');
-  }, [onToggleArchivedView]);
 
   const handleRenameClick = useCallback((sessionId: string, currentName: string) => {
     if (renameInput === sessionId) {
@@ -181,8 +171,6 @@ export function Sidebar({
 
   const displayTitle = (session: SessionInfo) =>
     session.draft ? 'Nuova chat' : session.name ?? session.firstMessage ?? '(nessun messaggio)';
-  const archiveViewLabel = t(archivedView ? 'Torna alle chat attive' : 'Mostra chat archiviate');
-  const archiveViewTitle = t(archivedView ? 'Torna alle chat attive' : 'Chat archiviate');
 
   const renderSessionRows = (rows: SessionInfo[]): ReactNode => rows.map(session => {
     const isSelected = selectedSessionId === session.sessionId;
@@ -196,7 +184,7 @@ export function Sidebar({
     return (
       <div
         key={session.sessionId}
-        className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}${isPinned ? ' is-pinned' : ''}`}
+        className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}${isPinned ? ' is-pinned' : ''}${session.archived ? ' is-archived' : ''}`}
         onClick={() => { if (!isRenaming) onSelect(session.sessionId); }}
         title={session.agent ? `${title} · ${t('Chat con {name}', { name: session.agent.name })}` : title}
       >
@@ -265,16 +253,6 @@ export function Sidebar({
       </header>
       <div className="sidebar-toolbar">
         <button type="button" className="new-chat-button" onClick={handleCreate} disabled={loading}>{t('Nuova chat')}</button>
-        <button
-          type="button"
-          className={`archive-view-button${archivedView ? ' is-active' : ''}`}
-          aria-label={archiveViewLabel}
-          aria-pressed={archivedView}
-          title={archiveViewTitle}
-          onClick={handleToggleView}
-        >
-          <SessionActionIcon name="archive" />
-        </button>
       </div>
       {error && <div role="alert" className="sidebar-error">{error}</div>}
       <div className="session-list">

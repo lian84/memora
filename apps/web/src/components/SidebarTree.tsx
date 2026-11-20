@@ -82,7 +82,7 @@ export function SidebarTree({
   const initialized = useRef(false);
   const knownSections = useRef<Set<string>>(new Set());
   const [openSections, setOpenSections] = useState<Set<string>>(() => storedSections.current ?? new Set([UNASSIGNED_PROJECTS, ...sections.map(section => section.id)]));
-  const [openProjects, setOpenProjects] = useState<Set<string>>(() => storedProjects.current ?? new Set());
+  const [openProjects, setOpenProjects] = useState<Set<string>>(() => new Set([...(storedProjects.current ?? []), ...(selectedProjectId ? [selectedProjectId] : [])]));
 
   useEffect(() => {
     const addedSections = sections.filter(section => !knownSections.current.has(section.id));
@@ -133,12 +133,16 @@ export function SidebarTree({
 
   const sessionsByProject = new Map<string, SessionInfo[]>();
   const unassignedSessions: SessionInfo[] = [];
-  const projectIds = new Set(projects.map(project => project.id));
+  const projectById = new Map(projects.map(project => [project.id, project]));
   for (const session of sessions) {
-    if (session.projectId && projectIds.has(session.projectId)) {
-      const list = sessionsByProject.get(session.projectId) ?? [];
+    const project = session.projectId ? projectById.get(session.projectId) : undefined;
+    // Le chat archiviate di un progetto restano nel progetto ma sono visibili
+    // solo se il progetto ha esplicitamente abilitato la vista delle archiviate.
+    if (session.archived && project && project.showArchivedSessions !== true) continue;
+    if (project) {
+      const list = sessionsByProject.get(project.id) ?? [];
       list.push(session);
-      sessionsByProject.set(session.projectId, list);
+      sessionsByProject.set(project.id, list);
     } else {
       unassignedSessions.push(session);
     }

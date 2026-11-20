@@ -510,7 +510,7 @@ describe('AgentService', () => {
       service.disposeAll();
     });
 
-    it('restituisce solo la vista richiesta: attive oppure archiviate', async () => {
+    it('restituisce la vista richiesta e sa includere attive e archiviate', async () => {
       const active = {
         id: 'active-session',
         path: '/path/to/active-session.jsonl',
@@ -540,6 +540,10 @@ describe('AgentService', () => {
         expect.objectContaining({ sessionId: 'active-session', archived: false }),
       ]);
       await expect(service.listSessions(true)).resolves.toEqual([
+        expect.objectContaining({ sessionId: 'archived-session', archived: true }),
+      ]);
+      await expect(service.listSessions(false, true)).resolves.toEqual([
+        expect.objectContaining({ sessionId: 'active-session', archived: false }),
         expect.objectContaining({ sessionId: 'archived-session', archived: true }),
       ]);
     });

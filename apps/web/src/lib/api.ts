@@ -73,7 +73,7 @@ export interface SessionInfo {
   agent?: SessionAgentInfo;
 }
 
-export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'defaults' | 'retrieval' | 'sources'>> & { sectionId?: string | null; icon?: ProjectIcon | null };
+export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'showArchivedSessions' | 'defaults' | 'retrieval' | 'sources'>> & { sectionId?: string | null; icon?: ProjectIcon | null };
 
 export interface MemorySource {
   id: string;
@@ -254,8 +254,8 @@ export async function logout(): Promise<void> {
   await request('/api/auth/logout', { method: 'POST' });
 }
 
-export async function listSessions(onlyArchived = false): Promise<SessionInfo[]> {
-  const path = onlyArchived ? '/api/sessions?archived=true' : '/api/sessions';
+export async function listSessions(options: { includeArchived?: boolean } = {}): Promise<SessionInfo[]> {
+  const path = options.includeArchived ? '/api/sessions?includeArchived=true' : '/api/sessions';
   const res = await request(path);
   const data = (await res.json()) as { sessions: SessionInfo[] };
   return data.sessions;

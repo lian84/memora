@@ -87,6 +87,8 @@ export interface ProjectConfig {
   name: string;
   description: string;
   status: ProjectStatus;
+  /** Mostra nella sidebar le chat archiviate di questo progetto. */
+  showArchivedSessions?: boolean;
   prompt: string;
   defaults: ProjectDefaults;
   /** Sezione della sidebar; assente = Senza sezione. */

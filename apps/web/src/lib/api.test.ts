@@ -77,17 +77,17 @@ test('memory_sources resta un payload separato dal testo assistant', () => {
   expect(event?.payload).toEqual([{ relativePath: 'projects/example.md' }]);
 });
 
-test('listSessions usa /api/sessions per le attive e archived=true solo per le archiviate', async () => {
+test('listSessions può includere le sessioni archiviate senza cambiare vista', async () => {
   const fetchMock = vi.fn()
     .mockResolvedValueOnce(new Response(JSON.stringify({ sessions: [] }), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ sessions: [] }), { status: 200 }));
   vi.stubGlobal('fetch', fetchMock);
 
   await listSessions();
-  await listSessions(true);
+  await listSessions({ includeArchived: true });
 
   expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/sessions');
-  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/sessions?archived=true');
+  expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/sessions?includeArchived=true');
 
   for (const call of fetchMock.mock.calls) {
     const init = call[1] as RequestInit;

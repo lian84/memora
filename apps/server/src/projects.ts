@@ -45,6 +45,7 @@ function legacyConfig(id: string, timestamp: number): ProjectConfig {
     description: '',
     status: 'active',
     prompt: '',
+    showArchivedSessions: false,
     defaults: {},
     retrieval: { includeGlobal: true, includeProjectMemory: true, includeProjectSources: true },
     sources: { include: [...DEFAULT_INCLUDE], exclude: [] },
@@ -140,13 +141,14 @@ export class ProjectStore {
     const name = typeof input.name === 'string' && input.name.trim() ? input.name.trim() : id;
     const description = typeof input.description === 'string' ? input.description : '';
     const prompt = typeof input.prompt === 'string' ? input.prompt : '';
+    const showArchivedSessions = input.showArchivedSessions === true;
     if (input.sectionId !== undefined && input.sectionId !== null && (typeof input.sectionId !== 'string' || !SLUG_PATTERN.test(input.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
     if (input.icon !== undefined && input.icon !== null && !isProjectIcon(input.icon)) throw new ProjectError('invalid_project_icon', 'Icona progetto non valida');
     const sectionId = typeof input.sectionId === 'string' && input.sectionId.trim() ? input.sectionId.trim() : undefined;
     const icon = isProjectIcon(input.icon) ? input.icon : undefined;
     const now = Date.now();
     const config: ProjectConfig = {
-      version: 1, id, name, description, status: 'active', prompt, defaults: {},
+      version: 1, id, name, description, status: 'active', prompt, showArchivedSessions, defaults: {},
       ...(sectionId ? { sectionId } : {}),
       ...(icon ? { icon } : {}),
       retrieval: { includeGlobal: true, includeProjectMemory: true, includeProjectSources: true },
@@ -172,7 +174,7 @@ export class ProjectStore {
     const current = await this.get(id);
     if (!current) throw new ProjectError('project_not_found', 'Progetto non trovato', 404);
     if (!isRecord(patch)) throw new ProjectError('invalid_project_patch', 'Patch progetto non valida');
-    const allowed = new Set(['name', 'description', 'prompt', 'status', 'defaults', 'retrieval', 'sources', 'sectionId', 'icon']);
+    const allowed = new Set(['name', 'description', 'prompt', 'status', 'showArchivedSessions', 'defaults', 'retrieval', 'sources', 'sectionId', 'icon']);
     for (const key of Object.keys(patch)) if (!allowed.has(key)) throw new ProjectError('unknown_project_field', `Campo progetto non modificabile: ${key}`);
     if (containsSecretKey(patch)) throw new ProjectError('project_secret_forbidden', 'La patch non può contenere segreti');
     if (patch.sectionId !== undefined && patch.sectionId !== null && (typeof patch.sectionId !== 'string' || !SLUG_PATTERN.test(patch.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
@@ -186,6 +188,7 @@ export class ProjectStore {
       ...(typeof patch.description === 'string' ? { description: patch.description } : {}),
       ...(typeof patch.prompt === 'string' ? { prompt: patch.prompt } : {}),
       ...(typeof patch.status === 'string' ? { status: patch.status } : {}),
+      ...(typeof patch.showArchivedSessions === 'boolean' ? { showArchivedSessions: patch.showArchivedSessions } : {}),
       ...(isRecord(patch.defaults) ? { defaults: { ...current.defaults, ...patch.defaults } } : {}),
       ...(isRecord(patch.retrieval) ? { retrieval: { ...current.retrieval, ...patch.retrieval } } : {}),
       ...(isRecord(patch.sources) ? { sources: { ...current.sources, ...patch.sources } } : {}),
@@ -222,6 +225,7 @@ export class ProjectStore {
           description: project.description,
           status: project.status,
           prompt: project.prompt,
+          showArchivedSessions: project.showArchivedSessions === true,
           defaults: project.defaults,
           retrieval: project.retrieval,
           sources: project.sources,
@@ -244,6 +248,7 @@ export class ProjectStore {
     if (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 120) throw new ProjectError('invalid_project_name', 'Nome progetto non valido');
     if (typeof value.description !== 'string' || value.description.length > 500) throw new ProjectError('invalid_project_description', 'Descrizione progetto non valida');
     if (value.status !== 'active' && value.status !== 'archived') throw new ProjectError('invalid_project_status', 'Stato progetto non valido');
+    if (value.showArchivedSessions !== undefined && typeof value.showArchivedSessions !== 'boolean') throw new ProjectError('invalid_project_show_archived', 'Impostazione chat archiviate non valida');
     if (typeof value.prompt !== 'string' || value.prompt.length > 8000) throw new ProjectError('invalid_project_prompt', 'Prompt progetto non valido');
     if (value.sectionId !== undefined && (typeof value.sectionId !== 'string' || !SLUG_PATTERN.test(value.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
     if (value.icon !== undefined && !isProjectIcon(value.icon)) throw new ProjectError('invalid_project_icon', 'Icona progetto non valida');
@@ -278,6 +283,7 @@ export class ProjectStore {
       description: value.description.trim(),
       status: value.status as ProjectStatus,
       prompt: value.prompt,
+      showArchivedSessions: value.showArchivedSessions === true,
       ...(typeof value.sectionId === 'string' ? { sectionId: value.sectionId } : {}),
       ...(isProjectIcon(value.icon) ? { icon: value.icon } : {}),
       defaults: {

@@ -16,7 +16,7 @@ Last updated: 2026-11-20.
 - [x] Markdown rendering with tables, lists, code and safe `<br>` line breaks.
 - [x] Collapsible reasoning panel for models that expose thinking: live preview, expandable full thought and history from the Pi transcript.
 - [x] Stop response, edit a user message and regenerate.
-- [x] Resume, rename, archive, restore and delete chats.
+- [x] Resume, rename, archive, restore and delete chats; archived project chats stay in the project and are shown only when the project enables archived sessions.
 - [x] Session title and history.
 - [x] Per-message attachments: at most 8 files, 15 MB each.
 - [x] Image preview and inclusion of image attachments in the turn.

@@ -497,4 +497,5 @@ export const fr: Record<string, string> = {
   'Esadecimale': 'Hex',
   'Usa un codice esadecimale come #2563eb.': 'Utilisez un code hexadécimal comme #2563eb.',
   'Colore non valido: usa un codice esadecimale come #2563eb.': 'Couleur invalide : utilisez un code hexadécimal comme #2563eb.',
+  'Mostra le chat archiviate di questo progetto': 'Afficher les conversations archivées de ce projet',
 };
