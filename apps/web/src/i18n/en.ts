@@ -493,4 +493,7 @@ export const en: Record<string, string> = {
   'Aggiornamento…': 'Updating…',
   'Profilo aggiornato. Il nuovo prompt sarà usato dal prossimo messaggio.': 'Profile updated. The new prompt will be used from the next message.',
   'Verrà applicata la versione corrente del profilo dal prossimo messaggio. La cronologia della chat resta invariata.': 'The current profile version will be applied from the next message. The chat history stays unchanged.',
+  'Esadecimale': 'Hex',
+  'Usa un codice esadecimale come #2563eb.': 'Use a hex code such as #2563eb.',
+  'Colore non valido: usa un codice esadecimale come #2563eb.': 'Invalid color: use a hex code such as #2563eb.',
 };

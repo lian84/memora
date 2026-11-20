@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { AGENT_COLOR_PALETTE, type AgentProfileSummary, type AgentSkillDetail, type ProjectIcon } from '@memora/shared';
+import { AGENT_COLOR_PALETTE, isAgentColor, type AgentProfileSummary, type AgentSkillDetail, type ProjectIcon } from '@memora/shared';
 import { createAgentProfile, deleteAgentProfile, deleteAgentSkill, getAgentProfileDetail, listAgentProfiles, saveAgentSkill, updateAgentProfile } from '../lib/api';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
@@ -25,6 +25,13 @@ interface SkillForm {
 const EMPTY_PROFILE: ProfileForm = { id: '', name: '', description: '', icon: 'star', color: AGENT_COLOR_PALETTE[0], prompt: '' };
 const EMPTY_SKILL: SkillForm = { name: '', description: '', content: '' };
 
+function normalizeColorInput(value: string): string | null {
+  const trimmed = value.trim();
+  if (isAgentColor(trimmed)) return trimmed.toLowerCase();
+  const withHash = `#${trimmed}`;
+  return isAgentColor(withHash) ? withHash.toLowerCase() : null;
+}
+
 function notifyProfilesChanged(): void {
   window.dispatchEvent(new Event('memora-agent-profiles-changed'));
 }
@@ -39,6 +46,7 @@ export function AgentsAdminPanel() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProfileForm>(EMPTY_PROFILE);
+  const [colorInput, setColorInput] = useState(EMPTY_PROFILE.color);
   const [skills, setSkills] = useState<AgentSkillDetail[]>([]);
   const [skillForm, setSkillForm] = useState<SkillForm>(EMPTY_SKILL);
   const [editingSkillName, setEditingSkillName] = useState<string | null>(null);
@@ -62,6 +70,7 @@ export function AgentsAdminPanel() {
     setEditorOpen(false);
     setEditingId(null);
     setForm(EMPTY_PROFILE);
+    setColorInput(EMPTY_PROFILE.color);
     setSkills([]);
     setSkillForm(EMPTY_SKILL);
     setEditingSkillName(null);
@@ -72,6 +81,7 @@ export function AgentsAdminPanel() {
     setEditorOpen(true);
     setEditingId(null);
     setForm(EMPTY_PROFILE);
+    setColorInput(EMPTY_PROFILE.color);
     setSkills([]);
     setSkillForm(EMPTY_SKILL);
     setEditingSkillName(null);
@@ -94,6 +104,7 @@ export function AgentsAdminPanel() {
         color: detail.color,
         prompt: detail.prompt,
       });
+      setColorInput(detail.color);
       setSkills(detail.skills);
       setSkillForm(EMPTY_SKILL);
       setEditingSkillName(null);
@@ -110,6 +121,8 @@ export function AgentsAdminPanel() {
   const saveProfile = useCallback(async () => {
     if (!form.name.trim()) { setError(t('Il nome dell’agente è obbligatorio.')); return; }
     if (!form.prompt.trim()) { setError(t('Il prompt del profilo è obbligatorio.')); return; }
+    const normalizedColor = normalizeColorInput(colorInput);
+    if (!normalizedColor) { setError(t('Colore non valido: usa un codice esadecimale come #2563eb.')); return; }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -118,7 +131,7 @@ export function AgentsAdminPanel() {
         name: form.name.trim(),
         description: form.description.trim(),
         icon: form.icon,
-        color: form.color,
+        color: normalizedColor,
         prompt: form.prompt,
       };
       const detail = editingId
@@ -133,6 +146,7 @@ export function AgentsAdminPanel() {
         color: detail.color,
         prompt: detail.prompt,
       });
+      setColorInput(detail.color);
       setSkills(detail.skills);
       setMessage(editingId ? t('Agente aggiornato.') : t('Agente creato.'));
       await loadList();
@@ -300,22 +314,41 @@ export function AgentsAdminPanel() {
                 <input value={form.description} onChange={event => updateForm('description', event.target.value)} maxLength={280} />
               </label>
               <div className="agents-admin-color-row">
-                <div className="admin-label">{t('Colore')}
-                  <div className="agents-admin-color-picker" role="group" aria-label={t('Colore')}>
-                    {palette.map(color => (
-                      <button
-                        key={color}
-                        type="button"
-                        className={`agents-admin-color-swatch${form.color.toLowerCase() === color ? ' is-selected' : ''}`}
-                        style={{ '--swatch': color } as CSSProperties}
-                        aria-label={color}
-                        aria-pressed={form.color.toLowerCase() === color}
-                        title={color}
-                        onClick={() => updateForm('color', color)}
+                <div className="admin-label agents-admin-color-label">{t('Colore')}
+                  <div className="agents-admin-color-controls">
+                    <div className="agents-admin-color-picker" role="group" aria-label={t('Colore')}>
+                      {palette.map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`agents-admin-color-swatch${form.color.toLowerCase() === color ? ' is-selected' : ''}`}
+                          style={{ '--swatch': color } as CSSProperties}
+                          aria-label={color}
+                          aria-pressed={form.color.toLowerCase() === color}
+                          title={color}
+                          onClick={() => { setColorInput(color); updateForm('color', color); }}
+                        />
+                      ))}
+                    </div>
+                    <label className="agents-admin-color-hex">
+                      <span>{t('Esadecimale')}</span>
+                      <input
+                        value={colorInput}
+                        onChange={event => {
+                          const value = event.target.value;
+                          setColorInput(value);
+                          const normalized = normalizeColorInput(value);
+                          if (normalized) updateForm('color', normalized);
+                        }}
+                        placeholder="#2563eb"
+                        aria-invalid={Boolean(colorInput.trim()) && !normalizeColorInput(colorInput)}
+                        maxLength={7}
                       />
-                    ))}
+                    </label>
                   </div>
-                  <small>{form.color}</small>
+                  <small className={colorInput.trim() && !normalizeColorInput(colorInput) ? 'is-invalid' : ''}>
+                    {colorInput.trim() && !normalizeColorInput(colorInput) ? t('Usa un codice esadecimale come #2563eb.') : form.color}
+                  </small>
                 </div>
                 <div className="agents-admin-preview" style={{ '--agent-color': form.color } as CSSProperties}>
                   <span><AppIcon name={form.icon} size={18} /></span>
