@@ -601,6 +601,17 @@ allegato immagine insieme al contesto e lascia al modello creare una versione
 migliorata. L’azione è manuale e non avvia loop automatici; la versione precedente
 resta disponibile.
 
+### Profili agente
+
+Prima del primo messaggio il composer mostra i **profili agente** disponibili
+(Brainstorming, Commercialista, Sviluppatore, Social media). Un profilo aggiunge
+un prompt circoscritto e competenze caricate on demand; non aggiunge tool o
+permessi. Se non ne viene scelto nessuno si usa Memo base. Dopo l’invio il
+selettore sparisce e l’icona del profilo resta accanto ai controlli allegati e
+web; la stessa icona compare accanto alla chat nella sidebar. I profili sono
+file-based in `$MEMORA_DATA_DIR/agents`; vedi
+[`docs/AGENT-PROFILES.it.md`](docs/AGENT-PROFILES.it.md).
+
 ### Controlli chat
 
 - quando il modello espone il ragionamento, un pannello **Ragionamento** compatto

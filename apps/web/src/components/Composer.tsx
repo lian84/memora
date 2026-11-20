@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { ChatAttachment } from '@memora/shared';
+import type { ChatAttachment, SessionAgentInfo } from '@memora/shared';
+import { AppIcon } from './AppIcon';
 import { useI18n } from '../i18n';
 
 interface ComposerProps {
@@ -18,9 +19,11 @@ interface ComposerProps {
   webEnabled?: boolean;
   webAvailable?: boolean;
   onToggleWeb?: () => void;
+  agent?: SessionAgentInfo | null;
+  agentSaving?: boolean;
 }
 
-export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null, webEnabled = false, webAvailable = false, onToggleWeb }: ComposerProps) {
+export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null, webEnabled = false, webAvailable = false, onToggleWeb, agent = null, agentSaving = false }: ComposerProps) {
   const { t } = useI18n();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,13 +52,13 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
 
   const handleSend = () => {
     const value = text.trim();
-    if (!value || disabled || (isStreaming && !onQueue)) return;
+    if (!value || disabled || agentSaving || (isStreaming && !onQueue)) return;
     if (isStreaming && onQueue) onQueue(value); else onSend(value);
     setText('');
     textareaRef.current?.focus();
   };
 
-  const sendDisabled = disabled || (isStreaming && !onQueue) || attachmentBusy || !text.trim();
+  const sendDisabled = disabled || agentSaving || (isStreaming && !onQueue) || attachmentBusy || !text.trim();
   const formatSize = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
   return (
@@ -88,6 +91,11 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
           event.target.value = '';
         }}
       />
+      {agent && (
+        <span className="composer-agent" title={t('Chat con {name}', { name: agent.name })} aria-label={t('Chat con {name}', { name: agent.name })}>
+          <AppIcon name={agent.icon} size={17} />
+        </span>
+      )}
       {onToggleWeb && (
         <button
           type="button"

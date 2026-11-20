@@ -7,12 +7,13 @@ import { SessionContextPanel } from './SessionContextPanel';
 import { ArtifactsPanel } from './ArtifactsPanel';
 import { WebSourcesPanel } from './WebSourcesPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
+import { AgentProfilePicker } from './AgentProfilePicker';
 import { useSessionTurn } from '../hooks/useSessionTurn';
 import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
-import { DEFAULT_SESSION_CONTEXT, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionContextSettings, type WebSource } from '@memora/shared';
+import { DEFAULT_SESSION_CONTEXT, type AgentProfileSummary, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionAgentInfo, type SessionContextSettings, type WebSource } from '@memora/shared';
 import type { ChatMessage, SSEEvent, TurnInfo, TurnStatus, WebStatus } from '../lib/api';
-import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionAgent, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -41,6 +42,14 @@ interface ChatProps {
   projects?: ProjectRecord[];
   /** La sessione non esiste più (es. bozza persa al riavvio): ne crea una nuova. */
   onSessionUnavailable?: () => Promise<string>;
+  /** Profili disponibili per la scelta prima del primo messaggio. */
+  agentProfiles?: AgentProfileSummary[];
+  /** Profilo già associato alla sessione. */
+  agent?: SessionAgentInfo | null;
+  /** Notifica la selezione per aggiornare la sidebar. */
+  onAgentChange?: () => void;
+  /** Consente il selettore solo nella bozza di una nuova chat. */
+  allowAgentPicker?: boolean;
 }
 
 function getMemorySources(payload: unknown): MemorySource[] {
@@ -51,7 +60,7 @@ function getMemorySources(payload: unknown): MemorySource[] {
     return typeof value.relativePath === 'string' && typeof value.category === 'string' && (typeof value.heading === 'string' || value.heading === null) && typeof value.startLine === 'number' && typeof value.endLine === 'number';
   });
 }
-export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, turnStatus = null, queuedTurn = null, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable }: ChatProps) {
+export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTurnComplete, onSessionTitle, turnStatus = null, queuedTurn = null, onTruncateFromMessage, project = null, projects = [], onSessionUnavailable, agentProfiles = [], agent = null, onAgentChange, allowAgentPicker = false }: ChatProps) {
   const { t } = useI18n();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeAssistantIdRef = useRef<string | null>(null);
@@ -59,6 +68,9 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const completedTurnRef = useRef<string | null>(null);
   const streamEventHandlerRef = useRef<(event: SSEEvent) => void>(() => undefined);
   const [memorySources, setMemorySources] = useState<MemorySource[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<SessionAgentInfo | null>(agent);
+  const [agentSaving, setAgentSaving] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
@@ -95,6 +107,27 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const effectiveTurnStatus = turnStatus === 'running' || turnStatus === 'queued' || turnStatus === 'failed' || turnStatus === 'interrupted'
     ? turnStatus
     : turnStream.turn?.status ?? turnStatus;
+
+  useEffect(() => {
+    setSelectedAgent(agent);
+    setAgentError(null);
+  }, [agent, sessionId]);
+
+  const handleSelectAgent = useCallback(async (profileId: string | null) => {
+    if (!sessionId || agentSaving) return;
+    if ((selectedAgent?.id ?? null) === profileId) return;
+    setAgentSaving(true);
+    setAgentError(null);
+    try {
+      const result = await setSessionAgent(sessionId, profileId);
+      setSelectedAgent(result.agent ?? null);
+      onAgentChange?.();
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAgentSaving(false);
+    }
+  }, [agentSaving, onAgentChange, selectedAgent?.id, sessionId]);
 
   const openPanelTab = useCallback((tab: ChatSidePanelTab, artifactId: string | null = null) => {
     setPanelTab(tab);
@@ -636,6 +669,15 @@ function messageTitle(content: string, html: string | null): string {
       })()}
       {pdfNotice && <div className={`chat-notice${pdfNotice.error ? ' is-error' : ''}`} role="status">{pdfNotice.text}</div>}
       {memoryNotice && <div className={`chat-notice${memoryNotice.error ? ' is-error' : ''}`} role="status">{memoryNotice.text}</div>}
+      {allowAgentPicker && agentProfiles.length > 0 && messages.length === 0 && !isStreaming && (
+        <AgentProfilePicker
+          profiles={agentProfiles}
+          selected={selectedAgent}
+          saving={agentSaving}
+          error={agentError}
+          onSelect={profileId => void handleSelectAgent(profileId)}
+        />
+      )}
       <Composer
         onSend={handleSend}
         onQueue={isStreaming ? handleQueue : undefined}
@@ -651,6 +693,8 @@ function messageTitle(content: string, html: string | null): string {
         webEnabled={webEnabled}
         webAvailable={Boolean(webStatus?.configured)}
         onToggleWeb={() => void toggleWeb()}
+        agent={selectedAgent}
+        agentSaving={agentSaving}
       />
       </div>
       {memoryDialogMessage && sessionId && (() => {

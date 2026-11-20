@@ -122,6 +122,12 @@ async function main() {
     assert.equal(sessions.status, 200, 'GET /api/sessions deve funzionare');
     assert.ok(Array.isArray((await sessions.json()).sessions), 'sessions deve essere un array');
 
+    const agents = await authFetch(`${baseUrl}/api/agents`);
+    assert.equal(agents.status, 200, 'GET /api/agents deve funzionare');
+    const agentsBody = await agents.json();
+    assert.ok(Array.isArray(agentsBody.profiles), 'profiles deve essere un array');
+    assert.ok(agentsBody.profiles.some(profile => profile.id === 'commercialista'), 'i profili di esempio devono essere disponibili');
+
     const projects = await authFetch(`${baseUrl}/api/projects`);
     assert.equal(projects.status, 200, 'GET /api/projects deve funzionare');
     assert.ok(Array.isArray((await projects.json()).projects), 'projects deve essere un array');
@@ -159,6 +165,25 @@ async function main() {
     const createdBody = await createdWithNewDefault.json();
     assert.equal(createdBody.provider, 'opencode-go');
     assert.equal(createdBody.modelId, 'deepseek-v4.1-flash');
+
+    const selectedAgent = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/agent`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: 'commercialista' }),
+    });
+    assert.equal(selectedAgent.status, 200, 'PATCH /api/sessions/:id/agent deve funzionare');
+    const selectedAgentBody = await selectedAgent.json();
+    assert.deepEqual(selectedAgentBody.agent, { id: 'commercialista', name: 'Commercialista', icon: 'briefcase' });
+    const sessionsWithAgent = await (await authFetch(`${baseUrl}/api/sessions`)).json();
+    assert.equal(sessionsWithAgent.sessions.find(session => session.sessionId === createdBody.sessionId)?.agent?.id, 'commercialista');
+
+    const clearedAgent = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/agent`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: null }),
+    });
+    assert.equal(clearedAgent.status, 200, 'PATCH profilo base deve funzionare');
+    assert.equal((await clearedAgent.json()).agent, undefined);
 
     const adminStatus = await authFetch(`${baseUrl}/api/admin/status`);
     assert.equal(adminStatus.status, 200, 'GET /api/admin/status deve funzionare');

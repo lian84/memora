@@ -101,4 +101,27 @@ describe('Personal Assistant memory conversation policy', () => {
     expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('Memory Inbox');
     expect(PERSONAL_ASSISTANT_SYSTEM_PROMPT).toContain('non promettere ricerche aggiuntive, modifiche dirette della memoria o integrazione di fonti non disponibili');
   });
+
+  it('I. inserisce il profilo e l’indice delle competenze prima del progetto', () => {
+    const prompt = buildTurnSystemPrompt(
+      PERSONAL_ASSISTANT_SYSTEM_PROMPT,
+      [],
+      [],
+      'Istruzioni progetto.',
+      [],
+      {
+        id: 'commercialista',
+        name: 'Commercialista',
+        icon: 'briefcase',
+        prompt: 'Sei un esperto di contabilità.',
+        skills: [{ name: 'iva', description: 'Calcolo IVA.' }],
+      },
+    );
+    expect(prompt).toContain('--- Profilo agente ---');
+    expect(prompt).toContain('Sei un esperto di contabilità.');
+    expect(prompt).toContain('--- Competenze disponibili ---');
+    expect(prompt).toContain('"nome":"iva"');
+    expect(prompt).toContain('load_skill');
+    expect(prompt.indexOf('--- Profilo agente ---')).toBeLessThan(prompt.indexOf('--- Istruzioni progetto ---'));
+  });
 });

@@ -21,6 +21,7 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
     findById: vi.fn(),
   },
   SettingsManager: { create: vi.fn() },
+  loadSkillsFromDir: vi.fn(() => ({ skills: [], diagnostics: [] })),
   DefaultResourceLoader: class {
     constructor(config: typeof loaderConfigs[number]) { loaderConfigs.push(config); }
     reload = vi.fn(() => Promise.resolve());
@@ -98,6 +99,10 @@ beforeEach(() => {
   mockModelRuntimeCreate.mockResolvedValue(mockModelRuntimeObj);
   mockGetModel.mockReturnValue({ id: 'openrouter/auto' });
   mockSessionManagerCreate.mockReturnValue({} as unknown as ReturnType<typeof SessionManager.create>);
+  (mockSessionObj as unknown as { sessionManager: { getCwd: () => string; appendCustomEntry: ReturnType<typeof vi.fn> } }).sessionManager = {
+    getCwd: () => '/tmp/runtime',
+    appendCustomEntry: vi.fn(),
+  };
   mockSessionManagerOpen.mockReturnValue({ getEntries: () => [] } as unknown as ReturnType<typeof SessionManager.open>);
   mockSessionManagerListAll.mockResolvedValue([]);
   mockSessionManagerFindById.mockReturnValue(undefined);
@@ -161,6 +166,59 @@ describe('AgentService', () => {
       });
 
       service.disposeAll();
+    });
+  });
+
+  describe('agent profile', () => {
+    it('associa un profilo alla bozza e lo espone nella lista sessioni', async () => {
+      const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-service-'));
+      try {
+        mockSessionManagerCreate.mockReturnValue({ getCwd: () => '/tmp/runtime' } as unknown as ReturnType<typeof SessionManager.create>);
+        const service = new AgentService({ ...baseConfig, dataDir });
+        const created = await service.createSession();
+        const selected = await service.setSessionAgent(created.sessionId, 'commercialista');
+        expect(selected.agent).toEqual({ id: 'commercialista', name: 'Commercialista', icon: 'briefcase' });
+        const sessions = await service.listSessions();
+        expect(sessions.find(session => session.sessionId === created.sessionId)?.agent).toEqual(selected.agent);
+        service.disposeAll();
+      } finally {
+        const { rm } = await import('node:fs/promises');
+        await rm(dataDir, { recursive: true, force: true });
+      }
+    });
+
+    it('inietta il prompt del profilo nel turno successivo', async () => {
+      const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-prompt-'));
+      try {
+        const service = new AgentService({ ...baseConfig, dataDir });
+        const created = await service.createSession();
+        await service.setSessionAgent(created.sessionId, 'commercialista');
+        const config = loaderConfigs[0]!;
+        let handler: ((event: { messageType: string; prompt: string; systemPrompt: string }) => Promise<unknown>) | undefined;
+        config.extensionFactories[0]!({ on: (_event, fn) => { handler = fn; } });
+        const result = await handler!({ messageType: 'user', prompt: 'Come calcolo l’IVA?', systemPrompt: 'assistant' }) as { systemPrompt: string };
+        expect(result.systemPrompt).toContain('--- Profilo agente ---');
+        expect(result.systemPrompt).toContain('modalità Commercialista');
+        service.disposeAll();
+      } finally {
+        const { rm } = await import('node:fs/promises');
+        await rm(dataDir, { recursive: true, force: true });
+      }
+    });
+
+    it('rifiuta il cambio profilo dopo il primo messaggio utente', async () => {
+      const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-lock-'));
+      try {
+        const service = new AgentService({ ...baseConfig, dataDir });
+        const created = await service.createSession();
+        (mockSessionObj as unknown as { messages: unknown[] }).messages = [{ role: 'user', content: 'Ciao' }];
+        await expect(service.setSessionAgent(created.sessionId, 'commercialista')).rejects.toMatchObject({ code: 'agent_locked' });
+        service.disposeAll();
+      } finally {
+        (mockSessionObj as unknown as { messages: unknown[] }).messages = [];
+        const { rm } = await import('node:fs/promises');
+        await rm(dataDir, { recursive: true, force: true });
+      }
     });
   });
 

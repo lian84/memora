@@ -20,6 +20,8 @@ import {
   type ProjectFilePreview,
   type SessionContextSettings,
   type ChatArtifact,
+  type AgentProfileSummary,
+  type SessionAgentInfo,
   type ArtifactVersion,
   type SpreadsheetPreview,
   type WebSettingsView,
@@ -66,6 +68,8 @@ export interface SessionInfo {
   projectId?: string;
   /** Sessione ancora in memoria: il JSONL verrà creato al primo messaggio. */
   draft?: boolean;
+  /** Profilo agente scelto per questa chat; assente = Memo base. */
+  agent?: SessionAgentInfo;
 }
 
 export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'defaults' | 'retrieval' | 'sources'>> & { sectionId?: string | null; icon?: ProjectIcon | null };
@@ -146,6 +150,7 @@ export interface CreateSessionResult {
   provider?: ProviderId;
   reasoningLevel?: ReasoningLevel;
   projectId?: string;
+  agent?: SessionAgentInfo;
 }
 
 async function request(path: string, options: RequestInit = {}): Promise<Response> {
@@ -574,10 +579,24 @@ export async function getModels(provider?: ProviderId): Promise<AvailableModel[]
   return data.models;
 }
 
-export async function createSession(modelId?: string, provider?: ProviderId, reasoningLevel?: ReasoningLevel, projectId?: string): Promise<CreateSessionResult> {
+export async function listAgentProfiles(): Promise<AgentProfileSummary[]> {
+  const res = await request('/api/agents');
+  const data = await res.json() as { profiles: AgentProfileSummary[] };
+  return data.profiles;
+}
+
+export async function setSessionAgent(sessionId: string, profileId: string | null): Promise<{ sessionId: string; agent?: SessionAgentInfo }> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/agent`, {
+    method: 'PATCH',
+    body: JSON.stringify({ profileId }),
+  });
+  return res.json();
+}
+
+export async function createSession(modelId?: string, provider?: ProviderId, reasoningLevel?: ReasoningLevel, projectId?: string, agentProfileId?: string): Promise<CreateSessionResult> {
   const res = await request('/api/sessions', {
     method: 'POST',
-    body: JSON.stringify({ modelId, provider, reasoningLevel, ...(projectId ? { projectId } : {}) }),
+    body: JSON.stringify({ modelId, provider, reasoningLevel, ...(projectId ? { projectId } : {}), ...(agentProfileId ? { agentProfileId } : {}) }),
   });
   return res.json();
 }

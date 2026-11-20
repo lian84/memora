@@ -392,20 +392,50 @@ app.delete<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) =
   }
 });
 
+// --- Profili agente disponibili ---
+app.get('/api/agents', async (_req, reply) => {
+  try {
+    return reply.send({ profiles: await agentService.listAgentProfiles() });
+  } catch (err) {
+    app.log.error(err);
+    return reply.status(500).send({ error: 'agent_profiles_failed' });
+  }
+});
+
 // --- Crea sessione ---
 app.post('/api/sessions', async (req, reply) => {
   try {
-    const body = req.body as { modelId?: string; provider?: string; reasoningLevel?: string; projectId?: string } | undefined;
+    const body = req.body as { modelId?: string; provider?: string; reasoningLevel?: string; projectId?: string; agentProfileId?: string } | undefined;
     if (body?.provider && body.provider !== 'openrouter' && body.provider !== 'opencode-go') return reply.status(400).send({ error: 'invalid_provider' });
     if (body?.reasoningLevel && !REASONING_LEVELS.includes(body.reasoningLevel as ReasoningLevel)) return reply.status(400).send({ error: 'invalid_reasoning_level' });
     if (body?.projectId !== undefined && (typeof body.projectId !== 'string' || !body.projectId)) return reply.status(400).send({ error: 'invalid_project_id' });
-    const result = await agentService.createSession(body?.modelId, body?.provider as ProviderId | undefined, body?.reasoningLevel as ReasoningLevel | undefined, body?.projectId);
+    if (body?.agentProfileId !== undefined && (typeof body.agentProfileId !== 'string' || !body.agentProfileId)) return reply.status(400).send({ error: 'invalid_agent_profile' });
+    const result = await agentService.createSession(body?.modelId, body?.provider as ProviderId | undefined, body?.reasoningLevel as ReasoningLevel | undefined, body?.projectId, body?.agentProfileId);
     return reply.status(201).send(result);
   } catch (err) {
     if (err instanceof AgentServiceError && err.code === 'project_not_found') return reply.status(404).send({ error: err.code });
     if (err instanceof AgentServiceError && err.code === 'project_archived') return reply.status(409).send({ error: err.code });
+    if (err instanceof AgentServiceError && (err.code === 'agent_profile_not_found' || err.code === 'invalid_agent_profile')) return reply.status(err.code === 'agent_profile_not_found' ? 404 : 400).send({ error: err.code });
     app.log.error(err);
     return reply.status(500).send({ error: 'session_create_failed' });
+  }
+});
+
+// --- Imposta il profilo agente della sessione (solo prima del primo messaggio) ---
+app.patch<{ Params: { id: string }; Body: { profileId?: unknown } }>('/api/sessions/:id/agent', async (req, reply) => {
+  try {
+    const value = req.body?.profileId;
+    if (value !== null && (typeof value !== 'string' || !value)) return reply.status(400).send({ error: 'invalid_agent_profile' });
+    const result = await agentService.setSessionAgent(req.params.id, value);
+    return reply.send(result);
+  } catch (err) {
+    if (err instanceof AgentServiceError) {
+      if (err.code === 'session_not_found' || err.code === 'agent_profile_not_found') return reply.status(err.code === 'session_not_found' ? 404 : 404).send({ error: err.code });
+      if (err.code === 'agent_locked') return reply.status(409).send({ error: err.code, message: err.message });
+      if (err.code === 'invalid_agent_profile') return reply.status(400).send({ error: err.code });
+    }
+    app.log.error(err);
+    return reply.status(500).send({ error: 'session_agent_failed' });
   }
 });
 
@@ -413,7 +443,7 @@ app.post('/api/sessions', async (req, reply) => {
 app.get<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) => {
   try {
     const result = await agentService.resumeSession(req.params.id);
-    return reply.send({ sessionId: result.sessionId, modelId: result.modelId, provider: result.provider, reasoningLevel: result.reasoningLevel, projectId: result.projectId });
+    return reply.send({ sessionId: result.sessionId, modelId: result.modelId, provider: result.provider, reasoningLevel: result.reasoningLevel, projectId: result.projectId, agent: result.agent });
   } catch (err) {
     if (err instanceof AgentServiceError && err.code === 'session_not_found') {
       return reply.status(404).send({ error: err.code });

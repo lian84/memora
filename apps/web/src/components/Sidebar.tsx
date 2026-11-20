@@ -5,6 +5,7 @@ import type { ProjectRecord, ProjectSection } from '@memora/shared';
 import { SidebarTree } from './SidebarTree';
 import { RowMenu } from './RowMenu';
 import { SessionActionIcon } from './SessionActionIcon';
+import { AppIcon } from './AppIcon';
 import { useI18n } from '../i18n';
 
 const PINNED_SESSIONS_KEY = 'memora-pinned-sessions';
@@ -197,7 +198,7 @@ export function Sidebar({
         key={session.sessionId}
         className={`session-row${isSelected ? ' is-selected' : ''}${isRenaming ? ' is-renaming' : ''}${isPinned ? ' is-pinned' : ''}`}
         onClick={() => { if (!isRenaming) onSelect(session.sessionId); }}
-        title={title}
+        title={session.agent ? `${title} · ${t('Chat con {name}', { name: session.agent.name })}` : title}
       >
         {isRenaming ? (
           <input
@@ -213,6 +214,15 @@ export function Sidebar({
           />
         ) : (
           <>
+            {session.agent && (
+              <span
+                className="session-agent-icon"
+                title={t('Chat con {name}', { name: session.agent.name })}
+                aria-label={t('Chat con {name}', { name: session.agent.name })}
+              >
+                <AppIcon name={session.agent.icon} size={13} />
+              </span>
+            )}
             <span className="session-title">{title}</span>
             {isUnread && <span className="session-status-dot is-completed" title={t('Risposta non letta')} aria-label={t('Risposta non letta')} />}
             {isGeneratingElsewhere && <span className="session-status-dot is-running" title={t('Risposta in corso in un’altra chat')} aria-label={t('Risposta in corso in un’altra chat')} />}

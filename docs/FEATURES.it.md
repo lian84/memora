@@ -6,7 +6,7 @@ Questa è la fonte funzionale unica del progetto. Descrive ciò che è già
 implementato, il comportamento atteso e i limiti noti. Il README rimanda qui;
 le decisioni architetturali sono in [`DECISIONS.it.md`](DECISIONS.it.md).
 
-Ultimo aggiornamento: 2026-11-19.
+Ultimo aggiornamento: 2026-11-20.
 
 ## 1. Chat e sessioni
 
@@ -21,6 +21,7 @@ Ultimo aggiornamento: 2026-11-19.
 - [x] Allegati per messaggio: massimo 8 file, 15 MB ciascuno.
 - [x] Anteprima immagini e inclusione degli allegati immagini nel turno.
 - [x] Contesto per chat: memoria globale, memoria di progetto, fonti di progetto.
+- [x] Profili agente file-based selezionabili prima del primo messaggio; icona del profilo nel composer e nella sidebar. I profili aggiungono un prompt circoscritto e competenze caricate on demand, senza cambiare tool o policy di memoria.
 - [x] Modello, provider e livello di reasoning configurabili per chat.
 - [x] Esportazione della risposta in PDF.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.

@@ -16,10 +16,10 @@ import { useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
-import { deleteProjectSection, getAdminStatus, listProjectSections, listProjects, listTurnReads, listTurns, markTurnRead as markTurnReadApi, setSessionReasoningLevel, type TurnInfo } from './lib/api';
+import { deleteProjectSection, getAdminStatus, listAgentProfiles, listProjectSections, listProjects, listTurnReads, listTurns, markTurnRead as markTurnReadApi, setSessionReasoningLevel, type TurnInfo } from './lib/api';
 import { initAppearance, updateAppearance, useAppearance } from './lib/appearance';
 import { notifyTurnFinished } from './lib/browser-notifications';
-import type { ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
+import type { AgentProfileSummary, ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
 
 const SESSION_STORAGE_KEY = 'memora-selected-session';
 const PROJECT_STORAGE_KEY = 'memora-selected-project';
@@ -92,6 +92,7 @@ export default function App() {
   const [secondBrainOpen, setSecondBrainOpen] = useState(false);
   const [secondBrainScope, setSecondBrainScope] = useState('all');
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [agentProfiles, setAgentProfiles] = useState<AgentProfileSummary[]>([]);
   const [sections, setSections] = useState<ProjectSection[]>([]);
   const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
   const [sectionEditTarget, setSectionEditTarget] = useState<ProjectSection | null>(null);
@@ -114,6 +115,10 @@ export default function App() {
   const { t } = useI18n();
 
   useEffect(() => { initAppearance(); }, []);
+
+  useEffect(() => {
+    void listAgentProfiles().then(setAgentProfiles).catch(() => setAgentProfiles([]));
+  }, []);
 
   useEffect(() => {
     void getAdminStatus()
@@ -712,6 +717,10 @@ export default function App() {
               turnStatus={selectedSessionId ? turnsBySession[selectedSessionId]?.status ?? null : null}
               queuedTurn={selectedSessionId ? turnsBySession[selectedSessionId] ?? null : null}
               onSessionUnavailable={handleRecoverSession}
+              agentProfiles={agentProfiles}
+              agent={selectedSession?.agent ?? null}
+              onAgentChange={() => void load(archivedView)}
+              allowAgentPicker={Boolean(selectedSession?.draft)}
             />
           )}
         </div>

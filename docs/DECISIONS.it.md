@@ -1592,3 +1592,48 @@ lasciando la parte inferiore del testo su una seconda pagina quasi vuota.
   successiva invece di tagliarne il testo al confine.
 - Il CSS non può correggere un layout intrinsecamente più alto dell’area utile:
   il modello deve comunque progettare contenuti leggibili da una o più pagine.
+
+---
+## ADR-048 — Profili agente come preset di sessione circoscritti
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Chat diverse richiedono competenze e metodi diversi (brainstorming, contabilità,
+coding, social media) condividendo progetto, memoria e policy di sicurezza.
+Caricare tutte le competenze in ogni prompt sprecherebbe contesto e renderebbe
+il comportamento imprevedibile.
+
+### Decisione
+- I profili sono file-based in `$MEMORA_DATA_DIR/agents/<id>/` con
+  `agent.json`, `PROMPT.md` e `skills/<name>/SKILL.md` opzionali.
+- Il server crea quattro esempi (`brainstorming`, `commercialista`,
+  `sviluppatore`, `social-media`) solo quando la directory `agents` non esiste
+  ancora. Profili reali e dati personali non stanno mai nel repository pubblico.
+- Un profilo aggiunge un blocco di istruzioni dopo il prompt base immutabile di
+  Memora e prima delle istruzioni di progetto. Non può cambiare policy di ruolo,
+  permessi, tool o regole di memoria.
+- Le competenze complete non vengono iniettate nel system prompt. Il prompt
+  elenca nomi e descrizioni; il tool `load_skill` carica una competenza on demand,
+  confinata alla directory del profilo.
+- Il primo messaggio blocca il profilo. La sessione salva uno snapshot del prompt
+  e l’indice delle competenze in una custom entry `memora.agent`; la sidebar e il
+  composer mostrano solo il riepilogo del profilo.
+- Le nuove chat mostrano i chip dei profili sopra il composer fino al primo
+  turno. Selezionare **Memo base** significa nessun profilo. Dopo l’invio il
+  selettore sparisce e il profilo scelto compare come icona non interattiva
+  accanto ai controlli allegati e web. La stessa icona compare accanto alla
+  sessione nella sidebar solo per i profili diversi da base.
+- I profili non aggiungono tool builtin. Un profilo coding può revisionare codice
+  incollato o allegato, ma non leggere il repository finché non viene progettata
+  una policy workspace/tool separata.
+
+### Conseguenze
+- L’utente cambia competenza per chat senza duplicare progetti o memoria.
+- Il costo del prompt resta limitato: le istruzioni del profilo sono brevi e le
+  competenze sono caricate on demand.
+- Le chat esistenti mantengono lo snapshot del profilo quando il file viene
+  modificato; le modifiche valgono per le nuove chat. Rimuovere una competenza
+  può far fallire un successivo `load_skill` senza rompere la conversazione.
+- I file dei profili sono configurazione controllata dall’amministratore.
+  Profili importati o di terze parti vanno revisionati prima dell’uso.

@@ -101,3 +101,11 @@ test('mostra i pallini di risposta in corso e non letta', () => {
   expect(markup).toContain('Risposta in corso in un’altra chat');
   expect(markup).toContain('Risposta non letta');
 });
+
+test('mostra l’icona del profilo agente accanto alla sessione', () => {
+  const markup = renderToStaticMarkup(
+    <Sidebar {...baseProps} sessions={[{ ...session, agent: { id: 'commercialista', name: 'Commercialista', icon: 'briefcase' } }]} />,
+  );
+  expect(markup).toContain('Chat con Commercialista');
+  expect(markup).toContain('session-agent-icon');
+});

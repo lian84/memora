@@ -1750,3 +1750,48 @@ of the text on a mostly empty second page.
 - CSS pagination cannot fix a design that is intrinsically taller than the
   available page area; the model must still design readable one-page or
   multi-page content.
+
+---
+## ADR-048 — Agent profiles as scoped session presets
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Different chats need different expertise and methods (brainstorming, accounting,
+coding, social media) while sharing the same project, memory and safety policy.
+Loading every skill in every prompt would waste context and make behavior
+unpredictable.
+
+### Decision
+- Profiles are file-based under `$MEMORA_DATA_DIR/agents/<id>/` with
+  `agent.json`, `PROMPT.md` and optional `skills/<name>/SKILL.md`.
+- The server seeds four examples (`brainstorming`, `commercialista`,
+  `sviluppatore`, `social-media`) only when the `agents` directory does not yet
+  exist. Real profiles and personal data never live in the public repository.
+- A profile adds an instruction block after the immutable Memora base prompt
+  and before project instructions. It cannot change role policy, permissions,
+  tools or memory rules.
+- The full skills are not injected into the system prompt. The prompt lists
+  names and descriptions; the `load_skill` tool loads one skill on demand,
+  confined to the profile directory.
+- The first message locks the profile. A session stores a prompt snapshot and
+  the skill index in a `memora.agent` custom entry; the sidebar and composer
+  show only the profile summary.
+- New chats expose profile chips above the composer until the first turn.
+  Selecting `Memo base` means no profile. After sending, the picker disappears
+  and the selected profile is shown as a non-interactive icon beside the
+  attachment and web controls. The same icon appears beside the session in the
+  sidebar only for non-base profiles.
+- Profiles do not add builtin tools. A coding profile can review pasted or
+  attached code but cannot read the repository until a separate workspace/tool
+  policy is designed.
+
+### Consequences
+- Users can switch expertise per chat without duplicating projects or memory.
+- Prompt cost stays bounded: profile instructions are small and skills are
+  lazy-loaded.
+- Existing chats keep their selected profile snapshot when the profile file is
+  edited; changes apply to new chats. Removing a skill can make a later
+  `load_skill` call fail without breaking the conversation.
+- Profile files are administrator-controlled configuration. Imported or
+  third-party profiles should be reviewed before use.

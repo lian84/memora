@@ -611,6 +611,17 @@ renders a PNG preview, sends it as an image attachment with the source context a
 lets the model create an improved version. This action is manual and never starts
 an automatic loop; the previous artifact version remains available.
 
+### Agent profiles
+
+Before the first message, the composer shows the available **agent profiles**
+(Brainstorming, Commercialista, Sviluppatore, Social media). A profile adds a
+scoped prompt and lazily loaded skills; it does not add tools or permissions.
+If no profile is selected, Memo base is used. After sending, the picker
+disappears and the selected profile icon remains next to the attachment and web
+controls; the same icon appears beside the chat in the sidebar. Profiles are
+file-based under `$MEMORA_DATA_DIR/agents`; see
+[`docs/AGENT-PROFILES.md`](docs/AGENT-PROFILES.md).
+
 ### Chat controls
 
 - when the model exposes reasoning, a compact **Reasoning** panel shows a live

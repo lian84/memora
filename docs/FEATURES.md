@@ -6,7 +6,7 @@ This is the single functional registry for the project. It describes what is
 implemented, the expected behavior and the known limitations. The README links
 here; architectural decisions are in [`DECISIONS.md`](DECISIONS.md).
 
-Last updated: 2026-11-19.
+Last updated: 2026-11-20.
 
 ## 1. Chat and sessions
 
@@ -21,6 +21,7 @@ Last updated: 2026-11-19.
 - [x] Per-message attachments: at most 8 files, 15 MB each.
 - [x] Image preview and inclusion of image attachments in the turn.
 - [x] Per-chat context: global memory, project memory and project sources.
+- [x] File-based agent profiles selectable before the first message; profile icon in the composer and sidebar. Profiles add a scoped prompt and lazy-loaded skills without changing tools or memory policy.
 - [x] Model, provider and reasoning level configurable per chat.
 - [x] Export an answer to PDF.
 - [x] Extract memories from an answer with explicit review.

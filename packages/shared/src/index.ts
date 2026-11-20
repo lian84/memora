@@ -1,4 +1,5 @@
 import type { ProjectRecord } from './projects.js';
+import type { SessionAgentInfo } from './agents.js';
 
 export const APP_NAME = 'memora';
 
@@ -65,6 +66,8 @@ export interface SessionInfo {
   projectId?: string;
   /** Sessione creata ma non ancora persistita su JSONL (Pi crea il file al primo messaggio). */
   draft?: boolean;
+  /** Profilo agente scelto per questa chat; assente = Memo base. */
+  agent?: SessionAgentInfo;
 }
 
 /** Stato di un candidato memoria. */
@@ -312,6 +315,7 @@ export interface CreateSessionResult {
   provider?: import('./providers.js').ProviderId;
   reasoningLevel?: import('./providers.js').ReasoningLevel;
   projectId?: string;
+  agent?: SessionAgentInfo;
 }
 
 /** Payload per cambio modello di una sessione esistente */
@@ -369,3 +373,5 @@ export type {
 export { DEFAULT_SESSION_CONTEXT } from './projects.js';
 export { PROJECT_ICON_NAMES, isProjectIcon } from './projects.js';
 export { classifyProjectFile, isOfficeArtifactKind } from './projects.js';
+
+export * from './agents.js';
