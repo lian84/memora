@@ -636,4 +636,9 @@ export const en: Record<string, string> = {
   'Ogni giorno alle 18:00': 'Every day at 18:00',
   'Ogni lunedì alle 08:30': 'Every Monday at 08:30',
   'Ogni ora': 'Every hour',
+  'Automazione': 'Automation',
+  'Nuova automazione nel progetto': 'New automation in project',
+  'Automazioni senza progetto': 'Automations without a project',
+  'off': 'off',
+  'Crea automazioni dentro un progetto o fuori dai progetti. Girano sul server anche a browser chiuso.': 'Create automations inside a project or outside projects. They run on the server even with the browser closed.',
 };

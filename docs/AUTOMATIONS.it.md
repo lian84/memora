@@ -6,6 +6,19 @@ Memora può eseguire prompt su una pianificazione senza browser aperto. Lo
 scheduler fa parte del processo server: funziona finché `memora.service` (o il
 processo equivalente) è attivo. Non richiede una sessione web autenticata.
 
+## Dove crearle
+
+La sidebar principale mostra **Nuova chat** (due terzi) e **Nuova automazione**
+(un terzo) affiancati. Le automazioni sono oggetti di primo livello: compaiono
+nel progetto di appartenenza, accanto alle chat, oppure in **Automazioni senza
+progetto** quando non è associato un progetto. Aprendone una si vedono editor,
+cronologia e impostazioni Telegram nello spazio principale, senza passare da
+Amministrazione.
+
+Se un progetto è selezionato, **Nuova automazione** lo preseleziona; il progetto
+può comunque essere cambiato nel form. Il menu del progetto include anche
+**Nuova automazione nel progetto**.
+
 ## Come funziona una esecuzione
 
 1. Lo scheduler legge l’elenco persistito dei job.
@@ -76,7 +89,7 @@ pianificate (e di **Esegui ora**) quando il job ha **Invia risultato su
 Telegram**. Non crea ancora una sessione chat Telegram e non riceve messaggi.
 
 1. Crea un bot con BotFather.
-2. In Memora apri **Amministrazione → Automazioni → Telegram**.
+2. In Memora apri **Automazioni** dalla sidebar principale, poi la scheda **Telegram**.
 3. Incolla il token del bot e salvalo. Viene scritto in
    `config/telegram-secrets.json` con permessi `0600` e non viene mai restituito
    dall’API.

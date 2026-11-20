@@ -6,6 +6,7 @@ import { ReasoningSelector } from './components/ReasoningSelector';
 import { SecondBrainPage } from './components/SecondBrainPage';
 import { ChatMemoryPanel } from './components/ChatMemoryPanel';
 import { AdminSettings } from './components/AdminSettings';
+import { AutomationsPage } from './components/AutomationsPage';
 import { ProjectSettings } from './components/ProjectSettings';
 import { NewProjectDialog } from './components/NewProjectDialog';
 import { ProjectDeleteDialog } from './components/ProjectDeleteDialog';
@@ -16,10 +17,10 @@ import { useI18n } from './i18n';
 import { useSessions } from './hooks/useSessions';
 import { clearStoredModelSelection, readStoredModelSelection, saveStoredModelSelection } from './hooks/useModels';
 import { selectedSessionAfterDelete } from './lib/selectionState';
-import { deleteProjectSection, getAdminStatus, listAgentProfiles, listProjectSections, listProjects, listTurnReads, listTurns, markTurnRead as markTurnReadApi, setSessionReasoningLevel, type TurnInfo } from './lib/api';
+import { deleteProjectSection, getAdminStatus, listAgentProfiles, listAutomations, listProjectSections, listProjects, listTurnReads, listTurns, markTurnRead as markTurnReadApi, setSessionReasoningLevel, type TurnInfo } from './lib/api';
 import { initAppearance, updateAppearance, useAppearance } from './lib/appearance';
 import { notifyTurnFinished } from './lib/browser-notifications';
-import type { AgentProfileSummary, ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
+import type { AgentProfileSummary, AutomationJob, ChatAttachment, ProjectRecord, ProjectSection, ProviderId, ReasoningLevel } from '@memora/shared';
 
 const SESSION_STORAGE_KEY = 'memora-selected-session';
 const PROJECT_STORAGE_KEY = 'memora-selected-project';
@@ -89,6 +90,12 @@ export default function App() {
   const [memoryRevision, setMemoryRevision] = useState(0);
   const [adminOpen, setAdminOpen] = useState(false);
   const [secondBrainOpen, setSecondBrainOpen] = useState(false);
+  const [automations, setAutomations] = useState<AutomationJob[]>([]);
+  const [automationsOpen, setAutomationsOpen] = useState(false);
+  const [automationFocusId, setAutomationFocusId] = useState<string | null>(null);
+  const [automationStartCreate, setAutomationStartCreate] = useState(false);
+  const [automationDefaultProjectId, setAutomationDefaultProjectId] = useState<string | null>(null);
+  const [automationPageKey, setAutomationPageKey] = useState(0);
   const [secondBrainScope, setSecondBrainScope] = useState('all');
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [agentProfiles, setAgentProfiles] = useState<AgentProfileSummary[]>([]);
@@ -109,6 +116,7 @@ export default function App() {
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [projectDeleteTarget, setProjectDeleteTarget] = useState<ProjectRecord | null>(null);
   const explicitModelSelection = useRef(false);
+  const automationReturnRef = useRef<{ sessionId: string | null; projectId: string | null }>({ sessionId: null, projectId: null });
   const appearance = useAppearance();
   const { logout } = useAuth();
   const { t } = useI18n();
@@ -162,6 +170,16 @@ export default function App() {
   }, []);
 
   useEffect(() => { void loadProjects(); }, [loadProjects]);
+
+  const loadAutomations = useCallback(async () => {
+    try {
+      setAutomations((await listAutomations()).jobs);
+    } catch {
+      // La pagina automazioni mostra il proprio errore; la sidebar resta utilizzabile.
+    }
+  }, []);
+
+  useEffect(() => { void loadAutomations(); }, [loadAutomations]);
   const loadProjectSections = useCallback(async () => {
     try { setSections(await listProjectSections()); }
     catch { setSections([]); }
@@ -194,8 +212,11 @@ export default function App() {
   const chatProject = selectedSession?.projectId
     ? projects.find(project => project.id === selectedSession.projectId) ?? null
     : selectedProject;
+  const selectedAutomation = automations.find(job => job.id === automationFocusId);
   const selectedSessionTitle = adminOpen
     ? t('Amministrazione')
+    : automationsOpen
+      ? (selectedAutomation?.name ?? t('Automazioni'))
     : secondBrainOpen
       ? t('Second Brain')
       : projectOpen && selectedProject
@@ -324,6 +345,7 @@ export default function App() {
   const handleSelectProject = useCallback((projectId: string | null) => {
     setSelectedProjectId(projectId);
     setProjectOpen(false);
+    setAutomationsOpen(false);
     setAdminOpen(false);
     setSecondBrainOpen(false);
     if (projectId) localStorage.setItem(PROJECT_STORAGE_KEY, projectId);
@@ -333,6 +355,7 @@ export default function App() {
   const handleOpenSecondBrain = useCallback((scope = 'all') => {
     setSecondBrainScope(scope);
     setSecondBrainOpen(true);
+    setAutomationsOpen(false);
     setAdminOpen(false);
     setProjectOpen(false);
     setSidebarOpen(false);
@@ -374,6 +397,7 @@ export default function App() {
     setProjectOpen(true);
     setAdminOpen(false);
     setSecondBrainOpen(false);
+    setAutomationsOpen(false);
   }, []);
 
   const handleEditProject = useCallback((projectId: string) => {
@@ -388,6 +412,7 @@ export default function App() {
     setProjectOpen(true);
     setAdminOpen(false);
     setSecondBrainOpen(false);
+    setAutomationsOpen(false);
     setSidebarOpen(false);
   }, [selectedSession]);
 
@@ -418,6 +443,7 @@ export default function App() {
       }
       setAdminOpen(false);
       setSecondBrainOpen(false);
+      setAutomationsOpen(false);
       const sessionProjectId = sessions.find(session => session.sessionId === sessionId)?.projectId ?? null;
       setSelectedProjectId(sessionProjectId);
       if (sessionProjectId) localStorage.setItem(PROJECT_STORAGE_KEY, sessionProjectId); else localStorage.removeItem(PROJECT_STORAGE_KEY);
@@ -439,6 +465,47 @@ export default function App() {
   );
   handleSelectSessionRef.current = handleSelectSession;
 
+  const openAutomationsPage = useCallback((options: { jobId?: string | null; create?: boolean; projectId?: string | null } = {}) => {
+    if (!automationsOpen) automationReturnRef.current = { sessionId: selectedSessionId, projectId: selectedProjectId };
+    const projectId = options.projectId === undefined ? selectedProjectId : options.projectId;
+    setAutomationFocusId(options.jobId ?? null);
+    setAutomationStartCreate(options.create === true);
+    setAutomationDefaultProjectId(projectId ?? null);
+    setAutomationPageKey(key => key + 1);
+    setAutomationsOpen(true);
+    setAdminOpen(false);
+    setProjectOpen(false);
+    setSecondBrainOpen(false);
+    setSidebarOpen(false);
+  }, [automationsOpen, selectedProjectId, selectedSessionId]);
+
+  const closeAutomations = useCallback(() => {
+    setAutomationsOpen(false);
+    const previous = automationReturnRef.current;
+    setSelectedSessionId(previous.sessionId);
+    setSelectedProjectId(previous.projectId);
+    if (previous.projectId) localStorage.setItem(PROJECT_STORAGE_KEY, previous.projectId); else localStorage.removeItem(PROJECT_STORAGE_KEY);
+    if (previous.sessionId) {
+      setSessionInUrl(previous.sessionId);
+      localStorage.setItem(SESSION_STORAGE_KEY, previous.sessionId);
+    } else {
+      setSessionInUrl(null);
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+      setMessages([]);
+    }
+  }, []);
+
+  const handleNewAutomation = useCallback((projectId?: string | null) => {
+    openAutomationsPage({ create: true, projectId: projectId === undefined ? selectedProjectId : projectId });
+  }, [openAutomationsPage, selectedProjectId]);
+
+  const handleSelectAutomation = useCallback((job: AutomationJob) => {
+    const projectId = job.projectId ?? null;
+    setSelectedProjectId(projectId);
+    if (projectId) localStorage.setItem(PROJECT_STORAGE_KEY, projectId); else localStorage.removeItem(PROJECT_STORAGE_KEY);
+    openAutomationsPage({ jobId: job.id, projectId });
+  }, [openAutomationsPage]);
+
   const handleNewSession = useCallback(async (projectId?: string | null): Promise<string> => {
     const targetProjectId = projectId === undefined ? selectedProjectId : projectId;
     const result = await create(selectedModelId || undefined, selectedProvider, selectedReasoningLevel, targetProjectId ?? undefined);
@@ -449,6 +516,7 @@ export default function App() {
     setAdminOpen(false);
     setProjectOpen(false);
     setSecondBrainOpen(false);
+    setAutomationsOpen(false);
     setSelectedProjectId(targetProjectId ?? null);
     if (targetProjectId) localStorage.setItem(PROJECT_STORAGE_KEY, targetProjectId); else localStorage.removeItem(PROJECT_STORAGE_KEY);
     setSelectedSessionId(id);
@@ -578,6 +646,7 @@ export default function App() {
           setAdminOpen(true);
           setProjectOpen(false);
           setSecondBrainOpen(false);
+          setAutomationsOpen(false);
           setSidebarOpen(false);
         }}
         onOpenSecondBrain={() => handleOpenSecondBrain()}
@@ -597,6 +666,12 @@ export default function App() {
         onEditSection={openEditSection}
         onDeleteSection={section => { setSectionDeleteError(null); setSectionDeleteTarget(section); }}
         projectSettingsActive={projectOpen}
+        automations={automations}
+        automationsActive={automationsOpen}
+        selectedAutomationId={automationsOpen ? automationFocusId : null}
+        onCreateAutomation={() => handleNewAutomation()}
+        onNewAutomationInProject={handleNewAutomation}
+        onSelectAutomation={handleSelectAutomation}
         collapsed={appearance.sidebarCollapsed}
       />
 
@@ -616,12 +691,12 @@ export default function App() {
           </button>
 
           <div className="topbar-heading">
-            <span className="topbar-eyebrow">{adminOpen ? t('Configurazione runtime') : secondBrainOpen ? t('Memoria personale') : projectOpen ? t('Progetto') : t('Conversazione')}</span>
+            <span className="topbar-eyebrow">{adminOpen ? t('Configurazione runtime') : automationsOpen ? t('Attività pianificate') : secondBrainOpen ? t('Memoria personale') : projectOpen ? t('Progetto') : t('Conversazione')}</span>
             <h1 title={selectedSessionTitle}>{selectedSessionTitle}</h1>
           </div>
 
           <div className="topbar-actions">
-            {!adminOpen && !projectOpen && !secondBrainOpen && (
+            {!adminOpen && !automationsOpen && !projectOpen && !secondBrainOpen && (
               <>
               <div className="chat-model-fields">
                 <ModelSelector
@@ -660,7 +735,18 @@ export default function App() {
             />
           )}
 
-          {!adminOpen && !secondBrainOpen && projectOpen && selectedProject && (
+          {!adminOpen && !secondBrainOpen && automationsOpen && (
+            <AutomationsPage
+              key={automationPageKey}
+              defaultProjectId={automationDefaultProjectId}
+              focusJobId={automationFocusId}
+              startCreate={automationStartCreate}
+              onClose={closeAutomations}
+              onChanged={() => void loadAutomations()}
+            />
+          )}
+
+          {!adminOpen && !secondBrainOpen && !automationsOpen && projectOpen && selectedProject && (
             <ProjectSettings
               project={selectedProject}
               onClose={() => setProjectOpen(false)}
@@ -671,7 +757,7 @@ export default function App() {
             />
           )}
 
-          {!adminOpen && !secondBrainOpen && !projectOpen && !selectedSessionId && (
+          {!adminOpen && !secondBrainOpen && !automationsOpen && !projectOpen && !selectedSessionId && (
             <section className="empty-state">
               <span className="empty-state-icon" aria-hidden="true">
                 <img src="/brand/memora-avatar.png" alt="" />
@@ -690,7 +776,7 @@ export default function App() {
             </section>
           )}
 
-          {!adminOpen && !secondBrainOpen && !projectOpen && selectedSessionId && (
+          {!adminOpen && !secondBrainOpen && !automationsOpen && !projectOpen && selectedSessionId && (
             <Chat
               sessionId={selectedSessionId}
               messages={messages}
@@ -712,7 +798,7 @@ export default function App() {
           )}
         </div>
 
-        {!adminOpen && !secondBrainOpen && !projectOpen && (
+        {!adminOpen && !secondBrainOpen && !automationsOpen && !projectOpen && (
           <ChatMemoryPanel
             refreshKey={memoryRevision}
             projectId={chatProject?.id ?? selectedProjectId}

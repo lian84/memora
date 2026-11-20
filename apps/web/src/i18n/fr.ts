@@ -637,4 +637,9 @@ export const fr: Record<string, string> = {
   'Ogni giorno alle 18:00': 'Chaque jour à 18:00',
   'Ogni lunedì alle 08:30': 'Chaque lundi à 08:30',
   'Ogni ora': 'Chaque heure',
+  'Automazione': 'Automatisation',
+  'Nuova automazione nel progetto': 'Nouvelle automatisation dans le projet',
+  'Automazioni senza progetto': 'Automatisations sans projet',
+  'off': 'off',
+  'Crea automazioni dentro un progetto o fuori dai progetti. Girano sul server anche a browser chiuso.': 'Créez des automatisations dans un projet ou hors des projets. Elles s’exécutent sur le serveur même navigateur fermé.',
 };

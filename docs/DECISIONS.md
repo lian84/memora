@@ -2062,3 +2062,31 @@ single-user self-hosted assistant.
 - Telegram messages contain personal data; users must choose a bot/chat they
   control.
 - An inbound Telegram chat interface remains a separate future milestone.
+
+---
+## ADR-058 — Automations as first-class sidebar objects
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Managing automations only from Administration separated them from the project
+and chat context in which they are used. Users need to create, open and inspect
+them the same way they open chats.
+
+### Decision
+- Add a **New automation** button next to **New chat** in the main sidebar,
+  with a two-thirds/one-third split on desktop.
+- Group automations under their project, beside chats, and under **Automations
+  without a project** when unassociated.
+- Open an automation in the main workspace, where its editor, run history and
+  Telegram settings live.
+- Preselect the current project when creating from the top button; the project
+  row menu can create one directly inside that project.
+- Keep the existing `/api/admin/automations` API and hide the old Administration
+  tab from the UI.
+
+### Consequences
+- Automations have a visible place in the same navigation model as chats.
+- The project context is explicit before a run and in the sidebar.
+- Telegram configuration remains in the automation workspace, not in general
+  settings.

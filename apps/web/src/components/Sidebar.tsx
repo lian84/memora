@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { SessionInfo, TurnStatus } from '../lib/api';
+import type { AutomationJob } from '@memora/shared';
 import type { ProjectRecord, ProjectSection } from '@memora/shared';
 import { SidebarTree } from './SidebarTree';
 import { RowMenu } from './RowMenu';
@@ -58,6 +59,12 @@ interface SidebarProps {
   turnStatuses?: Record<string, TurnStatus>;
   unreadSessions?: Set<string>;
   projectSettingsActive?: boolean;
+  automations?: AutomationJob[];
+  automationsActive?: boolean;
+  selectedAutomationId?: string | null;
+  onCreateAutomation?: () => void;
+  onNewAutomationInProject?: (projectId: string) => void;
+  onSelectAutomation?: (job: AutomationJob) => void;
   onOpenSecondBrain?: () => void;
   secondBrainActive?: boolean;
   onLogout?: () => void;
@@ -90,6 +97,12 @@ export function Sidebar({
   onDeleteSection,
   turnStatuses = {},
   unreadSessions = new Set(),
+  automations = [],
+  automationsActive = false,
+  selectedAutomationId = null,
+  onCreateAutomation,
+  onNewAutomationInProject,
+  onSelectAutomation,
   onOpenSecondBrain,
   secondBrainActive = false,
   onLogout,
@@ -233,8 +246,24 @@ export function Sidebar({
     );
   });
 
+  const renderAutomationRows = (rows: AutomationJob[]): ReactNode => rows.map(job => (
+    <button
+      type="button"
+      key={job.id}
+      className={`sidebar-automation-row${selectedAutomationId === job.id ? ' is-selected' : ''}${job.enabled ? '' : ' is-disabled'}`}
+      onClick={() => onSelectAutomation?.(job)}
+      title={`${t('Automazione')}: ${job.name} · ${job.cron} · ${job.timezone}`}
+    >
+      <span className="sidebar-automation-icon" aria-hidden="true">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 1.5" /></svg>
+      </span>
+      <span className="sidebar-automation-title">{job.name}</span>
+      {!job.enabled && <span className="sidebar-automation-off">{t('off')}</span>}
+    </button>
+  ));
+
   return (
-    <aside className={`sidebar${mobileOpen ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}`} aria-label={t('Barra chat e sessioni')}>
+    <aside className={`sidebar${mobileOpen ? ' is-open' : ''}${collapsed ? ' is-collapsed' : ''}${automationsActive ? ' automations-active' : ''}`} aria-label={t('Barra chat e sessioni')}>
       <header className="sidebar-header">
         <div>
           <h1 className="sidebar-brand" aria-label={t('Memora')}>
@@ -251,8 +280,14 @@ export function Sidebar({
           </button>
         )}
       </header>
-      <div className="sidebar-toolbar">
+      <div className="sidebar-toolbar sidebar-toolbar-actions">
         <button type="button" className="new-chat-button" onClick={handleCreate} disabled={loading}>{t('Nuova chat')}</button>
+        {onCreateAutomation && (
+          <button type="button" className="new-automation-button" onClick={onCreateAutomation} title={t('Nuova automazione')} aria-label={t('Nuova automazione')}>
+            <span aria-hidden="true">+</span>
+            <span>{t('Automazione')}</span>
+          </button>
+        )}
       </div>
       {error && <div role="alert" className="sidebar-error">{error}</div>}
       <div className="session-list">
@@ -271,7 +306,10 @@ export function Sidebar({
             onEditSection={section => onEditSection?.(section)}
             onDeleteSection={section => onDeleteSection?.(section)}
             onNewChatInProject={projectId => onCreateInProject?.(projectId)}
+            automations={automations}
+            onNewAutomationInProject={projectId => onNewAutomationInProject?.(projectId)}
             renderSessions={renderSessionRows}
+            renderAutomations={renderAutomationRows}
           />
         )}
       </div>

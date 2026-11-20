@@ -42,7 +42,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta). Telegram è usato solo per i risultati delle automazioni pianificate e funziona a browser chiuso.
 - [x] Test end-to-end HTTP con due client SSE e replay dopo riconnessione.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
-- [x] Amministrazione → Automazioni: job con cron/timezone, selezione progetto e profilo agente, server MCP opzionali e scritture MCP esplicite.
+- [x] Pagina Automazioni: job con cron/timezone, selezione progetto e profilo agente, server MCP opzionali e scritture MCP esplicite.
 - [x] Scheduler headless con timeout, retry limitati, cronologia ed **Esegui ora**; cambiare la pianificazione non richiede il browser.
 - [x] Consegna Telegram opzionale dei risultati, con scoperta chat, messaggio di test e token nel secret store locale.
 - [x] Job e cronologia in `$MEMORA_DATA_DIR/automations/`.

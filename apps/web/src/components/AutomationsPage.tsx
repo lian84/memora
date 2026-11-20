@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MCP_SERVER_DEFINITIONS,
   type AutomationJob,
@@ -58,14 +58,14 @@ function browserTimezone(): string {
   }
 }
 
-function emptyForm(): JobForm {
+function emptyForm(defaultProjectId?: string | null): JobForm {
   return {
     name: '',
     prompt: '',
     cron: '0 9 * * *',
     timezone: browserTimezone(),
     enabled: true,
-    projectId: '',
+    projectId: defaultProjectId ?? '',
     agentProfileId: '',
     mcpEnabled: [],
     allowWrites: false,
@@ -98,7 +98,18 @@ function runStatusLabel(status: AutomationRun['status']): string {
   return 'In esecuzione';
 }
 
-export function AutomationsAdminPanel() {
+interface AutomationsPageProps {
+  /** Progetto preselezionato quando si crea una nuova automazione. */
+  defaultProjectId?: string | null;
+  /** Automazione da aprire subito (selezione dalla sidebar). */
+  focusJobId?: string | null;
+  /** Apre direttamente il form di creazione. */
+  startCreate?: boolean;
+  onClose?: () => void;
+  onChanged?: () => void;
+}
+
+export function AutomationsPage({ defaultProjectId = null, focusJobId = null, startCreate = false, onClose, onChanged }: AutomationsPageProps) {
   const { t } = useI18n();
   const [jobs, setJobs] = useState<AutomationJob[]>([]);
   const [telegram, setTelegram] = useState<TelegramSettingsView | null>(null);
@@ -116,12 +127,17 @@ export function AutomationsAdminPanel() {
   const [runsJobId, setRunsJobId] = useState<string | null>(null);
   const [runsLoading, setRunsLoading] = useState(false);
   const [runningIds, setRunningIds] = useState<string[]>([]);
+  const initializedRef = useRef(false);
 
   const [telegramEnabled, setTelegramEnabled] = useState(false);
   const [telegramChatId, setTelegramChatId] = useState('');
   const [telegramToken, setTelegramToken] = useState('');
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [telegramDiscovery, setTelegramDiscovery] = useState<TelegramChat[]>([]);
+
+  const notifyChanged = useCallback(() => {
+    onChanged?.();
+  }, [onChanged]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -150,12 +166,23 @@ export function AutomationsAdminPanel() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    if (loading || initializedRef.current) return;
+    initializedRef.current = true;
+    if (focusJobId) {
+      const job = jobs.find(item => item.id === focusJobId);
+      if (job) startEdit(job);
+      return;
+    }
+    if (startCreate) startNew();
+  }, [focusJobId, jobs, loading, startCreate]);
+
   const projectName = useMemo(() => new Map(projects.map(project => [project.id, project.name])), [projects]);
   const profileName = useMemo(() => new Map(profiles.map(profile => [profile.id, profile.name])), [profiles]);
 
   const startNew = () => {
     setEditingId(null);
-    setForm({ ...emptyForm(), notifyTelegram: Boolean(telegram?.enabled && telegram.chatId) });
+    setForm({ ...emptyForm(defaultProjectId), notifyTelegram: Boolean(telegram?.enabled && telegram.chatId) });
     setError(null);
     setMessage(null);
   };
@@ -192,6 +219,7 @@ export function AutomationsAdminPanel() {
       setEditingId(null);
       setForm(null);
       await load();
+      notifyChanged();
       setMessage(editingId ? t('Automazione aggiornata.') : t('Automazione creata.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -205,6 +233,7 @@ export function AutomationsAdminPanel() {
     try {
       await updateAutomation(job.id, { enabled: !job.enabled });
       await load();
+      notifyChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -220,6 +249,7 @@ export function AutomationsAdminPanel() {
       if (runsJobId === deleteTarget.id) { setRunsJobId(null); setRuns([]); }
       setDeleteTarget(null);
       await load();
+      notifyChanged();
       setMessage(t('Automazione eliminata.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -235,8 +265,10 @@ export function AutomationsAdminPanel() {
       await runAutomation(job.id);
       setRunningIds(current => [...current, job.id]);
       setMessage(t('Automazione avviata. La esecuzione avviene sul server, anche a browser chiuso.'));
+      notifyChanged();
       window.setTimeout(() => {
         void load();
+        notifyChanged();
         setRunningIds(current => current.filter(id => id !== job.id));
       }, 2_000);
     } catch (err) {
@@ -333,6 +365,14 @@ export function AutomationsAdminPanel() {
 
   return (
     <div className="automations-admin">
+      <div className="automation-page-header">
+        <div>
+          <span className="admin-eyebrow">{t('Attività pianificate')}</span>
+          <h2>{t('Automazioni')}</h2>
+          <p>{t('Crea automazioni dentro un progetto o fuori dai progetti. Girano sul server anche a browser chiuso.')}</p>
+        </div>
+        {onClose && <button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button>}
+      </div>
       {error && <div role="alert" className="admin-alert is-error">{error}</div>}
       {message && <div className="admin-alert is-success">{message}</div>}
 

@@ -6,6 +6,18 @@ Memora can run prompts on a schedule without an open browser. The scheduler is
 part of the server process; it works while `memora.service` (or the equivalent
 process) is running. It does not require a logged-in web session.
 
+## Where to create them
+
+The main sidebar has **New chat** (two thirds) and **New automation** (one
+third) side by side. Automations are first-class objects: they appear under
+their project, next to chats, or under **Automations without a project** when
+no project is selected. Opening one shows its editor, run history and Telegram
+settings in the main workspace, without going through Administration.
+
+When the current project is selected, **New automation** preselects it; the
+project can still be changed in the form. The project row menu also has **New
+automation in project**.
+
 ## How a run works
 
 1. The scheduler reads the persisted job list.
@@ -77,7 +89,7 @@ Telegram** enabled. It does not create a Telegram chat session or receive
 messages yet.
 
 1. Create a bot with BotFather.
-2. In Memora open **Administration → Automations → Telegram**.
+2. In Memora open **Automations** from the main sidebar, then the **Telegram** card.
 3. Paste the bot token and save it. It is written to
    `config/telegram-secrets.json` with mode `0600` and is never returned by the
    API.

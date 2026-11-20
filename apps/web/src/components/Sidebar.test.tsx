@@ -112,3 +112,26 @@ test('nasconde le chat archiviate del progetto salvo impostazione esplicita', ()
   expect(shown).toContain('Chat archiviata progetto');
   expect(shown).toContain('is-archived');
 });
+
+test('mostra il pulsante automazione e le automazioni dentro il progetto', () => {
+  const project = {
+    version: 1 as const, id: 'orione', name: 'Orione', description: '', status: 'active' as const, prompt: '',
+    defaults: {}, retrieval: { includeGlobal: true, includeProjectMemory: true, includeProjectSources: true },
+    sources: { include: ['**/*.md'], exclude: [] }, createdAt: 1, updatedAt: 1, source: 'file' as const, icon: 'rocket' as const,
+  };
+  const markup = renderToStaticMarkup(
+    <Sidebar
+      {...baseProps}
+      projects={[project]}
+      automations={[{ id: 'job_1', name: 'Riepilogo', prompt: 'Riepilogo', cron: '0 9 * * *', timezone: 'Europe/Rome', enabled: true, projectId: 'orione', mcp: { enabled: [] }, notifyTelegram: false, timeoutMinutes: 10, maxAttempts: 1, createdAt: 1, updatedAt: 1 }]}
+      onCreateAutomation={() => undefined}
+      onSelectAutomation={() => undefined}
+      selectedProjectId="orione"
+    />,
+  );
+  expect(markup).toContain('title="Nuova automazione"');
+  expect(markup).toContain('class="new-automation-button"');
+  expect(markup).toContain('Riepilogo');
+  expect(markup).toContain('sidebar-project-automations');
+  expect(markup).toContain('Automazioni');
+});

@@ -52,7 +52,7 @@ Last updated: 2026-11-20.
   the browser closed.
 - [x] End-to-end HTTP tests with two SSE clients and replay after reconnection.
 - [x] Manual rename always wins over automatic title generation.
-- [x] Administration → Automations: cron/timezone jobs, project and agent profile selection, optional MCP servers and explicit MCP writes.
+- [x] Automation page: cron/timezone jobs, project and agent profile selection, optional MCP servers and explicit MCP writes.
 - [x] Headless scheduler with timeout, limited retries, run history and **Run now**; changing the schedule does not require a browser.
 - [x] Optional Telegram delivery of automation results, with chat discovery, test message and a token kept in the local secret store.
 - [x] Jobs and run history stored under `$MEMORA_DATA_DIR/automations/`.

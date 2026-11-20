@@ -1909,3 +1909,32 @@ diffuso per un assistente self-hosted single-user.
 - I messaggi Telegram contengono dati personali; l’utente deve scegliere un
   bot/chat che controlla.
 - Una interfaccia chat Telegram in ingresso resta una milestone separata.
+
+---
+## ADR-058 — Automazioni come oggetti di primo livello nella sidebar
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Gestire le automazioni solo da Amministrazione le separava dal contesto di
+progetto e chat in cui vengono usate. L’utente deve poterle creare, aprire e
+ispezionare come le chat.
+
+### Decisione
+- Aggiungere **Nuova automazione** accanto a **Nuova chat** nella sidebar
+  principale, con divisione due terzi/un terzo su desktop.
+- Raggruppare le automazioni nel progetto di appartenenza, accanto alle chat, e
+  in **Automazioni senza progetto** quando non associate.
+- Aprire l’automazione nello spazio principale, dove vivono editor, cronologia e
+  impostazioni Telegram.
+- Preselezionare il progetto corrente quando si crea dal pulsante in alto; il
+  menu del progetto permette di crearla direttamente lì.
+- Mantenere l’API `/api/admin/automations` e rimuovere la vecchia scheda di
+  Amministrazione dalla UI.
+
+### Conseguenze
+- Le automazioni hanno un posto visibile nello stesso modello di navigazione
+  delle chat.
+- Il contesto di progetto è esplicito prima di un run e nella sidebar.
+- La configurazione Telegram resta nello spazio Automazioni, non nelle
+  impostazioni generali.

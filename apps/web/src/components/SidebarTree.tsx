@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { ProjectRecord, ProjectSection } from '@memora/shared';
+import type { AutomationJob, ProjectRecord, ProjectSection } from '@memora/shared';
 import type { SessionInfo } from '../lib/api';
 import { AppIcon } from './AppIcon';
 import { RowMenu } from './RowMenu';
@@ -59,7 +59,10 @@ interface SidebarTreeProps {
   onEditSection: (section: ProjectSection) => void;
   onDeleteSection: (section: ProjectSection) => void;
   onNewChatInProject: (projectId: string) => Promise<unknown> | void;
+  automations: AutomationJob[];
+  onNewAutomationInProject: (projectId: string) => void;
   renderSessions: (sessions: SessionInfo[]) => ReactNode;
+  renderAutomations: (automations: AutomationJob[]) => ReactNode;
 }
 
 export function SidebarTree({
@@ -74,7 +77,10 @@ export function SidebarTree({
   onEditSection,
   onDeleteSection,
   onNewChatInProject,
+  automations,
+  onNewAutomationInProject,
   renderSessions,
+  renderAutomations,
 }: SidebarTreeProps) {
   const { t } = useI18n();
   const storedSections = useRef(readSet(SECTION_STATE_KEY));
@@ -148,6 +154,19 @@ export function SidebarTree({
     }
   }
 
+  const automationsByProject = new Map<string, AutomationJob[]>();
+  const unassignedAutomations: AutomationJob[] = [];
+  for (const job of automations) {
+    const project = job.projectId ? projectById.get(job.projectId) : undefined;
+    if (project) {
+      const list = automationsByProject.get(project.id) ?? [];
+      list.push(job);
+      automationsByProject.set(project.id, list);
+    } else {
+      unassignedAutomations.push(job);
+    }
+  }
+
   const toggleSection = (id: string) => {
     setOpenSections(current => {
       const next = new Set(current);
@@ -178,6 +197,7 @@ export function SidebarTree({
 
   const renderProject = (project: ProjectRecord) => {
     const projectSessions = sessionsByProject.get(project.id) ?? [];
+    const projectAutomations = automationsByProject.get(project.id) ?? [];
     const open = openProjects.has(project.id);
     const active = project.id === selectedProjectId;
     return (
@@ -195,13 +215,22 @@ export function SidebarTree({
             label={`${t('Azioni progetto')} ${project.name}`}
             items={[
               { label: t('Nuova chat nel progetto'), icon: <PlusIcon />, onSelect: () => { void onNewChatInProject(project.id); } },
+              { label: t('Nuova automazione nel progetto'), icon: <PlusIcon />, onSelect: () => onNewAutomationInProject(project.id) },
               { label: t('Impostazioni progetto'), icon: <SettingsIcon />, onSelect: () => onEditProject(project.id) },
             ]}
           />
         </div>
         {open && (
           <div className="sidebar-project-sessions">
-            {projectSessions.length > 0 ? renderSessions(projectSessions) : <div className="sidebar-tree-empty">{t('Nessuna chat in questo progetto.')}</div>}
+            {projectSessions.length > 0
+              ? renderSessions(projectSessions)
+              : projectAutomations.length === 0 && <div className="sidebar-tree-empty">{t('Nessuna chat in questo progetto.')}</div>}
+            {projectAutomations.length > 0 && (
+              <div className="sidebar-project-automations">
+                <div className="sidebar-tree-subheading">{t('Automazioni')}</div>
+                {renderAutomations(projectAutomations)}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -251,7 +280,7 @@ export function SidebarTree({
           </section>
         );
       })}
-      {(unassignedProjects.length > 0 || unassignedSessions.length > 0) && (
+      {(unassignedProjects.length > 0 || unassignedSessions.length > 0 || unassignedAutomations.length > 0) && (
         <section className="sidebar-section">
           <div className="sidebar-tree-row sidebar-section-row">
             <button type="button" className="sidebar-tree-toggle" aria-label={t(openSections.has(UNASSIGNED_PROJECTS) ? 'Chiudi sezione' : 'Apri sezione')} aria-expanded={openSections.has(UNASSIGNED_PROJECTS)} onClick={() => toggleSection(UNASSIGNED_PROJECTS)}>
@@ -277,7 +306,19 @@ export function SidebarTree({
                   <div className="sidebar-project-sessions">{renderSessions(unassignedSessions)}</div>
                 </div>
               )}
-              {unassignedProjects.length === 0 && unassignedSessions.length === 0 && <div className="sidebar-tree-empty">{t('Nessun progetto.')}</div>}
+              {unassignedAutomations.length > 0 && (
+                <div className="sidebar-project sidebar-project-unassigned">
+                  <div className="sidebar-tree-row sidebar-project-row">
+                    <span className="sidebar-tree-toggle-spacer" />
+                    <span className="sidebar-tree-label sidebar-tree-label-static">
+                      <span className="sidebar-project-icon"><AppIcon name="lightbulb" size={14} /></span>
+                      <span className="sidebar-tree-name">{t('Automazioni senza progetto')}</span>
+                    </span>
+                  </div>
+                  <div className="sidebar-project-sessions">{renderAutomations(unassignedAutomations)}</div>
+                </div>
+              )}
+              {unassignedProjects.length === 0 && unassignedSessions.length === 0 && unassignedAutomations.length === 0 && <div className="sidebar-tree-empty">{t('Nessun progetto.')}</div>}
             </div>
           )}
         </section>

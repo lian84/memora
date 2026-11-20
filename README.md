@@ -150,7 +150,7 @@ names.
 - `MEMORA_WEB_DIST_DIR` (optional): override the frontend build served in production
 - `MEMORA_ASSISTANT_CWD` (optional): isolated CWD for personal-assistant sessions
 - `MEMORA_TELEGRAM_BOT_TOKEN` (optional): Telegram bot token for automation
-  notifications; normally configured in Administration → Automations instead
+  notifications; normally configured from the Automations page in the main sidebar
 - `MEMORA_MEMORY_SEARCH_MODE`: `lexical` (default), `semantic` or `hybrid`
 - `MEMORA_MEMORY_TOP_K` (default `5`), `MEMORA_MEMORY_MAX_CHARS` (default
   `4000`) and `MEMORA_MEMORY_MAX_TOKENS` (default `1000`, estimated as
