@@ -324,7 +324,7 @@ export class AgentService {
       agentLocked: boolean;
       agentRef: AgentRef;
       mcp: McpSessionSettings;
-      mcpClients: Map<string, { client: McpClient; tools: Array<{ name: string; description?: string }>; accountId: string }>;
+      mcpClients: Map<string, { client: McpClient; tools: Array<{ name: string; description?: string; argumentSummary?: string }>; accountId: string }>;
       mcpRecorded: boolean;
     }
   >();
@@ -932,7 +932,7 @@ export class AgentService {
     return result;
   }
 
-  private async getMcpClient(sessionId: SessionId, server: McpServerId): Promise<{ client: McpClient; tools: Array<{ name: string; description?: string }> }> {
+  private async getMcpClient(sessionId: SessionId, server: McpServerId): Promise<{ client: McpClient; tools: Array<{ name: string; description?: string; argumentSummary?: string }> }> {
     const entry = this.sessions.get(sessionId);
     if (!entry || !entry.mcp.enabled.includes(server)) throw new AgentServiceError('mcp_not_enabled', 'Server MCP non attivo in questa chat');
     if (!this.config.mcpRuntime) throw new AgentServiceError('mcp_not_configured', 'Runtime MCP non configurato');
@@ -953,7 +953,11 @@ export class AgentService {
         env: { [definition.tokenEnv]: account.token },
         stderr: 'pipe',
       }));
-      const tools = (await client.listTools()).map(tool => ({ name: tool.name, ...(tool.description ? { description: tool.description } : {}) }));
+      const tools = (await client.listTools()).map(tool => ({
+        name: tool.name,
+        ...(tool.description ? { description: tool.description } : {}),
+        argumentSummary: this.mcpArgumentSummary(tool.inputSchema),
+      }));
       const value = { client, tools, accountId: account.id };
       entry.mcpClients.set(key, value);
       return value;
@@ -961,6 +965,27 @@ export class AgentService {
       await client.close().catch(() => undefined);
       throw new AgentServiceError('mcp_connection_failed', `Connessione ${mcpServerLabel(server)} non riuscita`);
     }
+  }
+
+  /** Riepilogo compatto dello schema di input per il prompt del modello. */
+  private mcpArgumentSummary(inputSchema: unknown): string {
+    if (!inputSchema || typeof inputSchema !== 'object') return '';
+    const schema = inputSchema as { properties?: unknown; required?: unknown };
+    if (!schema.properties || typeof schema.properties !== 'object' || Array.isArray(schema.properties)) return '';
+    const required = new Set(Array.isArray(schema.required) ? schema.required.filter((key): key is string => typeof key === 'string') : []);
+    const parts: string[] = [];
+    for (const [name, value] of Object.entries(schema.properties as Record<string, unknown>)) {
+      if (!value || typeof value !== 'object') continue;
+      const property = value as { type?: unknown; anyOf?: unknown };
+      const type = typeof property.type === 'string'
+        ? property.type
+        : Array.isArray(property.anyOf)
+          ? 'object|string'
+          : 'value';
+      parts.push(`${name}:${type}${required.has(name) ? '*' : ''}`);
+      if (parts.length >= 16) break;
+    }
+    return parts.join(', ');
   }
 
   private isReadOnlyMcpTool(name: string): boolean {
@@ -978,11 +1003,12 @@ export class AgentService {
         const tools = entry.mcp.allowWrites ? allTools : allTools.filter(tool => this.isReadOnlyMcpTool(tool.name));
         if (tools.length === 0) continue;
         lines.push(`${mcpServerLabel(server)} (account ${entry.mcp.accounts[server] ?? '—'}):`);
-        for (const tool of tools.slice(0, 40)) lines.push(`- ${tool.name}${tool.description ? `: ${tool.description.slice(0, 180)}` : ''}`);
+        for (const tool of tools.slice(0, 40)) lines.push(`- ${tool.name}${tool.description ? `: ${tool.description.slice(0, 160)}` : ''}${tool.argumentSummary ? ` | argomenti: ${tool.argumentSummary}` : ''}`);
       } catch {
         lines.push(`${mcpServerLabel(server)}: non disponibile`);
       }
     }
+    lines.push('In mcp_call, arguments deve essere un oggetto JSON con i nomi esatti indicati dopo "argomenti"; i campi con * sono obbligatori.');
     lines.push(entry.mcp.allowWrites
       ? 'Usa mcp_call con il nome del server e del tool. Le scritture sono consentite solo se richieste esplicitamente dall’utente; per eliminazioni o modifiche distruttive chiedi conferma prima di eseguire. Non inventare tool o risultati.'
       : 'Usa mcp_call con il nome del server e del tool per leggere i dati. Sono esposti solo tool di lettura; non inventare tool o risultati.');
