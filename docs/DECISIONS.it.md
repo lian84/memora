@@ -1823,3 +1823,32 @@ Esporre i tool di scrittura di default sarebbe pericoloso per i dati esterni.
 - Le scritture sono limitate a una chat e revocabili in ogni momento.
 - La conferma nel prompt non è un confine di sicurezza rigido; si potrà
   aggiungere un’approvazione per singolo tool.
+
+---
+## ADR-055 — Integrazioni Notion project-scoped come confine di sicurezza predefinito
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Un’integrazione Notion a livello workspace dà all’agente accesso ampio e un
+singolo errore di scrittura può potenzialmente coinvolgere pagine non correlate.
+Il connettore OAuth remote ha permessi più ampi a livello utente, mentre
+l’integrazione locale a token può essere limitata tramite la condivisione Notion.
+
+### Decisione
+- Mantenere l’integrazione Notion locale a token come integrazione principale.
+- Per ogni progetto che richiede accesso isolato, creare un’integrazione interna
+  dedicata e condividere con essa solo la pagina/database radice del progetto.
+- Salvare l’account centralmente come project-scoped e associarlo nelle
+  impostazioni MCP del progetto.
+- Mantenere le scritture disattivate di default e richiedere la conferma
+  **Consenti scritture** per chat.
+- Valutare in futuro un account Notion OAuth remote per l’uso personale ampio,
+  ma non come modello predefinito di isolamento dei progetti.
+
+### Conseguenze
+- Il setup di un progetto richiede alcuni passaggi espliciti ma offre due
+  confini: condivisione Notion e binding account Memora.
+- Il token di un progetto non può leggere o modificare contenuti non condivisi.
+- Un account globale resta disponibile per chi vuole intenzionalmente un accesso
+  più ampio.

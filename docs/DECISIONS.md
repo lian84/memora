@@ -1974,3 +1974,32 @@ write tools by default would be dangerous for external data.
 - Writes are scoped to a chat and can be revoked at any time.
 - Prompt-level confirmation is not a hard security boundary; stronger
   per-tool approval can be added later if needed.
+
+---
+## ADR-055 — Project-scoped Notion integrations as the default security boundary
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+A workspace-wide Notion integration gives an agent broad access and makes a
+single mistaken write potentially affect unrelated pages. The hosted OAuth MCP
+has broader user-level permissions, while the local token integration can be
+scoped by Notion sharing.
+
+### Decision
+- Keep the local token-based Notion integration as the primary integration.
+- For each project that needs isolated access, create a dedicated internal
+  integration and share only the project root page/database with it.
+- Store the account centrally as project-scoped and bind it in the project's
+  MCP settings.
+- Keep writes disabled by default and require the per-chat **Allow writes**
+  confirmation.
+- Evaluate a remote OAuth Notion account later for broad personal usage, but not
+  as the default project isolation model.
+
+### Consequences
+- Project setup has a few explicit steps but provides two boundaries: Notion
+  sharing and Memora account binding.
+- A project token cannot read or modify unshared workspace content.
+- A global account remains available for users who intentionally want broader
+  access.

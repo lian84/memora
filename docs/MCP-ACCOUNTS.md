@@ -93,3 +93,33 @@ integrations belong to the same Notion workspace.
 - deleted account IDs are not replaced silently: project and chat bindings must
   be reviewed;
 - use read-only credentials where the provider supports them.
+
+## Project onboarding with a dedicated Notion integration
+
+The recommended workflow for a new project is intentionally explicit:
+
+1. In Notion, create the project's root page or database.
+2. Create a **new internal integration** for that project, for example
+   `Memora — Progetto Alfa`.
+3. Share with that integration only the project page or database it needs.
+4. Copy the integration token.
+5. In Memora, open **Administration → MCP**, create a Notion account with the
+   project name and paste the token. Run **Test connection**.
+6. Open the project's settings, select that account in **Project MCP accounts**
+   and let the automatic save complete.
+7. In a project chat, open the right panel → **MCP**, enable Notion and, if
+   needed, **Allow writes**.
+
+The project account is stored centrally with `scope: project`; `project.json`
+contains only the account ID. The token is stored in `config/mcp-secrets.json`
+with `0600` permissions.
+
+This gives two independent boundaries:
+
+```text
+Notion sharing boundary: only the project page/database is visible to the token
+Memora binding boundary: only that project uses that account
+```
+
+An accidental write by an agent can therefore only affect the content shared
+with that project's integration, not the rest of the workspace.
