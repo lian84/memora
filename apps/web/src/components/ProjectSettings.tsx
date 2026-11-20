@@ -37,7 +37,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   const [showArchivedSessions, setShowArchivedSessions] = useState(project.showArchivedSessions === true);
   const [mcpAccounts, setMcpAccounts] = useState<Partial<Record<McpServerId, string>>>(project.mcpAccounts ?? {});
   const [availableMcpAccounts, setAvailableMcpAccounts] = useState<McpAccount[]>([]);
-  const [mcpAccountForm, setMcpAccountForm] = useState<{ serverId: McpServerId | null; label: string; secretRef: string }>({ serverId: null, label: '', secretRef: '' });
+  const [mcpAccountForm, setMcpAccountForm] = useState<{ serverId: McpServerId | null; label: string; token: string }>({ serverId: null, label: '', token: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -221,7 +221,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   };
 
   const createProjectMcpAccount = async () => {
-    if (!mcpAccountForm.serverId || !mcpAccountForm.label.trim()) return;
+    if (!mcpAccountForm.serverId || !mcpAccountForm.label.trim() || !mcpAccountForm.token.trim()) return;
     setSaving(true);
     setError(null);
     try {
@@ -230,12 +230,12 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         scope: 'project',
         projectId: project.id,
         label: mcpAccountForm.label.trim(),
-        secretRef: mcpAccountForm.secretRef.trim(),
+        token: mcpAccountForm.token.trim(),
         defaultForServer: false,
       });
       setAvailableMcpAccounts(current => [...current, account]);
       setMcpAccounts(current => ({ ...current, [account.serverId]: account.id }));
-      setMcpAccountForm({ serverId: null, label: '', secretRef: '' });
+      setMcpAccountForm({ serverId: null, label: '', token: '' });
       setMessage(t('Account MCP di progetto creato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -317,7 +317,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
                   </optgroup>}
                 </select>
               </label>
-              <button type="button" className="admin-link-button" onClick={() => setMcpAccountForm({ serverId: server.id, label: '', secretRef: '' })}>{t('+ Account progetto')}</button>
+              <button type="button" className="admin-link-button" onClick={() => setMcpAccountForm({ serverId: server.id, label: '', token: '' })}>{t('+ Account progetto')}</button>
             </div>
           );
         })}
@@ -328,13 +328,14 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
               <label className="admin-label">{t('Nome account')}
                 <input value={mcpAccountForm.label} onChange={event => setMcpAccountForm(current => ({ ...current, label: event.target.value }))} placeholder="Orione lavoro" maxLength={120} />
               </label>
-              <label className="admin-label">{t('Riferimento token')}
-                <input value={mcpAccountForm.secretRef} onChange={event => setMcpAccountForm(current => ({ ...current, secretRef: event.target.value }))} placeholder="env:NOTION_ORIONE_TOKEN" spellCheck={false} />
+              <label className="admin-label">{t('Token')}
+                <input type="password" value={mcpAccountForm.token} onChange={event => setMcpAccountForm(current => ({ ...current, token: event.target.value }))} placeholder="ntn_..." autoComplete="new-password" spellCheck={false} />
+                <small>{t('Salvato nel secret store locale, non nel progetto.')}</small>
               </label>
             </div>
             <div className="admin-actions">
               <button type="button" className="admin-primary" onClick={() => void createProjectMcpAccount()} disabled={saving}>{t('Crea account progetto')}</button>
-              <button type="button" onClick={() => setMcpAccountForm({ serverId: null, label: '', secretRef: '' })}>{t('Annulla')}</button>
+              <button type="button" onClick={() => setMcpAccountForm({ serverId: null, label: '', token: '' })}>{t('Annulla')}</button>
             </div>
           </div>
         )}

@@ -223,7 +223,7 @@ async function main() {
     const createdMcpAccount = await authFetch(`${baseUrl}/api/admin/mcp/accounts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope: 'global', serverId: 'notion', label: 'Smoke Notion', secretRef: 'env:SMOKE_NOTION_TOKEN', defaultForServer: true }),
+      body: JSON.stringify({ scope: 'global', serverId: 'notion', label: 'Smoke Notion', token: 'smoke-token', defaultForServer: true }),
     });
     assert.equal(createdMcpAccount.status, 201, 'POST /api/admin/mcp/accounts deve creare un account globale');
     const mcpAccountBody = await createdMcpAccount.json();

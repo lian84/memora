@@ -1894,3 +1894,28 @@ select a dedicated account.
 - The UI can prepare accounts before the MCP runtime is enabled.
 - Account deletion and runtime availability must be handled explicitly by the
   future MCP integration.
+
+---
+## ADR-052 — MCP token onboarding from the web UI
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Requiring users to edit systemd environment files made the Notion/Todoist setup
+too technical for a self-hosted installation.
+
+### Decision
+- The Admin MCP form accepts a masked token and stores it in
+  `config/mcp-secrets.json` with mode `0600`, separate from account metadata.
+- The account registry stores only `secret:mcp:<accountId>` references.
+- The UI never receives the token back; it shows configured/missing status.
+- **Test connection** calls the Notion/Todoist API with the token before or after
+  saving.
+- Project-specific accounts use the same token flow and keep only the account ID
+  in `project.json`.
+- `env:` references remain an advanced deployment override.
+
+### Consequences
+- A normal installation needs no systemd or environment-file editing.
+- Tokens remain local to the data directory.
+- The runtime MCP tool exposure is still a separate milestone.

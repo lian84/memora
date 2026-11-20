@@ -14,6 +14,8 @@ $MEMORA_DATA_DIR/config/mcp-accounts.json
 ```
 
 Contiene solo metadati e un riferimento al segreto; non contiene mai il token.
+I token inseriti dall’interfaccia Admin sono salvati separatamente in
+`config/mcp-secrets.json` con permessi `0600`.
 
 ```json
 {
@@ -33,12 +35,9 @@ Contiene solo metadati e un riferimento al segreto; non contiene mai il token.
 }
 ```
 
-`secretRef` accetta:
-
-```text
-env:NOME_VARIABILE
-secret:chiave-nel-secret-store-locale
-```
+Per l’uso normale il browser invia il token una volta; il server lo salva sotto
+l’ID account in `config/mcp-secrets.json`. I deployment avanzati possono ancora
+usare `env:NOME_VARIABILE`.
 
 ## Amministrazione
 
@@ -46,8 +45,10 @@ secret:chiave-nel-secret-store-locale
 
 - Notion e Todoist;
 - un account predefinito per server;
-- riferimento token (`env:` o `secret:`);
-- nessun token viene restituito al browser.
+- campo token mascherato;
+- token salvato nel secret store locale, mai restituito al browser;
+- **Testa connessione** per Notion e Todoist;
+- `env:` resta un’opzione avanzata per i deployment.
 
 Gli account dedicati si creano dalle impostazioni del progetto. Restano nel
 registry centrale con `scope: "project"` e `projectId`, quindi non finiscono in
@@ -71,10 +72,11 @@ La UI offre account globali e account del progetto. Un valore vuoto significa
 
 ## Stato
 
-Registry account e binding di progetto sono implementati. Il runtime MCP che
-collega questi account all’agente, espone i tool e applica le policy read-only è
-la prossima milestone. Fino ad allora gli account si possono preparare, ma
-nessun tool MCP viene esposto alle chat.
+Registry account, salvataggio token, test connessione e binding di progetto sono
+implementati. Il runtime MCP che collega questi account all’agente, espone i tool
+e applica le policy read-only è la prossima milestone. Fino ad allora gli
+account si possono preparare e testare, ma nessun tool MCP viene esposto alle
+chat.
 
 ## Sicurezza
 

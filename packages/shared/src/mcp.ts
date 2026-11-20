@@ -27,6 +27,8 @@ export interface McpAccount {
   /** Nome di una variabile d'ambiente o chiave del secret store; mai il token in chiaro. */
   secretRef: string;
   defaultForServer: boolean;
+  /** Indica se esiste un token risolvibile per questo account. */
+  configured?: boolean;
   createdAt: number;
   updatedAt: number;
 }

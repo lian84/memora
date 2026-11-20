@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MCP_SERVER_DEFINITIONS, type McpAccount, type McpServerId } from '@memora/shared';
-import { createMcpAccount, deleteMcpAccount, listMcpAccounts, updateMcpAccount } from '../lib/api';
+import { createMcpAccount, deleteMcpAccount, listMcpAccounts, testMcpAccount, updateMcpAccount } from '../lib/api';
 import { useI18n } from '../i18n';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface AccountForm {
   serverId: McpServerId;
   label: string;
-  secretRef: string;
+  token: string;
   defaultForServer: boolean;
 }
 
-const EMPTY_FORM: AccountForm = { serverId: 'notion', label: '', secretRef: '', defaultForServer: false };
+const EMPTY_FORM: AccountForm = { serverId: 'notion', label: '', token: '', defaultForServer: false };
 
 export function McpAdminPanel() {
   const { t } = useI18n();
@@ -23,6 +23,8 @@ export function McpAdminPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AccountForm>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<McpAccount | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -51,7 +53,7 @@ export function McpAdminPanel() {
     setForm({
       serverId: account.serverId,
       label: account.label,
-      secretRef: account.secretRef,
+      token: '',
       defaultForServer: account.defaultForServer,
     });
     setError(null);
@@ -60,10 +62,7 @@ export function McpAdminPanel() {
 
   const save = async () => {
     if (!form.label.trim()) { setError(t('Il nome dell’account è obbligatorio.')); return; }
-    if (!/^(?:env:[A-Z_][A-Z0-9_]*|secret:[a-z0-9][a-z0-9:._-]{1,160})$/.test(form.secretRef.trim())) {
-      setError(t('Usa env:NOME_VARIABILE oppure secret:chiave per il token.'));
-      return;
-    }
+    if (!editingId && !form.token.trim()) { setError(t('Inserisci il token dell’account.')); return; }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -71,8 +70,8 @@ export function McpAdminPanel() {
       const payload = {
         serverId: form.serverId,
         label: form.label.trim(),
-        secretRef: form.secretRef.trim(),
         defaultForServer: form.defaultForServer,
+        ...(form.token.trim() ? { token: form.token.trim() } : {}),
       };
       if (editingId) await updateMcpAccount(editingId, payload);
       else await createMcpAccount({ ...payload, scope: 'global' });
@@ -131,7 +130,7 @@ export function McpAdminPanel() {
                 <button type="button" className="mcp-account-main" onClick={() => startEdit(account)}>
                   <strong>{account.label}</strong>
                   <span>{serverLabel(account.serverId)}{account.defaultForServer ? ` · ${t('predefinito')}` : ''}</span>
-                  <small>{account.secretRef}</small>
+                  <small>{account.configured ? t('Token configurato') : t('Token mancante')}</small>
                 </button>
                 <button type="button" className="mcp-account-delete" aria-label={t('Elimina account')} title={t('Elimina account')} onClick={() => setDeleteTarget(account)}>×</button>
               </div>
@@ -149,9 +148,9 @@ export function McpAdminPanel() {
           <label className="admin-label">{t('Nome account')}
             <input value={form.label} onChange={event => setForm(current => ({ ...current, label: event.target.value }))} placeholder="Lavoro" maxLength={120} />
           </label>
-          <label className="admin-label">{t('Riferimento token')}
-            <input value={form.secretRef} onChange={event => setForm(current => ({ ...current, secretRef: event.target.value }))} placeholder="env:NOTION_WORK_TOKEN" spellCheck={false} />
-            <small>{t('Non inserire il token qui. Usa env:NOME_VARIABILE o secret:chiave.')}</small>
+          <label className="admin-label">{t('Token')}
+            <input type="password" value={form.token} onChange={event => setForm(current => ({ ...current, token: event.target.value }))} placeholder={editingId ? t('Lascia vuoto per mantenere il token attuale') : 'ntn_...'} autoComplete="new-password" spellCheck={false} />
+            <small>{t('Il token viene salvato nel secret store locale con permessi 0600 e non viene più mostrato.')}</small>
           </label>
           <label className="admin-toggle">
             <input type="checkbox" checked={form.defaultForServer} onChange={event => setForm(current => ({ ...current, defaultForServer: event.target.checked }))} disabled={Boolean(editingId) && !globals.some(item => item.id === editingId && item.serverId === form.serverId)} />
@@ -159,8 +158,10 @@ export function McpAdminPanel() {
           </label>
           <div className="admin-actions">
             <button type="button" className="admin-primary" onClick={() => void save()} disabled={saving}>{saving ? t('Salvo…') : t('Salva account')}</button>
+            <button type="button" onClick={() => { setTesting(true); setTestMessage(null); setError(null); void testMcpAccount({ serverId: form.serverId, ...(form.token.trim() ? { token: form.token.trim() } : editingId ? { accountId: editingId } : {}) }).then(() => setTestMessage(t('Connessione riuscita.'))).catch((err) => setError(err instanceof Error ? err.message : String(err))).finally(() => setTesting(false)); }} disabled={testing || saving || (!form.token.trim() && !editingId)}>{testing ? t('Testo…') : t('Testa connessione')}</button>
             {editingId && <button type="button" onClick={startNew}>{t('Annulla')}</button>}
           </div>
+          {testMessage && <div role="status" className="admin-alert is-success">{testMessage}</div>}
         </section>
       </div>
 

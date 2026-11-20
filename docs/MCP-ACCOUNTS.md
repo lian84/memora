@@ -14,7 +14,8 @@ $MEMORA_DATA_DIR/config/mcp-accounts.json
 ```
 
 It contains only account metadata and a reference to a secret; it never stores
-the token itself.
+the token itself. Tokens entered from the Admin UI are stored separately in
+`config/mcp-secrets.json` with mode `0600`.
 
 ```json
 {
@@ -34,12 +35,9 @@ the token itself.
 }
 ```
 
-`secretRef` accepts:
-
-```text
-env:VARIABLE_NAME
-secret:key-in-the-local-secret-store
-```
+For normal use the browser sends the token once; the server stores it under the
+account ID in `config/mcp-secrets.json`. Advanced deployments can still use
+`env:VARIABLE_NAME`.
 
 ## Administration
 
@@ -47,8 +45,10 @@ secret:key-in-the-local-secret-store
 
 - Notion and Todoist;
 - one default account per server;
-- token reference (`env:` or `secret:`);
-- no token is returned to the browser.
+- masked token field;
+- token saved in the local secret store, never returned to the browser;
+- **Test connection** for Notion and Todoist;
+- `env:` remains an advanced option for deployments.
 
 Project-specific accounts are created from the project settings. They are
 stored in the same central registry with `scope: "project"` and a `projectId`,
@@ -72,10 +72,10 @@ means “use the global default”.
 
 ## Status
 
-The account registry and project bindings are implemented. The MCP runtime
-that connects these accounts to the agent, exposes tools and enforces read-only
-policies is the next integration milestone. Until then, accounts can be
-prepared but no MCP tools are exposed to chats.
+The account registry, token storage, connection test and project bindings are
+implemented. The MCP runtime that connects these accounts to the agent, exposes
+tools and enforces read-only policies is the next integration milestone. Until
+then, accounts can be prepared and tested but no MCP tools are exposed to chats.
 
 ## Security
 

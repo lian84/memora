@@ -2,7 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { isMcpServerId, type McpAccount, type McpAccountScope } from '@memora/shared';
+import { isMcpServerId, type McpAccount, type McpAccountScope, type McpServerId } from '@memora/shared';
+import { McpSecretStore } from './mcp-secrets.js';
 
 const ACCOUNT_ID = /^acc_[a-z0-9][a-z0-9_-]{2,63}$/;
 const SECRET_REF = /^(?:env:[A-Z_][A-Z0-9_]*|secret:[a-z0-9][a-z0-9:._-]{1,160})$/;
@@ -57,6 +58,11 @@ export class McpAccountStore {
     return [...this.accounts.values()]
       .filter(account => projectId === undefined || (account.scope === 'global' || account.projectId === projectId))
       .sort((a, b) => a.serverId.localeCompare(b.serverId) || a.label.localeCompare(b.label, 'it'));
+  }
+
+  async get(id: string): Promise<McpAccount | null> {
+    await this.initialize();
+    return this.accounts.get(id) ?? null;
   }
 
   async create(input: unknown): Promise<McpAccount> {
@@ -173,34 +179,123 @@ export class McpAccountStore {
   }
 }
 
-export function registerMcpAccountRoutes(app: FastifyInstance, deps: { accounts: McpAccountStore }): void {
+async function resolveSecret(account: McpAccount, secrets: McpSecretStore): Promise<string | undefined> {
+  if (account.secretRef.startsWith('env:')) {
+    const value = process.env[account.secretRef.slice(4)];
+    return value && value.length > 0 ? value : undefined;
+  }
+  if (account.secretRef.startsWith('secret:')) {
+    return secrets.get(account.id);
+  }
+  return undefined;
+}
+
+async function testProvider(serverId: McpServerId, token: string): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = serverId === 'notion'
+      ? await fetch('https://api.notion.com/v1/users/me', {
+          headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28' },
+          signal: controller.signal,
+        })
+      : await fetch('https://api.todoist.com/rest/v2/projects', {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+    if (!response.ok) throw new McpAccountError('mcp_connection_failed', `Il servizio ha risposto ${response.status}`);
+  } catch (error) {
+    if (error instanceof McpAccountError) throw error;
+    throw new McpAccountError('mcp_connection_failed', 'Connessione al servizio non riuscita');
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function registerMcpAccountRoutes(app: FastifyInstance, deps: { accounts: McpAccountStore; secrets: McpSecretStore }): void {
   const sendError = (reply: { status: (code: number) => { send: (body: unknown) => unknown } }, error: unknown) => {
     if (error instanceof McpAccountError) return reply.status(error.statusCode).send({ error: error.code, message: error.message });
     return reply.status(500).send({ error: 'mcp_accounts_failed' });
   };
 
+  const configured = async (account: McpAccount): Promise<McpAccount> => ({
+    ...account,
+    configured: Boolean(await resolveSecret(account, deps.secrets)),
+  });
+
   app.get<{ Querystring: { projectId?: string } }>('/api/admin/mcp/accounts', async (request, reply) => {
     try {
       const projectId = request.query.projectId;
       if (projectId !== undefined && !/^[a-z0-9][a-z0-9-]{0,63}$/.test(projectId)) return reply.status(400).send({ error: 'invalid_project_id' });
-      return reply.send({ accounts: await deps.accounts.list(projectId) });
+      const accounts = await deps.accounts.list(projectId);
+      return reply.send({ accounts: await Promise.all(accounts.map(configured)) });
     } catch (error) { return sendError(reply, error); }
   });
 
   app.post<{ Body: unknown }>('/api/admin/mcp/accounts', async (request, reply) => {
-    try { return reply.status(201).send({ account: await deps.accounts.create(request.body) }); }
-    catch (error) { return sendError(reply, error); }
+    try {
+      if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body)) throw new McpAccountError('invalid_mcp_account', 'Dati account MCP non validi');
+      const body = request.body as Record<string, unknown>;
+      const token = typeof body.token === 'string' ? body.token : '';
+      const input = { ...body };
+      delete input.token;
+      const advancedSecretRef = typeof input.secretRef === 'string' && input.secretRef.trim() ? input.secretRef.trim() : `secret:mcp:${crypto.randomUUID().slice(0, 8)}`;
+      const account = await deps.accounts.create({ ...input, secretRef: advancedSecretRef });
+      try {
+        if (token) {
+          await deps.secrets.set(account.id, token);
+          const updated = await deps.accounts.update(account.id, { secretRef: `secret:mcp:${account.id}` });
+          return reply.status(201).send({ account: await configured(updated) });
+        }
+        return reply.status(201).send({ account: await configured(account) });
+      } catch (error) {
+        await deps.accounts.delete(account.id, account.id).catch(() => undefined);
+        await deps.secrets.delete(account.id).catch(() => undefined);
+        throw error;
+      }
+    } catch (error) { return sendError(reply, error); }
   });
 
   app.patch<{ Params: { id: string }; Body: unknown }>('/api/admin/mcp/accounts/:id', async (request, reply) => {
-    try { return reply.send({ account: await deps.accounts.update(request.params.id, request.body) }); }
-    catch (error) { return sendError(reply, error); }
+    try {
+      if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body)) throw new McpAccountError('invalid_mcp_account', 'Patch account MCP non valida');
+      const body = request.body as Record<string, unknown>;
+      const token = typeof body.token === 'string' ? body.token : '';
+      const input = { ...body };
+      delete input.token;
+      if (token) {
+        await deps.secrets.set(request.params.id, token);
+        input.secretRef = `secret:mcp:${request.params.id}`;
+      }
+      const account = await deps.accounts.update(request.params.id, input);
+      return reply.send({ account: await configured(account) });
+    } catch (error) { return sendError(reply, error); }
   });
 
   app.delete<{ Params: { id: string }; Querystring: { confirm?: string } }>('/api/admin/mcp/accounts/:id', async (request, reply) => {
     try {
       if (!request.query.confirm) return reply.status(400).send({ error: 'invalid_mcp_account_confirmation' });
-      return reply.send(await deps.accounts.delete(request.params.id, request.query.confirm));
+      const result = await deps.accounts.delete(request.params.id, request.query.confirm);
+      await deps.secrets.delete(request.params.id).catch(() => undefined);
+      return reply.send(result);
+    } catch (error) { return sendError(reply, error); }
+  });
+
+  app.post<{ Body: unknown }>('/api/admin/mcp/accounts/test', async (request, reply) => {
+    try {
+      if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body)) throw new McpAccountError('invalid_mcp_account', 'Dati test non validi');
+      const body = request.body as Record<string, unknown>;
+      const serverId = body.serverId;
+      if (!isMcpServerId(serverId)) throw new McpAccountError('invalid_mcp_server', 'Server MCP non supportato');
+      let token = typeof body.token === 'string' ? body.token.trim() : '';
+      if (!token && typeof body.accountId === 'string') {
+        const account = await deps.accounts.get(body.accountId);
+        if (!account) throw new McpAccountError('mcp_account_not_found', 'Account MCP non trovato', 404);
+        token = (await resolveSecret(account, deps.secrets)) ?? '';
+      }
+      if (!token) throw new McpAccountError('missing_mcp_token', 'Inserisci un token o salva l’account prima del test');
+      await testProvider(serverId, token);
+      return reply.send({ ok: true });
     } catch (error) { return sendError(reply, error); }
   });
 }

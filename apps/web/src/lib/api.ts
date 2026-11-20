@@ -604,6 +604,11 @@ export async function deleteMcpAccount(accountId: string): Promise<{ id: string 
   return res.json();
 }
 
+export async function testMcpAccount(input: { serverId: string; token?: string; accountId?: string }): Promise<{ ok: boolean }> {
+  const res = await request('/api/admin/mcp/accounts/test', { method: 'POST', body: JSON.stringify(input) });
+  return res.json();
+}
+
 export async function listAgentProfiles(): Promise<AgentProfileSummary[]> {
   const res = await request('/api/agents');
   const data = await res.json() as { profiles: AgentProfileSummary[] };

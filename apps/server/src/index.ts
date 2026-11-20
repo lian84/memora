@@ -10,6 +10,7 @@ import { AdminSettingsStore } from './settings.js';
 import { RuntimeMetrics } from './metrics.js';
 import { ProjectStore, registerProjectRoutes } from './projects.js';
 import { McpAccountStore, registerMcpAccountRoutes } from './mcp-accounts.js';
+import { McpSecretStore } from './mcp-secrets.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -113,6 +114,7 @@ const embeddingDimensions = Number(memoraEnv('EMBEDDING_DIMENSIONS') ?? DEFAULT_
 const embeddingModel = initialSettings.embeddings.model;
 const projectStore = new ProjectStore(dataDir, message => app.log.warn(message));
 const mcpAccountStore = new McpAccountStore(dataDir);
+const mcpSecretStore = new McpSecretStore(dataDir);
 const projectSectionStore = new ProjectSectionStore(dataDir, message => app.log.warn(message));
 const chatAttachmentStore = new ChatAttachmentStore(dataDir);
 const runtimeMetrics = new RuntimeMetrics();
@@ -239,7 +241,7 @@ registerAdminRoutes(app, {
 
 // --- Health ---
 registerProjectRoutes(app, { projects: projectStore, sections: projectSectionStore });
-registerMcpAccountRoutes(app, { accounts: mcpAccountStore });
+registerMcpAccountRoutes(app, { accounts: mcpAccountStore, secrets: mcpSecretStore });
 registerProjectSectionRoutes(app, { sections: projectSectionStore, projects: projectStore });
 registerProjectSourceRoutes(app, { projects: projectStore, memory: memoryService, writer: memoryWriter, agentService, dataDir });
 registerProjectFileRoutes(app, { dataDir, projects: projectStore });
