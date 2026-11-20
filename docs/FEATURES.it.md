@@ -39,9 +39,13 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Cleanup dei turni completati sostituiti e indicatore rosso per errore/interruzione.
 - [x] Messaggio in coda visibile subito e dopo il reload; il testo non viene persistito in `turns.json`.
 - [x] Stato “risposta letta” condiviso tra dispositivi in `config/turn-reads.json`.
-- [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta; niente Telegram).
+- [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta). Telegram è usato solo per i risultati delle automazioni pianificate e funziona a browser chiuso.
 - [x] Test end-to-end HTTP con due client SSE e replay dopo riconnessione.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
+- [x] Amministrazione → Automazioni: job con cron/timezone, selezione progetto e profilo agente, server MCP opzionali e scritture MCP esplicite.
+- [x] Scheduler headless con timeout, retry limitati, cronologia ed **Esegui ora**; cambiare la pianificazione non richiede il browser.
+- [x] Consegna Telegram opzionale dei risultati, con scoperta chat, messaggio di test e token nel secret store locale.
+- [x] Job e cronologia in `$MEMORA_DATA_DIR/automations/`.
 
 ## 2. Memoria e Second Brain
 

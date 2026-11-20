@@ -2003,3 +2003,62 @@ scoped by Notion sharing.
 - A project token cannot read or modify unshared workspace content.
 - A global account remains available for users who intentionally want broader
   access.
+
+---
+## ADR-056 — Headless, file-based automation scheduler
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Scheduled activities must run with the browser closed. Reusing the browser turn
+manager would make schedules depend on an open tab and would couple automation
+state to the UI.
+
+### Decision
+- Run a single in-process scheduler inside the Memora server.
+- Persist jobs in `$MEMORA_DATA_DIR/automations/jobs.json` and each run as a
+  separate JSON file under `automations/runs/`.
+- Execute one automation at a time, with a configurable timeout and limited
+  retries.
+- Reuse `AgentService` and the normal project/profile/MCP resolution, then
+  archive the temporary session.
+- Keep cron parsing and timezone handling in a small, tested module (`croner`).
+- Mark runs left `running` by a restart as `interrupted`.
+
+### Consequences
+- No browser, external cron or queue service is needed for the normal
+  single-server deployment.
+- Multi-instance installations would need a distributed lock; this is not
+  supported yet.
+- Prompts and results are user data and must remain in the external data
+  directory.
+
+---
+## ADR-057 — Telegram as outbound automation notification channel
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Browser notifications require an open tab and cannot deliver results when the
+user is away. Telegram is a simple, widely available external channel for a
+single-user self-hosted assistant.
+
+### Decision
+- Implement Telegram outbound delivery only (Bot API `sendMessage`), not an
+  inbound bot yet.
+- Store the bot token separately in `config/telegram-secrets.json` (`0600`);
+  never return it through the API.
+- Store the non-secret chat ID in `config/telegram.json`.
+- Allow `MEMORA_TELEGRAM_BOT_TOKEN` as an environment override; the UI marks it
+  read-only.
+- Let each automation opt in independently; Telegram failure never changes the
+  run status.
+- Support chat discovery through `getUpdates` after the user sends `/start`, and
+  a test message from the admin panel.
+
+### Consequences
+- Scheduled results arrive without a browser and remain available in the web
+  history.
+- Telegram messages contain personal data; users must choose a bot/chat they
+  control.
+- An inbound Telegram chat interface remains a separate future milestone.

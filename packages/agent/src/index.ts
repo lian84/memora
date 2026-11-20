@@ -326,6 +326,7 @@ export class AgentService {
       mcp: McpSessionSettings;
       mcpClients: Map<string, { client: McpClient; tools: Array<{ name: string; description?: string; argumentSummary?: string }>; accountId: string }>;
       mcpRecorded: boolean;
+      autoTitle: boolean;
     }
   >();
 
@@ -389,7 +390,7 @@ export class AgentService {
    *
    * Se modelId è fornito, usa quel modello; altrimenti usa il default da configurazione.
    */
-  async createSession(modelId?: string, provider?: ChatProvider, reasoningLevel?: ReasoningLevel, projectId?: string, agentProfileId?: string): Promise<CreateSessionResult> {
+  async createSession(modelId?: string, provider?: ChatProvider, reasoningLevel?: ReasoningLevel, projectId?: string, agentProfileId?: string, options?: { autoTitle?: boolean }): Promise<CreateSessionResult> {
     const profile = agentProfileId ? await this.resolveAgentProfile(agentProfileId) : null;
     const project = await this.loadProject(projectId, false);
     const requestedProvider = provider ?? project?.defaults.provider;
@@ -444,6 +445,7 @@ export class AgentService {
       mcp: { enabled: [], accounts: {} },
       mcpClients: new Map(),
       mcpRecorded: false,
+      autoTitle: options?.autoTitle !== false,
     });
 
     return {
@@ -534,6 +536,7 @@ export class AgentService {
       mcp: sessionMeta.mcp ?? { enabled: [], accounts: {} },
       mcpClients: new Map(),
       mcpRecorded: Boolean(sessionMeta.mcp),
+      autoTitle: true,
     });
 
     return { sessionId: session.sessionId, modelId: resolved.modelId, provider: resolved.provider, reasoningLevel: effectiveReasoning, ...(sessionMeta.projectId ? { projectId: sessionMeta.projectId } : {}), ...(sessionAgent ? { agent: await this.currentAgentInfoFor(sessionAgent) } : {}) };
@@ -1600,7 +1603,7 @@ export class AgentService {
     }
 
     let titlePromise: Promise<void> = Promise.resolve();
-    if (promptCompleted && session.sessionFile) {
+    if (promptCompleted && session.sessionFile && entry.autoTitle !== false) {
       const titleSessionFile = session.sessionFile;
       const titleMeta = await this.readSessionMeta(sessionId, titleSessionFile);
       const retryFallback = this.autoTitleEnabled

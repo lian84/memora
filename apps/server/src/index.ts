@@ -11,6 +11,11 @@ import { RuntimeMetrics } from './metrics.js';
 import { ProjectStore, registerProjectRoutes } from './projects.js';
 import { McpAccountStore, registerMcpAccountRoutes } from './mcp-accounts.js';
 import { McpSecretStore } from './mcp-secrets.js';
+import { AutomationStore } from './automation-store.js';
+import { AutomationScheduler } from './automation-scheduler.js';
+import { AutomationRunner } from './automation-runner.js';
+import { registerAutomationRoutes } from './automation-routes.js';
+import { TelegramService, TelegramStore } from './telegram.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -224,6 +229,25 @@ const agentService = new AgentService({
   mcpRuntime,
 });
 
+const telegramStore = new TelegramStore({ dataDir, warn: message => app.log.warn(message) });
+await telegramStore.load();
+const telegramService = new TelegramService(telegramStore);
+const automationStore = new AutomationStore({ dataDir, warn: message => app.log.warn(message) });
+await automationStore.load();
+const recoveredAutomationRuns = await automationStore.recoverInterruptedRuns();
+if (recoveredAutomationRuns > 0) app.log.warn({ count: recoveredAutomationRuns }, 'automation runs marked interrupted after restart');
+const automationRunner = new AutomationRunner({
+  store: automationStore,
+  agentService,
+  telegram: telegramService,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations'),
+});
+const automationScheduler = new AutomationScheduler({
+  store: automationStore,
+  runner: automationRunner,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations'),
+});
+
 const turnManager = new TurnManager({
   agentService,
   maxConcurrent: initialSettings.chat.maxConcurrentTurns ?? 2,
@@ -237,6 +261,8 @@ const catalog = new ModelCatalogService({
   getPiModels: provider => agentService.getProviderModels(provider),
   getApiKey: provider => secretStore.getKey(provider),
 });
+
+registerAutomationRoutes(app, { store: automationStore, scheduler: automationScheduler, telegramStore, telegram: telegramService, log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations') });
 
 registerAdminRoutes(app, {
   store: settingsStore,
@@ -1253,6 +1279,7 @@ const shutdown = async (signal: string) => {
   if (shuttingDown) return;
   shuttingDown = true;
   app.log.info({ signal }, 'shutting down');
+  automationScheduler.stop();
   try {
     await app.close();
   } catch (err) {
@@ -1273,6 +1300,7 @@ process.once('SIGINT', () => { void shutdown('SIGINT'); });
 const start = async () => {
   try {
     await app.listen({ host, port });
+    automationScheduler.start();
   } catch (err) {
     app.log.error(err);
     process.exit(1);

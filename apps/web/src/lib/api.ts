@@ -28,6 +28,11 @@ import {
   type ArtifactVersion,
   type SpreadsheetPreview,
   type WebSettingsView,
+  type AutomationJob,
+  type AutomationJobInput,
+  type AutomationRun,
+  type TelegramChat,
+  type TelegramSettingsView,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -995,4 +1000,68 @@ export async function editMessage(
     body: JSON.stringify({ text }),
   });
   await consumeSSE(res, sessionId, onEvent);
+}
+
+
+export async function listAutomations(): Promise<{ jobs: AutomationJob[]; telegram: TelegramSettingsView }> {
+  const res = await request('/api/admin/automations');
+  return res.json();
+}
+
+export async function createAutomation(input: AutomationJobInput): Promise<AutomationJob> {
+  const res = await request('/api/admin/automations', { method: 'POST', body: JSON.stringify(input) });
+  const data = await res.json() as { job: AutomationJob };
+  return data.job;
+}
+
+export async function updateAutomation(jobId: string, input: Partial<AutomationJobInput> & { enabled?: boolean }): Promise<AutomationJob> {
+  const res = await request(`/api/admin/automations/${encodeURIComponent(jobId)}`, { method: 'PATCH', body: JSON.stringify(input) });
+  const data = await res.json() as { job: AutomationJob };
+  return data.job;
+}
+
+export async function deleteAutomation(jobId: string): Promise<{ id: string }> {
+  const res = await request(`/api/admin/automations/${encodeURIComponent(jobId)}?confirm=${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+  return res.json();
+}
+
+export async function runAutomation(jobId: string): Promise<{ started: boolean; jobId: string }> {
+  const res = await request(`/api/admin/automations/${encodeURIComponent(jobId)}/run`, { method: 'POST' });
+  return res.json();
+}
+
+export async function listAutomationRuns(jobId?: string, limit = 50): Promise<AutomationRun[]> {
+  const query = `?limit=${encodeURIComponent(String(limit))}`;
+  const res = await request(jobId ? `/api/admin/automations/${encodeURIComponent(jobId)}/runs${query}` : `/api/admin/automations/runs${query}`);
+  const data = await res.json() as { runs: AutomationRun[] };
+  return data.runs;
+}
+
+export async function updateTelegramSettings(input: { enabled?: boolean; chatId?: string }): Promise<TelegramSettingsView> {
+  const res = await request('/api/admin/telegram', { method: 'PATCH', body: JSON.stringify(input) });
+  const data = await res.json() as { settings: TelegramSettingsView };
+  return data.settings;
+}
+
+export async function saveTelegramToken(token: string): Promise<TelegramSettingsView> {
+  const res = await request('/api/admin/telegram/token', { method: 'PUT', body: JSON.stringify({ token }) });
+  const data = await res.json() as { settings: TelegramSettingsView };
+  return data.settings;
+}
+
+export async function clearTelegramToken(): Promise<TelegramSettingsView> {
+  const res = await request('/api/admin/telegram/token', { method: 'DELETE' });
+  const data = await res.json() as { settings: TelegramSettingsView };
+  return data.settings;
+}
+
+export async function testTelegram(): Promise<{ ok: boolean }> {
+  const res = await request('/api/admin/telegram/test', { method: 'POST' });
+  return res.json();
+}
+
+export async function discoverTelegramChats(): Promise<TelegramChat[]> {
+  const res = await request('/api/admin/telegram/discover', { method: 'POST' });
+  const data = await res.json() as { chats: TelegramChat[] };
+  return data.chats;
 }

@@ -29,6 +29,7 @@ import { ModelCombobox, filterModels } from './ModelCombobox';
 import { AppearanceSettings } from './AppearanceSettings';
 import { AgentsAdminPanel } from './AgentsAdminPanel';
 import { McpAdminPanel } from './McpAdminPanel';
+import { AutomationsAdminPanel } from './AutomationsAdminPanel';
 import {
   getBrowserNotificationPermission,
   isBrowserNotificationEnabled,
@@ -433,7 +434,7 @@ export function AdminSettingsView({
   const showCuratorKey = draft.curator.provider !== draft.chat.provider;
   const [activePage, setActivePage] = useState('appearance');
   const pages = [
-    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'],
+    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'], ['automations', 'Automazioni'],
     ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
   ] as const;
 
@@ -556,6 +557,10 @@ export function AdminSettingsView({
 
       <div id="admin-page-mcp" role="tabpanel" aria-labelledby="admin-tab-mcp" className="admin-page" hidden={activePage !== 'mcp'}>
         <McpAdminPanel />
+      </div>
+
+      <div id="admin-page-automations" role="tabpanel" aria-labelledby="admin-tab-automations" className="admin-page" hidden={activePage !== 'automations'}>
+        <AutomationsAdminPanel />
       </div>
 
       <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>

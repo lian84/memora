@@ -49,15 +49,17 @@
 - [x] systemd unit e graceful shutdown
 
 ## Phase 6 — Telegram
-- [ ] bot
+- [x] notifiche/risultati automazioni in uscita
+- [ ] bot in ingresso
 - [ ] whitelist
 - [ ] stesse sessioni/backend
 
 ## Phase 7 — Automazioni
-- [ ] scheduler
-- [ ] cron
-- [ ] history
-- [ ] output Web/Telegram
+- [x] scheduler
+- [x] cron
+- [x] history
+- [x] output Web/Telegram
+- [x] timeout e retry limitati
 
 ## Phase 8 — Integrazioni
 - [ ] Todoist

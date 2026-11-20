@@ -160,7 +160,7 @@ describe('AdminSettings UI', () => {
     expect(markup).toContain('Test connessione');
     expect(markup).toContain('Modello chat predefinito');
     expect(markup).toContain('Livello reasoning');
-    expect((markup.match(/type="password"/g) ?? []).length).toBe(2);
+    expect((markup.match(/type="password"/g) ?? []).length).toBe(3); // 2 provider key + Telegram bot token
     expect(markup).toContain('Usa la stessa chiave già associata a OpenRouter');
   });
 
@@ -175,7 +175,7 @@ describe('AdminSettings UI', () => {
       },
     };
     const markup = renderToStaticMarkup(<AdminSettingsView {...baseProps} settings={data} draft={settingsValues(data)} providerUi={ui} />);
-    expect((markup.match(/type="password"/g) ?? []).length).toBe(3);
+    expect((markup.match(/type="password"/g) ?? []).length).toBe(4); // 3 provider key + Telegram bot token
     expect(markup).toContain('API key OpenCode Go');
   });
 

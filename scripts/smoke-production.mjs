@@ -252,6 +252,57 @@ async function main() {
     const deletedMcpAccount = await authFetch(`${baseUrl}/api/admin/mcp/accounts/${mcpAccountBody.account.id}?confirm=${mcpAccountBody.account.id}`, { method: 'DELETE' });
     assert.equal(deletedMcpAccount.status, 200, 'DELETE account MCP deve funzionare');
 
+    const telegram = await authFetch(`${baseUrl}/api/admin/telegram`);
+    assert.equal(telegram.status, 200, 'GET /api/admin/telegram deve funzionare');
+    const telegramBody = await telegram.json();
+    assert.equal(telegramBody.settings.tokenConfigured, false);
+    assert.doesNotMatch(JSON.stringify(telegramBody), /botToken|token"/i, 'il token Telegram non deve essere restituito');
+    const telegramToken = await authFetch(`${baseUrl}/api/admin/telegram/token`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'smoke-telegram-token' }),
+    });
+    assert.equal(telegramToken.status, 200, 'PUT token Telegram deve salvarlo nel secret store');
+    const telegramTokenBody = await telegramToken.json();
+    assert.equal(telegramTokenBody.settings.tokenConfigured, true);
+    assert.doesNotMatch(JSON.stringify(telegramTokenBody), /smoke-telegram-token|botToken/i, 'il token Telegram non deve essere restituito');
+    const telegramTokenClear = await authFetch(`${baseUrl}/api/admin/telegram/token`, { method: 'DELETE' });
+    assert.equal(telegramTokenClear.status, 200, 'DELETE token Telegram deve rimuoverlo');
+    assert.equal((await telegramTokenClear.json()).settings.tokenConfigured, false);
+
+    const telegramPatch = await authFetch(`${baseUrl}/api/admin/telegram`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true, chatId: '424242' }),
+    });
+    assert.equal(telegramPatch.status, 200, 'PATCH /api/admin/telegram deve salvare chat ID e abilitazione');
+    assert.equal((await telegramPatch.json()).settings.chatId, '424242');
+
+    const automationsBefore = await authFetch(`${baseUrl}/api/admin/automations`);
+    assert.equal(automationsBefore.status, 200, 'GET /api/admin/automations deve funzionare');
+    assert.ok(Array.isArray((await automationsBefore.json()).jobs), 'jobs deve essere un array');
+    const createdAutomation = await authFetch(`${baseUrl}/api/admin/automations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Smoke automation', prompt: 'Smoke prompt', cron: '0 9 * * *', timezone: 'Europe/Rome', enabled: false, notifyTelegram: false }),
+    });
+    assert.equal(createdAutomation.status, 201, 'POST /api/admin/automations deve creare un job');
+    const createdAutomationBody = await createdAutomation.json();
+    assert.match(createdAutomationBody.job.id, /^job_/);
+    assert.equal(createdAutomationBody.job.enabled, false);
+    const enabledAutomation = await authFetch(`${baseUrl}/api/admin/automations/${createdAutomationBody.job.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true }),
+    });
+    assert.equal(enabledAutomation.status, 200, 'PATCH /api/admin/automations/:id deve aggiornare un job');
+    assert.equal((await enabledAutomation.json()).job.enabled, true);
+    const automationRuns = await authFetch(`${baseUrl}/api/admin/automations/${createdAutomationBody.job.id}/runs`);
+    assert.equal(automationRuns.status, 200, 'GET cronologia automazione deve funzionare');
+    assert.deepEqual((await automationRuns.json()).runs, []);
+    const deletedAutomation = await authFetch(`${baseUrl}/api/admin/automations/${createdAutomationBody.job.id}?confirm=${createdAutomationBody.job.id}`, { method: 'DELETE' });
+    assert.equal(deletedAutomation.status, 200, 'DELETE /api/admin/automations/:id deve funzionare');
+
     const adminStatus = await authFetch(`${baseUrl}/api/admin/status`);
     assert.equal(adminStatus.status, 200, 'GET /api/admin/status deve funzionare');
     const adminStatusBody = await adminStatus.json();
@@ -290,6 +341,7 @@ async function main() {
     console.log(`- GET /api/memory/sources: ok`);
     console.log(`- Admin settings/status + live PATCH: ok`);
     console.log(`- Admin secrets + OpenCode Go chat default: ok`);
+    console.log(`- Telegram settings + automations CRUD: ok`);
     console.log(`- API/asset mancanti: 404 senza fallback SPA`);
     console.log(`- SIGTERM: graceful shutdown`);
   } finally {

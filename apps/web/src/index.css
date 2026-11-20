@@ -1767,3 +1767,54 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .mcp-write-setting > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mcp-write-setting strong { color: var(--text); font-size: 11px; }
 .mcp-write-setting small { color: var(--muted); font-size: 9px; line-height: 1.4; }
+
+/* Automations admin */
+.automations-admin { display: flex; flex-direction: column; gap: 14px; }
+.automation-actions { margin-top: 0; align-items: flex-end; flex-wrap: wrap; }
+.automation-pill { flex: 0 0 auto; padding: 3px 7px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-muted); color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.automation-pill.is-ok { border-color: var(--success-border); background: var(--success-soft); color: var(--success); }
+.automation-discovery { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.automation-discovery button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text-soft); font-size: 10px; cursor: pointer; text-align: left; }
+.automation-discovery button.is-selected, .automation-discovery button:hover { border-color: var(--accent); background: var(--accent-soft); }
+.automation-discovery button span { color: var(--muted); font-size: 9px; }
+.automation-list { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+.automation-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); }
+.automation-row.is-disabled { opacity: .68; }
+.automation-row-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.automation-row-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.automation-row-head strong { color: var(--text); font-size: 12px; }
+.automation-row-meta { display: flex; flex-wrap: wrap; gap: 3px 10px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.automation-row-meta code, .automation-presets code { padding: 1px 4px; border-radius: 4px; background: var(--surface-muted); color: var(--text-soft); font-size: 9px; }
+.automation-last-run { color: var(--muted); font-size: 9px; }
+.automation-row-actions { display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-end; gap: 4px; }
+.automation-row-actions button { height: 26px; padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-muted); color: var(--text-soft); font-size: 9px; cursor: pointer; }
+.automation-row-actions button:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text); }
+.automation-row-actions button:disabled { cursor: wait; opacity: .55; }
+.automation-row-actions button.is-danger { color: var(--danger); }
+.automation-toggle { flex: 0 0 auto; gap: 3px; font-size: 9px; }
+.automation-toggle input { width: 13px; height: 13px; }
+.automation-status { display: inline-flex; align-items: center; padding: 1px 5px; border-radius: 4px; background: var(--surface-muted); color: var(--muted); font-size: 8px; font-weight: 750; text-transform: uppercase; letter-spacing: .03em; }
+.automation-status.status-completed { background: var(--success-soft); color: var(--success); }
+.automation-status.status-failed, .automation-status.status-timeout { background: var(--danger-soft); color: var(--danger); }
+.automation-status.status-running { background: var(--accent-soft); color: var(--accent-strong); }
+.automation-editor { margin-top: 14px; padding: 13px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-muted); display: flex; flex-direction: column; gap: 10px; }
+.automation-editor h4 { margin: 0; color: var(--text); font-size: 12px; }
+.automations-admin textarea { width: 100%; min-height: 100px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; font-size: 11px; line-height: 1.5; resize: vertical; }
+.automations-admin textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--focus-ring); }
+.automation-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+.automation-presets button { display: inline-flex; align-items: center; gap: 5px; min-height: 25px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 9px; cursor: pointer; }
+.automation-presets button:hover { border-color: var(--accent); color: var(--accent-strong); }
+.automation-mcp-editor { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.automation-mcp-editor > strong { flex: 0 0 100%; font-size: 10px; }
+.automation-mcp-editor > small { flex: 0 0 100%; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.automation-mcp-editor .admin-toggle { font-size: 10px; }
+.automation-writes-toggle { color: var(--danger); }
+.automation-runs { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.automation-run { padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.automation-run summary { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: var(--muted); font-size: 9px; cursor: pointer; }
+.automation-run-error { margin: 7px 0 0; color: var(--danger); font-size: 10px; line-height: 1.45; white-space: pre-wrap; }
+.automation-output { max-height: 280px; margin: 7px 0 0; padding: 8px; overflow: auto; border-radius: 5px; background: var(--surface-muted); color: var(--text-soft); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; line-height: 1.5; white-space: pre-wrap; }
+@media (max-width: 760px) {
+  .automation-row { flex-direction: column; }
+  .automation-row-actions { justify-content: flex-start; }
+}

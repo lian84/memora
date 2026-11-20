@@ -33,7 +33,8 @@ configurazione.
 - Progetti, fonti indicizzate, file di progetto e artefatti versionati.
 - PDF, DOCX, XLSX e PPTX senza LibreOffice.
 - Ricerca web SSRF-safe tramite Brave o SearXNG, con citazioni numerate.
-- Login single-user, notifiche browser e interfaccia IT/EN/FR.
+- Automazioni pianificate con cron/timezone, cronologia e accesso MCP opzionale.
+- Login single-user, notifiche browser, consegna Telegram opzionale e interfaccia IT/EN/FR.
 - Layout responsive, pannello laterale e amministrazione runtime.
 
 ## Requisiti
@@ -68,6 +69,7 @@ pnpm start
 
 - [Funzionalità](docs/FEATURES.it.md)
 - [Architettura](ARCHITECTURE.md)
+- [Attività pianificate](docs/AUTOMATIONS.it.md)
 - [Decisioni](docs/DECISIONS.it.md)
 - [Operazioni](docs/OPERATIONS.md)
 - [Sicurezza](docs/SECURITY.md)
@@ -92,7 +94,8 @@ Chiudere il browser non interrompe il turno; un riavvio di Memora sì. La sideba
 mostra un pallino giallo per una risposta in corso in un'altra chat e verde per
 una risposta completata non ancora letta. Lo stato letto è condiviso tra
 dispositivi, mentre le notifiche browser a risposta pronta sono opt-in e
-richiedono la scheda aperta (Telegram non è ancora implementato). Tornando
+richiedono la scheda aperta. Le automazioni pianificate girano nel server e
+possono inviare i risultati su Telegram anche a browser chiuso. Tornando
 nella chat, il client si ricollega agli eventi già prodotti e riprende il testo
 parziale. Dopo un riavvio del server i turni in corso vengono marcati come
 interrotti.

@@ -33,7 +33,8 @@ your configuration.
 - Projects, indexed sources, project files and versioned artifacts.
 - PDF, DOCX, XLSX and PPTX generation without LibreOffice.
 - SSRF-safe web research through Brave or SearXNG, with numbered citations.
-- Single-user login, browser notifications and an IT/EN/FR interface.
+- Scheduled automations with cron/timezone, run history and optional MCP access.
+- Single-user login, browser notifications, optional Telegram delivery and an IT/EN/FR interface.
 - Responsive layout, chat side panel and runtime administration.
 
 ## Requirements
@@ -67,6 +68,7 @@ pnpm start
 ## Documentation
 
 - [Features](docs/FEATURES.md) · [Italiano](docs/FEATURES.it.md)
+- [Scheduled automations](docs/AUTOMATIONS.md) · [Italiano](docs/AUTOMATIONS.it.md)
 - [Decisions](docs/DECISIONS.md) · [Italiano](docs/DECISIONS.it.md)
 - [Architecture](ARCHITECTURE.md) (Italian)
 - [Operations](docs/OPERATIONS.md) (Italian)
@@ -94,7 +96,8 @@ Administration (1–4, default 2) and additional turns are queued. Closing the
 browser does not stop a turn; restarting Memora does. The sidebar shows a yellow
 dot for a response running in another chat and a green dot for a completed unread
 response. Read state is shared across devices, while browser notifications are
-opt-in and require the tab to stay open (Telegram is not implemented yet).
+opt-in and require the tab to stay open. Scheduled automations run in the
+server and can deliver their results to Telegram with the browser closed.
 Returning to a chat reconnects to events already produced and resumes partial
 text. After a server restart, in-flight turns are marked as interrupted.
 
@@ -146,6 +149,8 @@ names.
 - `MEMORA_DATA_DIR` (default `./data`)
 - `MEMORA_WEB_DIST_DIR` (optional): override the frontend build served in production
 - `MEMORA_ASSISTANT_CWD` (optional): isolated CWD for personal-assistant sessions
+- `MEMORA_TELEGRAM_BOT_TOKEN` (optional): Telegram bot token for automation
+  notifications; normally configured in Administration → Automations instead
 - `MEMORA_MEMORY_SEARCH_MODE`: `lexical` (default), `semantic` or `hybrid`
 - `MEMORA_MEMORY_TOP_K` (default `5`), `MEMORA_MEMORY_MAX_CHARS` (default
   `4000`) and `MEMORA_MEMORY_MAX_TOKENS` (default `1000`, estimated as

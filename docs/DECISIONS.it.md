@@ -1852,3 +1852,60 @@ l’integrazione locale a token può essere limitata tramite la condivisione Not
 - Il token di un progetto non può leggere o modificare contenuti non condivisi.
 - Un account globale resta disponibile per chi vuole intenzionalmente un accesso
   più ampio.
+
+---
+## ADR-056 — Scheduler headless file-based per le automazioni
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Le attività pianificate devono funzionare a browser chiuso. Riusare il turn
+manager del browser renderebbe le pianificazioni dipendenti da una scheda
+aperta e accoppierebbe lo stato delle automazioni alla UI.
+
+### Decisione
+- Eseguire un singolo scheduler in-process dentro il server Memora.
+- Persistere i job in `$MEMORA_DATA_DIR/automations/jobs.json` e ogni run in un
+  file JSON separato sotto `automations/runs/`.
+- Eseguire un’automazione alla volta, con timeout configurabile e retry limitati.
+- Riusare `AgentService` e la normale risoluzione progetto/profilo/MCP, poi
+  archiviare la sessione temporanea.
+- Tenere parsing cron e fusi orari in un modulo piccolo e testato (`croner`).
+- Marcare come `interrupted` le run rimaste `running` dopo un riavvio.
+
+### Conseguenze
+- Non servono browser, cron esterno o un servizio di coda per il normale
+  deployment single-server.
+- Installazioni multi-istanza richiederebbero un lock distribuito; non è ancora
+  supportato.
+- Prompt e risultati sono dati utente e devono restare nella data directory
+  esterna.
+
+---
+## ADR-057 — Telegram come canale di notifica in uscita per le automazioni
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Le notifiche browser richiedono una scheda aperta e non possono consegnare
+risultati quando l’utente è lontano. Telegram è un canale esterno semplice e
+diffuso per un assistente self-hosted single-user.
+
+### Decisione
+- Implementare solo la consegna Telegram in uscita (Bot API `sendMessage`), non
+  ancora un bot in ingresso.
+- Salvare il token del bot separatamente in `config/telegram-secrets.json`
+  (`0600`); non restituirlo mai dall’API.
+- Salvare il Chat ID non segreto in `config/telegram.json`.
+- Consentire `MEMORA_TELEGRAM_BOT_TOKEN` come override d’ambiente; la UI lo
+  mostra in sola lettura.
+- Ogni automazione sceglie autonomamente se notificare; un errore Telegram non
+  cambia lo stato della run.
+- Supportare la scoperta chat tramite `getUpdates` dopo `/start` e un messaggio
+  di prova dal pannello amministrativo.
+
+### Conseguenze
+- I risultati pianificati arrivano senza browser e restano nella cronologia web.
+- I messaggi Telegram contengono dati personali; l’utente deve scegliere un
+  bot/chat che controlla.
+- Una interfaccia chat Telegram in ingresso resta una milestone separata.
