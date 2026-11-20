@@ -79,6 +79,13 @@ right panel starts the local MCP server and exposes its tools through
 next message. A separate **Allow writes** switch, off by default and protected by
 a confirmation dialog, enables write tools for that chat.
 
+## Least-privilege pattern
+
+Use different Notion integration tokens and share each integration only with the pages or
+databases it needs. Bind the dedicated account to the project that should see those
+contents. This gives each project a separate access boundary even when the
+integrations belong to the same Notion workspace.
+
 ## Security
 
 - project files contain references only, never tokens;

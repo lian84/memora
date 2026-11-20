@@ -26,6 +26,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Amministrazione → Agenti: crea, modifica ed elimina (cestino) profili; gestisce competenze, icona e colore.
 - [x] Amministrazione → MCP: account globali e project-scoped Notion/Todoist, token mascherato salvato nel secret store locale, test connessione e binding di progetto.
 - [x] Runtime MCP: toggle server per chat nel pannello destro, default spento, risoluzione account progetto/globale e tool `mcp_call` per Notion/Todoist. Le scritture richiedono la conferma esplicita **Consenti scritture**.
+- [x] Accesso Notion/Todoist a privilegio minimo: token di integrazione separati per account e condivisione Notion limitata a pagine o database specifici, così un progetto può accedere solo ai contenuti e all’account necessari.
 - [x] Modello, provider e livello di reasoning configurabili per chat.
 - [x] Esportazione della risposta in PDF.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.

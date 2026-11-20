@@ -80,6 +80,13 @@ modifiche valgono dal messaggio successivo. Un interruttore separato **Consenti
 scritture**, spento di default e protetto da una conferma, abilita i tool di
 scrittura per quella chat.
 
+## Pattern a privilegio minimo
+
+Usa token di integrazione Notion diversi e condividi ogni integrazione solo con
+le pagine o i database necessari. Associa l’account dedicato al progetto che deve
+vedere quei contenuti. Ogni progetto ottiene così un confine di accesso separato
+anche quando le integrazioni appartengono allo stesso workspace Notion.
+
 ## Sicurezza
 
 - i file di progetto contengono solo riferimenti, mai token;

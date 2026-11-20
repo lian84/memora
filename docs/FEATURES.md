@@ -26,6 +26,7 @@ Last updated: 2026-11-20.
 - [x] Administration → Agents: create, edit and soft-delete profiles; manage skills, icon and color.
 - [x] Administration → MCP: global and project-scoped Notion/Todoist accounts, masked token entry stored in the local secret store, test connection and project bindings.
 - [x] MCP runtime: per-chat server toggles in the right panel, default off, project/global account resolution and `mcp_call` tools for Notion/Todoist. Writes require the explicit **Allow writes** confirmation.
+- [x] Least-privilege Notion/Todoist access: separate integration tokens can be used for different accounts, and each Notion integration is shared only with selected pages or databases, so a project can be limited to the content and account it needs.
 - [x] Model, provider and reasoning level configurable per chat.
 - [x] Export an answer to PDF.
 - [x] Extract memories from an answer with explicit review.
