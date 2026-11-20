@@ -1686,6 +1686,18 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
   .agents-admin-color-row .admin-label { flex: 0 0 auto; }
 }
 
-.agents-admin-list-heading > button { height: 30px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 11px; font-weight: 650; cursor: pointer; }
+.agents-admin-list-heading > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; height: 30px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 11px; font-weight: 650; cursor: pointer; }
 .agents-admin-list-heading > button:hover { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-strong); }
 .agents-admin-list-heading .admin-primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+.agents-admin-color-picker { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.agents-admin-color-swatch { width: 26px; height: 26px; padding: 0; border: 2px solid var(--surface); border-radius: 50%; background: var(--swatch); box-shadow: 0 0 0 1px var(--border); cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+.agents-admin-color-swatch:hover { transform: scale(1.08); }
+.agents-admin-color-swatch.is-selected { box-shadow: 0 0 0 2px var(--text), 0 0 0 4px var(--surface); }
+.agents-admin-color-swatch:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.agent-refresh-row { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: 0 max(22px, calc((100% - var(--chat-max-width)) / 2)) 4px; color: var(--muted); font-size: 10px; }
+.agent-refresh-row > span { display: inline-flex; align-items: center; gap: 5px; color: var(--agent-color, var(--accent)); }
+.agent-refresh-row button { height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 10px; font-weight: 600; cursor: pointer; }
+.agent-refresh-row button:hover { border-color: color-mix(in srgb, var(--agent-color, var(--accent)) 40%, var(--border)); background: color-mix(in srgb, var(--agent-color, var(--accent)) 8%, var(--surface)); color: var(--agent-color, var(--accent)); }
+@media (max-width: 640px) { .agent-refresh-row { margin-left: 14px; margin-right: 14px; } }

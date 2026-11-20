@@ -5,13 +5,27 @@ export type AgentIcon = ProjectIcon;
 
 export const DEFAULT_AGENT_COLOR = '#2563eb';
 
+/** Palette fissa usata dal selettore colore dei profili. */
+export const AGENT_COLOR_PALETTE = [
+  '#d97706',
+  '#dc2626',
+  '#db2777',
+  '#7c3aed',
+  '#2563eb',
+  '#0891b2',
+  '#0f8a6a',
+  '#65a30d',
+  '#ca8a04',
+  '#475569',
+] as const;
+
 /** Colori predefiniti per i profili di esempio e fallback per profili custom. */
 export function defaultAgentColor(id: string): string {
   switch (id) {
     case 'brainstorming': return '#d97706';
     case 'commercialista': return '#0f8a6a';
     case 'sviluppatore': return '#2563eb';
-    case 'social-media': return '#c026d3';
+    case 'social-media': return '#db2777';
     default: return DEFAULT_AGENT_COLOR;
   }
 }

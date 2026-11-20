@@ -20,7 +20,7 @@ describe('AgentProfileStore', () => {
   it('inizializza i profili di esempio e carica le competenze on demand', async () => {
     const { store } = await fixture();
     const profiles = await store.list();
-    expect(profiles.map(profile => profile.id)).toEqual(['brainstorming', 'commercialista', 'social-media', 'sviluppatore']);
+    expect(profiles.map(profile => profile.id)).toEqual(['avvocato', 'brainstorming', 'business', 'chef', 'commercialista', 'designer', 'finanza', 'marketing', 'ricercatore', 'scrittore', 'social-media', 'sviluppatore', 'traduttore', 'tutor', 'viaggi']);
 
     const commercialista = await store.get('commercialista');
     expect(commercialista?.name).toBe('Commercialista');

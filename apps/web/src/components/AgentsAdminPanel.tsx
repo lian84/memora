@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import type { AgentProfileSummary, AgentSkillDetail, ProjectIcon } from '@memora/shared';
+import { AGENT_COLOR_PALETTE, type AgentProfileSummary, type AgentSkillDetail, type ProjectIcon } from '@memora/shared';
 import { createAgentProfile, deleteAgentProfile, deleteAgentSkill, getAgentProfileDetail, listAgentProfiles, saveAgentSkill, updateAgentProfile } from '../lib/api';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
@@ -22,7 +22,7 @@ interface SkillForm {
   content: string;
 }
 
-const EMPTY_PROFILE: ProfileForm = { id: '', name: '', description: '', icon: 'star', color: '#2563eb', prompt: '' };
+const EMPTY_PROFILE: ProfileForm = { id: '', name: '', description: '', icon: 'star', color: AGENT_COLOR_PALETTE[0], prompt: '' };
 const EMPTY_SKILL: SkillForm = { name: '', description: '', content: '' };
 
 function notifyProfilesChanged(): void {
@@ -227,6 +227,9 @@ export function AgentsAdminPanel() {
     }
   }, [deleteSkill, editingId, editingSkillName, loadList, t]);
 
+  const palette = [...AGENT_COLOR_PALETTE] as string[];
+  if (!palette.includes(form.color.toLowerCase())) palette.unshift(form.color);
+
   return (
     <div className="agents-admin">
       {error && <div role="alert" className="admin-alert is-error">{error}</div>}
@@ -239,7 +242,7 @@ export function AgentsAdminPanel() {
               <h3>{t('Agenti')}</h3>
               <p className="admin-card-description">{t('Profili selezionabili prima del primo messaggio. Clicca un agente per modificarlo.')}</p>
             </div>
-            <button type="button" className="admin-primary" onClick={startNew}>+ {t('Nuovo agente')}</button>
+            <button type="button" className="admin-primary agents-admin-new-button" onClick={startNew} aria-label={t('Nuovo agente')}><span aria-hidden="true">+</span><span>{t('Nuovo agente')}</span></button>
           </div>
           {loading && <div className="admin-field-note">{t('Caricamento…')}</div>}
           {!loading && profiles.length === 0 && <div className="admin-field-note">{t('Nessun agente configurato.')}</div>}
@@ -297,9 +300,23 @@ export function AgentsAdminPanel() {
                 <input value={form.description} onChange={event => updateForm('description', event.target.value)} maxLength={280} />
               </label>
               <div className="agents-admin-color-row">
-                <label className="admin-label">{t('Colore')}
-                  <input type="color" value={form.color} onChange={event => updateForm('color', event.target.value)} />
-                </label>
+                <div className="admin-label">{t('Colore')}
+                  <div className="agents-admin-color-picker" role="group" aria-label={t('Colore')}>
+                    {palette.map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`agents-admin-color-swatch${form.color.toLowerCase() === color ? ' is-selected' : ''}`}
+                        style={{ '--swatch': color } as CSSProperties}
+                        aria-label={color}
+                        aria-pressed={form.color.toLowerCase() === color}
+                        title={color}
+                        onClick={() => updateForm('color', color)}
+                      />
+                    ))}
+                  </div>
+                  <small>{form.color}</small>
+                </div>
                 <div className="agents-admin-preview" style={{ '--agent-color': form.color } as CSSProperties}>
                   <span><AppIcon name={form.icon} size={18} /></span>
                   <strong>{form.name || t('Anteprima')}</strong>

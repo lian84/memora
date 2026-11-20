@@ -491,6 +491,20 @@ app.delete<{ Params: { id: string; skill: string }; Querystring: { confirm?: str
   }
 });
 
+// --- Applica la versione corrente del profilo a una chat esistente ---
+app.post<{ Params: { id: string } }>('/api/sessions/:id/agent/refresh', async (req, reply) => {
+  try {
+    return reply.send(await agentService.refreshSessionAgent(req.params.id));
+  } catch (err) {
+    if (err instanceof AgentServiceError) {
+      if (err.code === 'session_not_found' || err.code === 'agent_profile_not_found') return reply.status(404).send({ error: err.code, message: err.message });
+      if (err.code === 'agent_not_configured' || err.code === 'agent_busy') return reply.status(409).send({ error: err.code, message: err.message });
+    }
+    app.log.error(err);
+    return reply.status(500).send({ error: 'session_agent_refresh_failed' });
+  }
+});
+
 // --- Imposta il profilo agente della sessione (solo prima del primo messaggio) ---
 app.patch<{ Params: { id: string }; Body: { profileId?: unknown } }>('/api/sessions/:id/agent', async (req, reply) => {
   try {

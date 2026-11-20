@@ -724,6 +724,37 @@ export class AgentService {
     throw err;
   }
 
+  /** Applica la versione corrente dello stesso profilo a una chat già avviata. */
+  async refreshSessionAgent(sessionId: SessionId): Promise<{ sessionId: string; agent: SessionAgentInfo }> {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) throw new AgentServiceError('session_not_found', `Sessione non trovata: ${sessionId}`);
+    if (!entry.agent) throw new AgentServiceError('agent_not_configured', 'Questa chat non usa un profilo agente');
+    if (entry.session.isStreaming) throw new AgentServiceError('agent_busy', 'Attendi la fine della risposta prima di aggiornare il profilo');
+    const profile = await this.resolveAgentProfile(entry.agent.id);
+    entry.agent = profile;
+    entry.agentRef.agent = profile;
+    entry.agentLocked = true;
+    entry.agentRecorded = false;
+    if (entry.session.sessionFile) {
+      try {
+        SessionManager.open(entry.session.sessionFile, this.sessionDir).appendCustomEntry('memora.agent', {
+          agent: {
+            id: profile.id,
+            name: profile.name,
+            icon: profile.icon,
+            color: profile.color,
+            prompt: profile.prompt,
+            skills: profile.skills,
+          },
+        });
+        entry.agentRecorded = true;
+      } catch {
+        // Lo snapshot resta in memoria; il prossimo turno usa quello nuovo.
+      }
+    }
+    return { sessionId, agent: this.toSessionAgent(profile) };
+  }
+
   /** Associa un profilo alla sessione prima del primo messaggio. */
   async setSessionAgent(sessionId: SessionId, profileId: string | null): Promise<{ sessionId: string; agent?: SessionAgentInfo }> {
     const entry = this.sessions.get(sessionId);

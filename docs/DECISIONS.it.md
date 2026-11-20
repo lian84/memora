@@ -1607,9 +1607,11 @@ il comportamento imprevedibile.
 ### Decisione
 - I profili sono file-based in `$MEMORA_DATA_DIR/agents/<id>/` con
   `agent.json`, `PROMPT.md` e `skills/<name>/SKILL.md` opzionali.
-- Il server crea quattro esempi (`brainstorming`, `commercialista`,
-  `sviluppatore`, `social-media`) solo quando la directory `agents` non esiste
-  ancora. Profili reali e dati personali non stanno mai nel repository pubblico.
+- Il server crea 15 esempi (`brainstorming`, `commercialista`, `sviluppatore`,
+  `social-media`, `tutor`, `avvocato`, `traduttore`, `scrittore`, `chef`, `viaggi`,
+  `finanza`, `marketing`, `designer`, `ricercatore`, `business`). Su una data
+  directory esistente aggiunge una sola volta i default mancanti. Profili reali e
+  dati personali non stanno mai nel repository pubblico.
 - Un profilo aggiunge un blocco di istruzioni dopo il prompt base immutabile di
   Memora e prima delle istruzioni di progetto. Non può cambiare policy di ruolo,
   permessi, tool o regole di memoria.
@@ -1618,7 +1620,10 @@ il comportamento imprevedibile.
   confinata alla directory del profilo.
 - Il primo messaggio blocca il profilo. La sessione salva uno snapshot del prompt
   e l’indice delle competenze in una custom entry `memora.agent`; la sidebar e il
-  composer mostrano solo il riepilogo del profilo.
+  composer mostrano solo il riepilogo del profilo. Nome, icona e colore vengono
+  risolti live dal profilo corrente; **Aggiorna profilo** applica esplicitamente
+  un nuovo prompt/catalogo competenze a una chat esistente dal messaggio
+  successivo.
 - Le nuove chat mostrano i chip dei profili sopra il composer fino al primo
   turno. Selezionare **Memo base** significa nessun profilo. Dopo l’invio il
   selettore sparisce e il profilo scelto compare come icona colorata non interattiva
@@ -1641,3 +1646,34 @@ il comportamento imprevedibile.
   può far fallire un successivo `load_skill` senza rompere la conversazione.
 - I file dei profili sono configurazione controllata dall’amministratore.
   Profili importati o di terze parti vanno revisionati prima dell’uso.
+
+---
+## ADR-049 — Aggiornamento esplicito del profilo e metadati visivi live
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Una chat conserva uno snapshot del profilo per evitare che il prompt cambi
+silenziosamente a metà conversazione. È corretto per la riproducibilità, ma chi
+migliora un profilo può volerlo applicare a una chat esistente. Nome, icona e
+colore, invece, non devono restare vecchi solo perché il prompt è congelato.
+
+### Decisione
+- Nome, icona e colore vengono risolti dal profilo corrente quando le sessioni
+  vengono elencate e riprese; lo snapshot resta il fallback se il profilo viene
+  rimosso.
+- Prompt e catalogo competenze restano nello snapshot della sessione.
+- `POST /api/sessions/:id/agent/refresh` rilegge lo stesso profilo e sostituisce
+  lo snapshot della sessione. Viene rifiutato durante uno streaming o se la
+  sessione non ha un profilo.
+- La chat espone **Aggiorna profilo**, con una conferma esplicita. Il nuovo
+  prompt/competenze valgono dal messaggio successivo e il transcript non cambia.
+- Una entry `memora.agent` registra l’aggiornamento nel JSONL Pi.
+
+### Conseguenze
+- Le modifiche a icona/nome/colore aggiornano subito le chat esistenti.
+- Le modifiche a prompt/competenze richiedono un aggiornamento esplicito per le
+  chat esistenti.
+- Nessuna chat cambia comportamento senza un’azione dell’utente.
+- Un profilo eliminato non può essere aggiornato; lo snapshot precedente
+  continua a funzionare.

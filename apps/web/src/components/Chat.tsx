@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { Message } from './Message';
+import { AppIcon } from './AppIcon';
 import { Composer } from './Composer';
 import { ChatSidePanel, type ChatSidePanelTab } from './ChatSidePanel';
 import { ProjectFilesView } from './ProjectFilesView';
@@ -8,12 +10,13 @@ import { ArtifactsPanel } from './ArtifactsPanel';
 import { WebSourcesPanel } from './WebSourcesPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { AgentProfilePicker } from './AgentProfilePicker';
+import { ConfirmDialog } from './ConfirmDialog';
 import { useSessionTurn } from '../hooks/useSessionTurn';
 import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
 import { DEFAULT_SESSION_CONTEXT, type AgentProfileSummary, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionAgentInfo, type SessionContextSettings, type WebSource } from '@memora/shared';
 import type { ChatMessage, SSEEvent, TurnInfo, TurnStatus, WebStatus } from '../lib/api';
-import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, setSessionAgent, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, refreshSessionAgent, setSessionAgent, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -71,6 +74,9 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [selectedAgent, setSelectedAgent] = useState<SessionAgentInfo | null>(agent);
   const [agentSaving, setAgentSaving] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
+  const [agentRefreshOpen, setAgentRefreshOpen] = useState(false);
+  const [agentRefreshing, setAgentRefreshing] = useState(false);
+  const [agentNotice, setAgentNotice] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
@@ -128,6 +134,23 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
       setAgentSaving(false);
     }
   }, [agentSaving, onAgentChange, selectedAgent?.id, sessionId]);
+
+  const handleRefreshAgent = useCallback(async () => {
+    if (!sessionId || agentRefreshing) return;
+    setAgentRefreshing(true);
+    setAgentError(null);
+    try {
+      const result = await refreshSessionAgent(sessionId);
+      setSelectedAgent(result.agent);
+      setAgentRefreshOpen(false);
+      setAgentNotice(t('Profilo aggiornato. Il nuovo prompt sarà usato dal prossimo messaggio.'));
+      onAgentChange?.();
+    } catch (err) {
+      setAgentError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAgentRefreshing(false);
+    }
+  }, [agentRefreshing, onAgentChange, sessionId, t]);
 
   const openPanelTab = useCallback((tab: ChatSidePanelTab, artifactId: string | null = null) => {
     setPanelTab(tab);
@@ -669,6 +692,14 @@ function messageTitle(content: string, html: string | null): string {
       })()}
       {pdfNotice && <div className={`chat-notice${pdfNotice.error ? ' is-error' : ''}`} role="status">{pdfNotice.text}</div>}
       {memoryNotice && <div className={`chat-notice${memoryNotice.error ? ' is-error' : ''}`} role="status">{memoryNotice.text}</div>}
+      {selectedAgent && messages.length > 0 && !isStreaming && (
+        <div className="agent-refresh-row" style={{ '--agent-color': selectedAgent.color } as CSSProperties}>
+          <span><AppIcon name={selectedAgent.icon} size={14} /> {selectedAgent.name}</span>
+          <button type="button" onClick={() => { setAgentError(null); setAgentRefreshOpen(true); }}>{t('Aggiorna profilo')}</button>
+        </div>
+      )}
+      {agentNotice && <div className="chat-notice" role="status">{agentNotice}</div>}
+      {agentError && !agentRefreshOpen && <div className="chat-notice is-error" role="alert">{agentError}</div>}
       {allowAgentPicker && agentProfiles.length > 0 && messages.length === 0 && !isStreaming && (
         <AgentProfilePicker
           profiles={agentProfiles}
@@ -720,6 +751,19 @@ function messageTitle(content: string, html: string | null): string {
         />
         );
       })()}
+      {agentRefreshOpen && (
+        <ConfirmDialog
+          title={t('Aggiornare il profilo in questa chat?')}
+          confirmLabel={t('Aggiorna profilo')}
+          busyLabel={t('Aggiornamento…')}
+          busy={agentRefreshing}
+          error={agentError}
+          onClose={() => { if (!agentRefreshing) setAgentRefreshOpen(false); }}
+          onConfirm={() => void handleRefreshAgent()}
+        >
+          <p>{t('Verrà applicata la versione corrente del profilo dal prossimo messaggio. La cronologia della chat resta invariata.')}</p>
+        </ConfirmDialog>
+      )}
       {panelOpen && (
         <ChatSidePanel
           title={project ? project.name : t('Chat')}

@@ -227,6 +227,27 @@ describe('AgentService', () => {
       }
     });
 
+    it('aggiorna il prompt del profilo in una chat già avviata', async () => {
+      const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-refresh-'));
+      try {
+        const service = new AgentService({ ...baseConfig, dataDir });
+        const created = await service.createSession();
+        await service.setSessionAgent(created.sessionId, 'commercialista');
+        await service.updateAgentProfile('commercialista', { prompt: 'Nuovo prompt aggiornato.' });
+        const refreshed = await service.refreshSessionAgent(created.sessionId);
+        expect(refreshed.agent.id).toBe('commercialista');
+        const config = loaderConfigs[0]!;
+        let handler: ((event: { messageType: string; prompt: string; systemPrompt: string }) => Promise<unknown>) | undefined;
+        config.extensionFactories[0]!({ on: (_event, fn) => { handler = fn; } });
+        const result = await handler!({ messageType: 'user', prompt: 'ciao', systemPrompt: 'assistant' }) as { systemPrompt: string };
+        expect(result.systemPrompt).toContain('Nuovo prompt aggiornato.');
+        service.disposeAll();
+      } finally {
+        const { rm } = await import('node:fs/promises');
+        await rm(dataDir, { recursive: true, force: true });
+      }
+    });
+
     it('rifiuta il cambio profilo dopo il primo messaggio utente', async () => {
       const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-lock-'));
       try {

@@ -489,4 +489,9 @@ export const fr: Record<string, string> = {
   'terminal': 'Terminal',
   'megaphone': 'Mégaphone',
   'Il profilo viene salvato in MEMORA_DATA_DIR/agents. L’ID resta bloccato; gli altri campi sono modificabili.': 'Le profil est enregistré dans MEMORA_DATA_DIR/agents. L’ID reste verrouillé ; les autres champs sont modifiables.',
+  'Aggiorna profilo': 'Actualiser le profil',
+  'Aggiornare il profilo in questa chat?': 'Mettre à jour le profil dans cette conversation ?',
+  'Aggiornamento…': 'Mise à jour…',
+  'Profilo aggiornato. Il nuovo prompt sarà usato dal prossimo messaggio.': 'Profil actualisé. Le nouveau prompt sera utilisé à partir du prochain message.',
+  'Verrà applicata la versione corrente del profilo dal prossimo messaggio. La cronologia della chat resta invariata.': 'La version actuelle du profil sera appliquée à partir du prochain message. L’historique de la conversation reste inchangé.',
 };

@@ -21,7 +21,8 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Allegati per messaggio: massimo 8 file, 15 MB ciascuno.
 - [x] Anteprima immagini e inclusione degli allegati immagini nel turno.
 - [x] Contesto per chat: memoria globale, memoria di progetto, fonti di progetto.
-- [x] Profili agente file-based selezionabili prima del primo messaggio; icona colorata del profilo nel composer e nella sidebar. I profili aggiungono un prompt circoscritto e competenze caricate on demand, senza cambiare tool o policy di memoria.
+- [x] Profili agente file-based selezionabili prima del primo messaggio; 15 default, palette di 10 colori e icone colorate nel composer e nella sidebar. I profili aggiungono un prompt circoscritto e competenze caricate on demand, senza cambiare tool o policy di memoria. Le chat esistenti possono aggiornare esplicitamente il profilo corrente; nome/icona/colore si aggiornano live.
+- [x] **Aggiorna profilo** esplicito in una chat esistente: applica prompt/competenze correnti dal messaggio successivo; i metadati visivi sono sempre live.
 - [x] Amministrazione → Agenti: crea, modifica ed elimina (cestino) profili; gestisce competenze, icona e colore.
 - [x] Modello, provider e livello di reasoning configurabili per chat.
 - [x] Esportazione della risposta in PDF.

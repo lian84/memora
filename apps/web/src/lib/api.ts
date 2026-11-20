@@ -620,6 +620,11 @@ export async function deleteAgentSkill(profileId: string, skillName: string): Pr
   return res.json();
 }
 
+export async function refreshSessionAgent(sessionId: string): Promise<{ sessionId: string; agent: SessionAgentInfo }> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/agent/refresh`, { method: 'POST' });
+  return res.json();
+}
+
 export async function setSessionAgent(sessionId: string, profileId: string | null): Promise<{ sessionId: string; agent?: SessionAgentInfo }> {
   const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/agent`, {
     method: 'PATCH',

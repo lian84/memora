@@ -185,6 +185,16 @@ async function main() {
     assert.equal(clearedAgent.status, 200, 'PATCH profilo base deve funzionare');
     assert.equal((await clearedAgent.json()).agent, undefined);
 
+    const reselectedAgent = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/agent`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId: 'commercialista' }),
+    });
+    assert.equal(reselectedAgent.status, 200, 'PATCH nuovo profilo deve funzionare');
+    const refreshedAgent = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/agent/refresh`, { method: 'POST' });
+    assert.equal(refreshedAgent.status, 200, 'POST /api/sessions/:id/agent/refresh deve funzionare');
+    assert.equal((await refreshedAgent.json()).agent.id, 'commercialista');
+
     const createdAgent = await authFetch(`${baseUrl}/api/admin/agents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

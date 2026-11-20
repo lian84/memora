@@ -36,9 +36,10 @@ $MEMORA_DATA_DIR/agents/
 ```
 
 The icon must be one of the project icons (`calculator`, `terminal`, `lightbulb`,
-`megaphone`, `briefcase`, `code`, `star`, `globe`, and so on). `color` is an
-optional hex color used for the profile badge; it defaults by profile id. `PROMPT.md` is added after the immutable Memora
-base prompt. The `skills/` directory uses the Agent Skills format, with a
+`megaphone`, `briefcase`, `code`, `star`, `globe`, and the other project
+icons). The admin editor offers a fixed 10-color palette; `color` remains an
+optional hex value for hand-edited files and defaults by profile id. `PROMPT.md`
+is added after the immutable Memora base prompt. The `skills/` directory uses the Agent Skills format, with a
 `SKILL.md` containing `name` and `description` frontmatter.
 
 ## Lazy skills
@@ -52,13 +53,13 @@ permissions or filesystem access.
 
 ## Admin editor
 
-Open **Administration → Agents** to create, edit and move profiles to the trash. The editor covers metadata, icon, color, prompt and
-skills; each skill has a name, routing description and Markdown instructions.
-Saving a profile updates the files under `$MEMORA_DATA_DIR/agents`.
+Open **Administration → Agents** to create, edit and move profiles to the trash. The editor covers metadata, icon, a fixed 10-color palette, prompt and skills; each skill has a name, routing description and Markdown instructions. Saving a profile updates the files under `$MEMORA_DATA_DIR/agents`.
 
 Profiles already used by chats keep their prompt and skill snapshot. Their
 name, icon and color are resolved from the current profile, so a change to those
-visual fields updates existing chats too. Deleting a profile moves its directory
+visual fields updates existing chats too. Use **Refresh profile** in an existing
+chat to apply a new prompt or skill catalog from its next message; the
+conversation history remains unchanged. Deleting a profile moves its directory
 to `.trash/agents`; it disappears from the new-chat picker without breaking
 existing conversations.
 
@@ -66,9 +67,11 @@ Import/export of profile bundles is not part of this first editor.
 
 ## First use
 
-When `$MEMORA_DATA_DIR/agents` does not exist, Memora seeds four examples:
-Brainstorming, Commercialista, Sviluppatore and Social media. They are ordinary
-files and can be copied, edited or removed.
+Memora seeds 15 examples, including Brainstorming, Commercialista, Sviluppatore,
+Social media, Tutor, Avvocato, Traduttore, Scrittore, Chef, Viaggi, Finanza
+personale, Marketing, Designer, Ricercatore and Business. On an existing data
+directory, only missing defaults are added once; existing files are not
+overwritten. They are ordinary files and can be copied, edited or removed.
 
 To create a custom profile:
 

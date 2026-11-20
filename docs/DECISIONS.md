@@ -1765,9 +1765,11 @@ unpredictable.
 ### Decision
 - Profiles are file-based under `$MEMORA_DATA_DIR/agents/<id>/` with
   `agent.json`, `PROMPT.md` and optional `skills/<name>/SKILL.md`.
-- The server seeds four examples (`brainstorming`, `commercialista`,
-  `sviluppatore`, `social-media`) only when the `agents` directory does not yet
-  exist. Real profiles and personal data never live in the public repository.
+- The server seeds 15 examples (`brainstorming`, `commercialista`, `sviluppatore`,
+  `social-media`, `tutor`, `avvocato`, `traduttore`, `scrittore`, `chef`, `viaggi`,
+  `finanza`, `marketing`, `designer`, `ricercatore`, `business`). On an existing
+  data directory only missing defaults are added once. Real profiles and personal
+  data never live in the public repository.
 - A profile adds an instruction block after the immutable Memora base prompt
   and before project instructions. It cannot change role policy, permissions,
   tools or memory rules.
@@ -1776,7 +1778,9 @@ unpredictable.
   confined to the profile directory.
 - The first message locks the profile. A session stores a prompt snapshot and
   the skill index in a `memora.agent` custom entry; the sidebar and composer
-  show only the profile summary.
+  show only the profile summary. Name, icon and color are resolved live from the
+  current profile; **Refresh profile** explicitly applies a new prompt/skill
+  catalog to an existing chat from the next message.
 - New chats expose profile chips above the composer until the first turn.
   Selecting `Memo base` means no profile. After sending, the picker disappears
   and the selected profile is shown as a non-interactive colored icon beside the
@@ -1799,3 +1803,34 @@ unpredictable.
   `load_skill` call fail without breaking the conversation.
 - Profile files are administrator-controlled configuration. Imported or
   third-party profiles should be reviewed before use.
+
+---
+## ADR-049 — Explicit profile refresh and live display metadata
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+A chat keeps a profile snapshot so its prompt cannot change silently in the
+middle of a conversation. This is correct for reproducibility, but users who
+improve a profile may want to apply it to an existing conversation. Display
+metadata such as name, icon and color, on the other hand, should not stay stale
+just because the prompt is frozen.
+
+### Decision
+- Name, icon and color are resolved from the current profile when sessions are
+  listed and resumed; the stored snapshot remains the fallback if the profile is
+  removed.
+- Prompt and skill catalog remain in the session snapshot.
+- `POST /api/sessions/:id/agent/refresh` re-reads the same profile and replaces
+  the session snapshot. It is rejected while a turn is streaming or if the
+  session has no profile.
+- The chat exposes **Refresh profile**, with an explicit confirmation dialog.
+  The new prompt/skills apply from the next message and the transcript is
+  unchanged.
+- A `memora.agent` entry records the refresh in the Pi JSONL.
+
+### Consequences
+- Icon/name/color edits update existing chats immediately.
+- Prompt/skill edits require an explicit refresh for existing chats.
+- No chat changes behavior without the user's action.
+- A deleted profile cannot be refreshed; the old snapshot continues to work.

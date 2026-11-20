@@ -36,9 +36,10 @@ $MEMORA_DATA_DIR/agents/
 ```
 
 L’icona deve essere una di quelle dei progetti (`calculator`, `terminal`,
-`lightbulb`, `megaphone`, `briefcase`, `code`, `star`, `globe`, ecc.). `color`
-è un colore esadecimale opzionale usato per il badge del profilo; se manca viene
-scelto in base all’id. `PROMPT.md` viene aggiunto dopo il prompt base
+`lightbulb`, `megaphone`, `briefcase`, `code`, `star`, `globe` e le altre icone
+dei progetti). L’editor admin offre una palette fissa di 10 colori; `color`
+resta un valore esadecimale opzionale per i file modificati a mano e, se manca,
+viene scelto in base all’id. `PROMPT.md` viene aggiunto dopo il prompt base
 immutabile di Memora. La directory `skills/` usa il formato Agent Skills, con un
 `SKILL.md` che contiene i frontmatter `name` e `description`.
 
@@ -54,23 +55,28 @@ aggiungere tool, permessi o accesso al filesystem.
 ## Editor in amministrazione
 
 Apri **Amministrazione → Agenti** per creare, modificare e spostare nel cestino i
-profili. L’editor gestisce metadati, icona, colore, prompt e competenze; ogni
-competenza ha nome, descrizione per il routing e istruzioni Markdown. Il
-salvataggio aggiorna i file in `$MEMORA_DATA_DIR/agents`.
+profili. L’editor gestisce metadati, icona, una palette fissa di 10 colori,
+prompt e competenze; ogni competenza ha nome, descrizione per il routing e
+istruzioni Markdown. Il salvataggio aggiorna i file in `$MEMORA_DATA_DIR/agents`.
 
 Le chat che hanno già usato un profilo mantengono lo snapshot di prompt e
 competenze. Nome, icona e colore vengono invece risolti dal profilo corrente,
-quindi una modifica a questi campi visivi aggiorna anche le chat esistenti.
-L’eliminazione sposta la directory in `.trash/agents`; il profilo sparisce dal
-selettore delle nuove chat senza rompere le conversazioni esistenti.
+quindi una modifica a questi campi visivi aggiorna anche le chat esistenti. Usa
+**Aggiorna profilo** in una chat esistente per applicare il nuovo prompt o il
+nuovo catalogo competenze dal messaggio successivo; la cronologia resta
+invariata. L’eliminazione sposta la directory in `.trash/agents`; il profilo
+sparisce dal selettore delle nuove chat senza rompere le conversazioni
+esistenti.
 
 Import/export di pacchetti profilo non fa parte di questo primo editor.
 
 ## Primo uso
 
-Quando `$MEMORA_DATA_DIR/agents` non esiste, Memora crea quattro esempi:
-Brainstorming, Commercialista, Sviluppatore e Social media. Sono normali file,
-copiabili, modificabili o eliminabili.
+Memora crea 15 esempi, tra cui Brainstorming, Commercialista, Sviluppatore,
+Social media, Tutor, Avvocato, Traduttore, Scrittore, Chef, Viaggi, Finanza
+personale, Marketing, Designer, Ricercatore e Business. Su una data directory
+esistente aggiunge una sola volta i default mancanti, senza sovrascrivere i file
+presenti. Sono normali file, copiabili, modificabili o eliminabili.
 
 Per creare un profilo personalizzato:
 
