@@ -540,4 +540,5 @@ export const en: Record<string, string> = {
   'Token configurato': 'Token configured',
   'Token mancante': 'Token missing',
   'Salvato nel secret store locale, non nel progetto.': 'Stored in the local secret store, not in the project.',
+  'Apri la pagina per creare il token': 'Open the page to create the token',
 };

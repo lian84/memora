@@ -333,6 +333,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
                 <small>{t('Salvato nel secret store locale, non nel progetto.')}</small>
               </label>
             </div>
+            <a className="admin-token-link" href={MCP_SERVER_DEFINITIONS.find(server => server.id === mcpAccountForm.serverId)?.tokenUrl} target="_blank" rel="noopener noreferrer">{t('Apri la pagina per creare il token')} ↗</a>
             <div className="admin-actions">
               <button type="button" className="admin-primary" onClick={() => void createProjectMcpAccount()} disabled={saving}>{t('Crea account progetto')}</button>
               <button type="button" onClick={() => setMcpAccountForm({ serverId: null, label: '', token: '' })}>{t('Annulla')}</button>

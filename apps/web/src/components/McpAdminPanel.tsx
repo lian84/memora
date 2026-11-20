@@ -104,6 +104,7 @@ export function McpAdminPanel() {
   };
 
   const serverLabel = (id: McpServerId) => MCP_SERVER_DEFINITIONS.find(server => server.id === id)?.label ?? id;
+  const selectedServer = MCP_SERVER_DEFINITIONS.find(server => server.id === form.serverId);
 
   return (
     <div className="mcp-admin">
@@ -152,6 +153,11 @@ export function McpAdminPanel() {
             <input type="password" value={form.token} onChange={event => setForm(current => ({ ...current, token: event.target.value }))} placeholder={editingId ? t('Lascia vuoto per mantenere il token attuale') : 'ntn_...'} autoComplete="new-password" spellCheck={false} />
             <small>{t('Il token viene salvato nel secret store locale con permessi 0600 e non viene più mostrato.')}</small>
           </label>
+          {selectedServer && (
+            <a className="admin-token-link" href={selectedServer.tokenUrl} target="_blank" rel="noopener noreferrer">
+              {t('Apri la pagina per creare il token')} ↗
+            </a>
+          )}
           <label className="admin-toggle">
             <input type="checkbox" checked={form.defaultForServer} onChange={event => setForm(current => ({ ...current, defaultForServer: event.target.checked }))} disabled={Boolean(editingId) && !globals.some(item => item.id === editingId && item.serverId === form.serverId)} />
             <span>{t('Account predefinito per questo server')}</span>

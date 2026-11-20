@@ -5,12 +5,14 @@ export const MCP_SERVER_DEFINITIONS = [
     label: 'Notion',
     description: 'Pagine, database e ricerca nel workspace Notion.',
     secretHint: 'Token di integrazione Notion, ad esempio ntn_...',
+    tokenUrl: 'https://www.notion.so/profile/integrations',
   },
   {
     id: 'todoist',
     label: 'Todoist',
     description: 'Progetti e attività Todoist.',
     secretHint: 'API token Todoist.',
+    tokenUrl: 'https://app.todoist.com/app/settings/integrations/developer',
   },
 ] as const;
 

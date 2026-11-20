@@ -1740,3 +1740,6 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .project-mcp-new h4 { margin: 0 0 8px; color: var(--text-soft); font-size: 12px; }
 .project-mcp-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 640px) { .project-mcp-row { align-items: stretch; flex-direction: column; } .project-mcp-form-grid { grid-template-columns: 1fr; } }
+
+.admin-token-link { display: inline-flex; margin-top: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 600; text-decoration: none; }
+.admin-token-link:hover { text-decoration: underline; }

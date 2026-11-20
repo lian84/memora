@@ -541,4 +541,5 @@ export const fr: Record<string, string> = {
   'Token configurato': 'Token configuré',
   'Token mancante': 'Token manquant',
   'Salvato nel secret store locale, non nel progetto.': 'Stocké dans le secret store local, pas dans le projet.',
+  'Apri la pagina per creare il token': 'Ouvrir la page pour créer le token',
 };
