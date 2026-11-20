@@ -116,7 +116,7 @@ function parseProfileMetadata(value: unknown, fallbackId: string): { id: string;
   const name = typeof data.name === 'string' ? data.name.trim() : '';
   const description = typeof data.description === 'string' ? data.description.trim() : '';
   const icon = isProjectIcon(data.icon) ? data.icon : DEFAULT_ICON;
-  if (!PROFILE_ID.test(id) || id !== fallbackId || !name) throw new AgentProfileError('invalid_agent_profile', 'Metadati profilo non validi');
+  if (!PROFILE_ID.test(id) || id !== fallbackId || id === 'base' || id === 'memo' || !name) throw new AgentProfileError('invalid_agent_profile', 'Metadati profilo non validi');
   return { id, name: clampText(name, 120), description: clampText(description, 280), icon };
 }
 
@@ -176,7 +176,7 @@ export class AgentProfileStore {
   }
 
   private validateId(id: string): void {
-    if (!PROFILE_ID.test(id)) throw new AgentProfileError('invalid_agent_profile', 'Identificatore profilo non valido');
+    if (!PROFILE_ID.test(id) || id === 'base' || id === 'memo') throw new AgentProfileError('invalid_agent_profile', 'Identificatore profilo non valido');
   }
 
   private async readSkills(profileId: string): Promise<Skill[]> {

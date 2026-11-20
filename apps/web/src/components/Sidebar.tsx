@@ -217,6 +217,7 @@ export function Sidebar({
             {session.agent && (
               <span
                 className="session-agent-icon"
+                role="img"
                 title={t('Chat con {name}', { name: session.agent.name })}
                 aria-label={t('Chat con {name}', { name: session.agent.name })}
               >

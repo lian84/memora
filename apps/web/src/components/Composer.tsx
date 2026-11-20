@@ -92,7 +92,7 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
         }}
       />
       {agent && (
-        <span className="composer-agent" title={t('Chat con {name}', { name: agent.name })} aria-label={t('Chat con {name}', { name: agent.name })}>
+        <span className="composer-agent" role="img" title={t('Chat con {name}', { name: agent.name })} aria-label={t('Chat con {name}', { name: agent.name })}>
           <AppIcon name={agent.icon} size={17} />
         </span>
       )}

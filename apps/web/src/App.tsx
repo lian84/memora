@@ -720,7 +720,7 @@ export default function App() {
               agentProfiles={agentProfiles}
               agent={selectedSession?.agent ?? null}
               onAgentChange={() => void load(archivedView)}
-              allowAgentPicker={Boolean(selectedSession?.draft)}
+              allowAgentPicker={Boolean(selectedSession?.draft || selectedSession?.messageCount === 0)}
             />
           )}
         </div>
