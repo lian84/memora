@@ -1712,3 +1712,41 @@ message transcript.
 - The UI can expose sensitive content that the model chose to think about; it
   remains local to the authenticated chat and follows the session retention.
 - Models that return no thinking deltas simply do not show the panel.
+
+---
+## ADR-047 — Reliable PDF previews and A4 pagination
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+`Rivedi anteprima` on a PDF could fail with HTTP 500. The process also uses
+`pdf-parse` for PDF attachments and web pages. That library bundles PDF.js 5 and
+`@napi-rs/canvas` 0.1.80, and leaves a `Path2D` class and a fake worker from that
+version on `globalThis`. PDF.js 6 then received an incompatible canvas path
+object or worker, producing a canvas `fill` TypeError.
+
+HTML PDFs generated from one-page designs could also overflow the A4 height.
+Chromium split a bordered card and its text across pages, leaving the lower half
+of the text on a mostly empty second page.
+
+### Decision
+- PDF preview rendering saves the process PDF globals, installs the
+  `@napi-rs/canvas` 1.1.1 `Path2D`/`DOMMatrix`/`ImageData`, removes the foreign
+  fake worker, and restores the previous globals in `finally`.
+- Preview rendering is serialized with a small in-process queue so two renders
+  cannot swap globals concurrently.
+- HTML PDF rendering injects print-only pagination CSS: headings stay with their
+  following content, paragraphs/cards/tables avoid internal breaks, table
+  headers repeat, and widows/orphans are limited. The CSS does not affect screen
+  previews.
+- The PDF prompt guidelines now ask for explicit multi-page blocks and
+  `break-inside: avoid` on cards, callouts and tables instead of one overflowing
+  `min-height: 297mm` container.
+
+### Consequences
+- `Rivedi anteprima` works after PDF text extraction or web-PDF parsing.
+- Existing PDFs are unchanged; newly generated HTML PDFs move a card to the next
+  page instead of cutting its text at the page boundary.
+- CSS pagination cannot fix a design that is intrinsically taller than the
+  available page area; the model must still design readable one-page or
+  multi-page content.

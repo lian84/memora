@@ -78,6 +78,7 @@ Ultimo aggiornamento: 2026-11-19.
 - [x] Download, eliminazione, allegato alla chat e import nel progetto.
 - [x] Card di download dentro la risposta dell’assistente, associata al messaggio sorgente.
 - [x] Revisione visuale manuale di PDF/HTML/PPTX con modello vision e output versionato.
+- [x] Anteprima PDF isolata dagli altri consumatori PDF.js; i PDF HTML evitano di spezzare schede e testo tra le pagine A4.
 - [x] Limiti di dimensione, numero di slide, righe e colonne.
 
 ## 5. Ricerca web

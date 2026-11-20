@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import PDFDocument from 'pdfkit';
-import { createCanvas } from '@napi-rs/canvas';
+import { createCanvas, DOMMatrix as CanvasDOMMatrix, ImageData as CanvasImageData, Path2D as CanvasPath2D } from '@napi-rs/canvas';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 import inlineCss from 'inline-css';
@@ -195,6 +195,33 @@ function sanitizeHtmlForPdf(input: string): string {
     .replace(/javascript\s*:/gi, '');
 }
 
+const PRINT_PAGINATION_CSS = `<style id="memora-print-pagination">
+@media print {
+  html, body { margin: 0 !important; }
+  body { overflow-wrap: break-word; orphans: 3; widows: 3; }
+  h1, h2, h3, h4, h5, h6 { break-after: avoid-page; page-break-after: avoid; }
+  p, li, blockquote, pre, figure, img { break-inside: avoid-page; page-break-inside: avoid; }
+  table { width: 100%; break-inside: avoid-page; page-break-inside: avoid; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr { break-inside: avoid-page; page-break-inside: avoid; }
+  div[style*="background-color"][style*="border"] { break-inside: avoid-page; page-break-inside: avoid; }
+  .card, .box, .callout, .panel, .notice, .tip { break-inside: avoid-page; page-break-inside: avoid; }
+}
+</style>`;
+
+/** Inserisce regole di paginazione senza alterare il layout a schermo. */
+function injectPrintPaginationCss(html: string): string {
+  const head = html.search(/<\/head\s*>/i);
+  if (head >= 0) return `${html.slice(0, head)}${PRINT_PAGINATION_CSS}${html.slice(head)}`;
+  const body = html.search(/<body\b[^>]*>/i);
+  if (body >= 0) {
+    const end = html.indexOf('>', body) + 1;
+    return `${html.slice(0, end)}${PRINT_PAGINATION_CSS}${html.slice(end)}`;
+  }
+  return `${PRINT_PAGINATION_CSS}${html}`;
+}
+
 let browserQueue: Promise<unknown> = Promise.resolve();
 
 function withBrowserQueue<T>(task: () => Promise<T>): Promise<T> {
@@ -212,29 +239,82 @@ export interface PreviewImageOptions {
   dataDir?: string;
 }
 
-/** Rende la prima pagina di un PDF in PNG, senza dipendere da un browser. */
-export async function renderPdfPreviewImage(buffer: Buffer, pageNumber = 1): Promise<Buffer> {
-  if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0) throw new Error('empty_pdf');
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const task = pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    disableFontFace: true,
-    useSystemFonts: false,
-  });
-  const pdf = await task.promise;
+let pdfPreviewQueue: Promise<unknown> = Promise.resolve();
+
+function withPdfPreviewQueue<T>(task: () => Promise<T>): Promise<T> {
+  const next = pdfPreviewQueue.then(task, task);
+  pdfPreviewQueue = next.then(() => undefined, () => undefined);
+  return next;
+}
+
+interface PdfPreviewGlobals {
+  Path2D?: unknown;
+  DOMMatrix?: unknown;
+  ImageData?: unknown;
+  pdfjsWorker?: unknown;
+}
+
+/**
+ * Isola il render PDF.js da altri consumatori di PDF nel processo.
+ *
+ * `pdf-parse` usa PDF.js 5 e una versione diversa di `@napi-rs/canvas`; quando
+ * viene usato prima della preview lascia su `globalThis` un `Path2D`
+ * incompatibile e un fake worker 5.x. PDF.js 6 accetta il contesto canvas solo
+ * con la propria classe `Path2D` e rifiuta un worker di versione diversa.
+ */
+async function withIsolatedPdfGlobals<T>(task: (pdfjs: typeof import('pdfjs-dist/legacy/build/pdf.mjs')) => Promise<T>): Promise<T> {
+  const runtime = globalThis as PdfPreviewGlobals;
+  const previous = {
+    Path2D: runtime.Path2D,
+    DOMMatrix: runtime.DOMMatrix,
+    ImageData: runtime.ImageData,
+    pdfjsWorker: runtime.pdfjsWorker,
+  };
+  runtime.Path2D = CanvasPath2D;
+  runtime.DOMMatrix = CanvasDOMMatrix;
+  runtime.ImageData = CanvasImageData;
+  delete runtime.pdfjsWorker;
   try {
-    if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > pdf.numPages) throw new Error('invalid_pdf_page');
-    const page = await pdf.getPage(pageNumber);
-    const base = page.getViewport({ scale: 1 });
-    const scale = Math.min(2, 1200 / base.width);
-    const viewport = page.getViewport({ scale });
-    const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
-    const context = canvas.getContext('2d');
-    await page.render({ canvasContext: context as never, viewport, canvas: canvas as never }).promise;
-    return canvas.toBuffer('image/png');
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    return await task(pdfjs);
   } finally {
-    await task.destroy().catch(() => undefined);
+    if (previous.Path2D === undefined) delete runtime.Path2D;
+    else runtime.Path2D = previous.Path2D;
+    if (previous.DOMMatrix === undefined) delete runtime.DOMMatrix;
+    else runtime.DOMMatrix = previous.DOMMatrix;
+    if (previous.ImageData === undefined) delete runtime.ImageData;
+    else runtime.ImageData = previous.ImageData;
+    if (previous.pdfjsWorker === undefined) delete runtime.pdfjsWorker;
+    else runtime.pdfjsWorker = previous.pdfjsWorker;
   }
+}
+
+/** Rende la prima pagina di un PDF in PNG, senza dipendere da un browser. */
+export function renderPdfPreviewImage(buffer: Buffer, pageNumber = 1): Promise<Buffer> {
+  return withPdfPreviewQueue(() => {
+    if (!Buffer.isBuffer(buffer) || buffer.byteLength === 0) throw new Error('empty_pdf');
+    return withIsolatedPdfGlobals(async (pdfjs) => {
+      const task = pdfjs.getDocument({
+        data: new Uint8Array(buffer),
+        disableFontFace: true,
+        useSystemFonts: false,
+      });
+      const pdf = await task.promise;
+      try {
+        if (!Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > pdf.numPages) throw new Error('invalid_pdf_page');
+        const page = await pdf.getPage(pageNumber);
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.min(2, 1200 / base.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
+        const context = canvas.getContext('2d');
+        await page.render({ canvasContext: context as never, viewport, canvas: canvas as never }).promise;
+        return canvas.toBuffer('image/png');
+      } finally {
+        await task.destroy().catch(() => undefined);
+      }
+    });
+  });
 }
 
 async function launchPreviewBrowser(dataDir?: string) {
@@ -291,6 +371,7 @@ async function renderHtmlPdfBrowser(input: HtmlPdfRenderInput): Promise<PdfRende
   const html = sanitizeHtmlForPdf(input.html).trim();
   if (!html) throw new Error('empty_html');
   if (html.length > MAX_HTML_CHARS) throw new Error('html_too_large');
+  const printableHtml = injectPrintPaginationCss(html);
 
   const browser = await launchPreviewBrowser(input.dataDir);
   try {
@@ -298,7 +379,7 @@ async function renderHtmlPdfBrowser(input: HtmlPdfRenderInput): Promise<PdfRende
     await page.setJavaScriptEnabled(false);
     await page.setRequestInterception(true);
     page.on('request', request => { void request.abort(); });
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+    await page.setContent(printableHtml, { waitUntil: 'domcontentloaded', timeout: 15_000 });
     await page.emulateMediaType('print');
     const pdf = await page.pdf({
       format: 'A4',

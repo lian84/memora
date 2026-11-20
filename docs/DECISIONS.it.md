@@ -1554,3 +1554,41 @@ transcript del messaggio assistant.
 - La UI può esporre contenuti sensibili su cui il modello ha ragionato; restano
   locali alla chat autenticata e seguono la retention della sessione.
 - I modelli che non restituiscono delta di thinking non mostrano il pannello.
+
+---
+## ADR-047 — Anteprime PDF affidabili e paginazione A4
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+**Rivedi anteprima** su un PDF poteva fallire con HTTP 500. Il processo usa anche
+`pdf-parse` per allegati PDF e pagine web. Quella libreria include PDF.js 5 e
+`@napi-rs/canvas` 0.1.80 e lascia su `globalThis` una classe `Path2D` e un fake
+worker di quella versione. PDF.js 6 riceveva quindi un path canvas incompatibile
+o un worker di versione diversa, con un TypeError in `fill`.
+
+I PDF HTML generati da layout da una pagina potevano inoltre superare l’altezza
+A4. Chromium spezzava una scheda con bordo e il suo testo tra due pagine,
+lasciando la parte inferiore del testo su una seconda pagina quasi vuota.
+
+### Decisione
+- Il render della preview PDF salva i globals PDF del processo, installa
+  `Path2D`/`DOMMatrix`/`ImageData` di `@napi-rs/canvas` 1.1.1, rimuove il fake
+  worker estraneo e ripristina i valori precedenti in `finally`.
+- I render delle preview sono serializzati con una piccola coda in-process, così
+  due render non possono scambiarsi i globals contemporaneamente.
+- Il render HTML→PDF inietta CSS di paginazione solo per la stampa: i titoli
+  restano con il contenuto seguente, paragrafi/schede/tabelle evitano interruzioni
+  interne, le intestazioni di tabella si ripetono e widows/orphans sono limitati.
+  Il CSS non cambia l’anteprima a schermo.
+- Le linee guida del prompt PDF ora chiedono blocchi multipagina espliciti e
+  `break-inside: avoid` su schede, callout e tabelle, invece di un unico
+  contenitore `min-height: 297mm` che trabocca.
+
+### Conseguenze
+- **Rivedi anteprima** funziona dopo l’estrazione testo da PDF o la lettura di PDF
+  web.
+- I PDF esistenti non cambiano; i nuovi PDF HTML spostano una scheda alla pagina
+  successiva invece di tagliarne il testo al confine.
+- Il CSS non può correggere un layout intrinsecamente più alto dell’area utile:
+  il modello deve comunque progettare contenuti leggibili da una o più pagine.
