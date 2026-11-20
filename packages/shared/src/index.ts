@@ -210,6 +210,8 @@ export interface AgentServiceConfig {
   webService?: WebServiceLike;
   /** Generazione automatica del titolo dal primo messaggio (default true). */
   autoTitleEnabled?: boolean;
+  /** Registry runtime degli account MCP disponibili. */
+  mcpRuntime?: import('./mcp.js').McpRuntimeProvider;
 }
 
 /** Interfaccia minimale per il servizio memoria (evita dipendenze circolari). */

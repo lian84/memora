@@ -4,7 +4,7 @@ import { PanelResizeHandle } from './PanelResizeHandle';
 import { PANEL_DEFAULT_WIDTH, PANEL_EXPANDED_WIDTH, usePanelWidth } from '../lib/panel-width';
 import { useI18n } from '../i18n';
 
-export type ChatSidePanelTab = 'files' | 'context' | 'artifacts' | 'web';
+export type ChatSidePanelTab = 'files' | 'context' | 'artifacts' | 'web' | 'mcp';
 
 interface ChatSidePanelProps {
   title: string;
@@ -50,6 +50,7 @@ export function ChatSidePanel({
       { id: 'context', label: t('Contesto') },
       { id: 'artifacts', label: t('Artefatti'), count: artifactsCount },
       { id: 'web', label: t('Fonti'), count: webSourcesCount },
+      { id: 'mcp', label: t('MCP') },
     ],
     [artifactsCount, hasFiles, t, webSourcesCount]
   );

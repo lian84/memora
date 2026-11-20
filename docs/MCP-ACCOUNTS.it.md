@@ -73,10 +73,10 @@ La UI offre account globali e account del progetto. Un valore vuoto significa
 ## Stato
 
 Registry account, salvataggio token, test connessione e binding di progetto sono
-implementati. Il runtime MCP che collega questi account all’agente, espone i tool
-e applica le policy read-only è la prossima milestone. Fino ad allora gli
-account si possono preparare e testare, ma nessun tool MCP viene esposto alle
-chat.
+implementati. Il runtime MCP read-only è attivo: attivando Notion o Todoist nel
+pannello destro della chat viene avviato il server MCP locale e vengono esposti
+solo i tool di lettura tramite `mcp_call`. Il pannello MCP è disattivato di
+default e le modifiche valgono dal messaggio successivo.
 
 ## Sicurezza
 

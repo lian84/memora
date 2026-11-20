@@ -542,4 +542,11 @@ export const fr: Record<string, string> = {
   'Token mancante': 'Token manquant',
   'Salvato nel secret store locale, non nel progetto.': 'Stocké dans le secret store local, pas dans le projet.',
   'Apri la pagina per creare il token': 'Ouvrir la page pour créer le token',
+  'MCP': 'MCP',
+  'Server MCP': 'Serveurs MCP',
+  'I server sono disattivati per impostazione predefinita. Attiva solo quelli che servono in questa chat.': 'Les serveurs sont désactivés par défaut. Activez uniquement ceux nécessaires dans cette conversation.',
+  'Nessun account configurato': 'Aucun compte configuré',
+  'Attiva {server}': 'Activer {server}',
+  'Disattiva {server}': 'Désactiver {server}',
+  'I tool MCP sono di sola lettura nella prima versione. Le modifiche valgono dal prossimo messaggio.': 'Les outils MCP sont en lecture seule dans cette première version. Les modifications s’appliquent au message suivant.',
 };

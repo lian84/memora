@@ -1919,3 +1919,33 @@ too technical for a self-hosted installation.
 - A normal installation needs no systemd or environment-file editing.
 - Tokens remain local to the data directory.
 - The runtime MCP tool exposure is still a separate milestone.
+
+---
+## ADR-053 — Read-only MCP runtime with per-chat activation
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Accounts and tokens were configurable, but no tools reached the agent. Loading
+all Notion/Todoist tools by default would waste context and expose write
+capabilities accidentally.
+
+### Decision
+- The server exposes a runtime account provider that resolves account metadata
+  and tokens from the local registry/secret store.
+- A generic `mcp_call` tool invokes the configured local MCP server (Notion or
+  Todoist) for the active session.
+- Only read tools are listed in the prompt and callable; names matching create,
+  update, delete, append, move, complete, close, add, remove, set, write, edit,
+  rename, duplicate, trash, patch or put are excluded.
+- MCP is disabled by default. The chat right panel toggles servers per session;
+  the selection is stored in `memora.mcp` and applies from the next message.
+- Account resolution is explicit session binding → project binding → global
+  default. Missing accounts fail closed.
+- MCP results are treated as external data, not instructions.
+
+### Consequences
+- Notion/Todoist can be used without adding all tool schemas to every prompt.
+- Writes require a future explicit policy and are not available now.
+- The local server process is started on demand; packaging should later provide
+  the MCP server binaries locally instead of relying on `npx`.

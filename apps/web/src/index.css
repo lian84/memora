@@ -1743,3 +1743,21 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 
 .admin-token-link { display: inline-flex; margin-top: 5px; color: var(--accent-strong); font-size: 10px; font-weight: 600; text-decoration: none; }
 .admin-token-link:hover { text-decoration: underline; }
+
+/* MCP panel */
+.mcp-panel { padding: 14px; color: var(--text-soft); }
+.mcp-panel-intro h3 { margin: 0 0 4px; color: var(--text); font-size: 14px; }
+.mcp-panel-intro p, .mcp-panel-note { margin: 0 0 12px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.mcp-server-list { display: flex; flex-direction: column; gap: 6px; }
+.mcp-server-row { display: flex; align-items: center; gap: 9px; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.mcp-server-row.is-enabled { border-color: var(--accent-border); background: var(--accent-soft); }
+.mcp-server-icon { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; background: var(--surface-muted); color: var(--accent-strong); }
+.mcp-server-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.mcp-server-copy strong { color: var(--text); font-size: 12px; }
+.mcp-server-copy span { overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mcp-toggle { width: 34px; height: 19px; flex: 0 0 auto; padding: 2px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface-muted); cursor: pointer; transition: background .14s ease, border-color .14s ease; }
+.mcp-toggle span { display: block; width: 13px; height: 13px; border-radius: 50%; background: var(--muted); transition: transform .14s ease, background .14s ease; }
+.mcp-toggle.is-on { border-color: var(--accent); background: var(--accent); }
+.mcp-toggle.is-on span { background: #fff; transform: translateX(15px); }
+.mcp-toggle:disabled { cursor: not-allowed; opacity: .45; }
+.mcp-panel-note { margin: 12px 0 0; }

@@ -190,6 +190,21 @@ const webSettingsStore = new WebSettingsStore(dataDir);
 await webSettingsStore.load();
 const webService = new WebService(() => webSettingsStore.getConfig());
 
+const mcpRuntime = {
+  async listAccounts() {
+    const accounts = await mcpAccountStore.list();
+    const runtime = [];
+    for (const account of accounts) {
+      let token: string | undefined;
+      if (account.secretRef.startsWith('env:')) token = process.env[account.secretRef.slice(4)];
+      else if (account.secretRef.startsWith('secret:')) token = await mcpSecretStore.get(account.id);
+      if (!token) continue;
+      runtime.push({ id: account.id, serverId: account.serverId, label: account.label, token, defaultForServer: account.defaultForServer });
+    }
+    return runtime;
+  },
+};
+
 const agentService = new AgentService({
   dataDir,
   cwd,
@@ -206,6 +221,7 @@ const agentService = new AgentService({
   projectStore,
   webService,
   autoTitleEnabled: initialSettings.chat.autoTitleEnabled !== false,
+  mcpRuntime,
 });
 
 const turnManager = new TurnManager({
@@ -510,6 +526,29 @@ app.post<{ Params: { id: string } }>('/api/sessions/:id/agent/refresh', async (r
     }
     app.log.error(err);
     return reply.status(500).send({ error: 'session_agent_refresh_failed' });
+  }
+});
+
+// --- Server MCP attivi nella sessione ---
+app.get<{ Params: { id: string } }>('/api/sessions/:id/mcp', async (req, reply) => {
+  try { return reply.send({ mcp: await agentService.getSessionMcp(req.params.id) }); }
+  catch (err) {
+    if (err instanceof AgentServiceError && err.code === 'session_not_found') return reply.status(404).send({ error: err.code });
+    app.log.error(err);
+    return reply.status(500).send({ error: 'session_mcp_failed' });
+  }
+});
+
+app.patch<{ Params: { id: string }; Body: { enabled?: unknown } }>('/api/sessions/:id/mcp', async (req, reply) => {
+  try { return reply.send({ mcp: await agentService.setSessionMcp(req.params.id, req.body?.enabled) }); }
+  catch (err) {
+    if (err instanceof AgentServiceError) {
+      if (err.code === 'session_not_found') return reply.status(404).send({ error: err.code });
+      if (err.code === 'mcp_busy') return reply.status(409).send({ error: err.code, message: err.message });
+      if (['invalid_mcp_server', 'invalid_mcp_tool'].includes(err.code)) return reply.status(400).send({ error: err.code });
+    }
+    app.log.error(err);
+    return reply.status(500).send({ error: 'session_mcp_failed' });
   }
 });
 

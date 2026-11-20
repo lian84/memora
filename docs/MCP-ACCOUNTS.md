@@ -73,9 +73,10 @@ means “use the global default”.
 ## Status
 
 The account registry, token storage, connection test and project bindings are
-implemented. The MCP runtime that connects these accounts to the agent, exposes
-tools and enforces read-only policies is the next integration milestone. Until
-then, accounts can be prepared and tested but no MCP tools are exposed to chats.
+implemented. The read-only MCP runtime is active: enabling Notion or Todoist in
+the chat right panel starts the local MCP server and exposes only read tools
+through `mcp_call`. The MCP panel is disabled by default and applies changes from
+the next message.
 
 ## Security
 

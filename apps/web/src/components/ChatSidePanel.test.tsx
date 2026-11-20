@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { ChatSidePanel } from './ChatSidePanel';
 
-test('mostra le quattro aree del pannello con i contatori', () => {
+test('mostra le aree del pannello con i contatori', () => {
   const markup = renderToStaticMarkup(
     <ChatSidePanel
       title="Orione"
@@ -23,6 +23,7 @@ test('mostra le quattro aree del pannello con i contatori', () => {
   expect(markup).toContain('Contesto');
   expect(markup).toContain('Artefatti');
   expect(markup).toContain('Fonti');
+  expect(markup).toContain('MCP');
   expect(markup).toContain('>2<');
   expect(markup).toContain('>3<');
   expect(markup).toContain('contenuto');
@@ -45,4 +46,5 @@ test('senza progetto non mostra la tab File', () => {
   expect(markup).toContain('chat-panel-tab-context');
   expect(markup).toContain('chat-panel-tab-artifacts');
   expect(markup).toContain('chat-panel-tab-web');
+  expect(markup).toContain('chat-panel-tab-mcp');
 });

@@ -24,7 +24,8 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Profili agente file-based selezionabili prima del primo messaggio; 15 default, palette di 10 colori e icone colorate nel composer e nella sidebar. I profili aggiungono un prompt circoscritto e competenze caricate on demand, senza cambiare tool o policy di memoria. Le chat esistenti possono aggiornare esplicitamente il profilo corrente; nome/icona/colore si aggiornano live.
 - [x] **Aggiorna profilo** esplicito in una chat esistente: applica prompt/competenze correnti dal messaggio successivo; i metadati visivi sono sempre live.
 - [x] Amministrazione → Agenti: crea, modifica ed elimina (cestino) profili; gestisce competenze, icona e colore.
-- [x] Amministrazione → MCP: account globali e project-scoped Notion/Todoist, token mascherato salvato nel secret store locale, test connessione e binding di progetto. L’esposizione dei tool MCP è la milestone successiva.
+- [x] Amministrazione → MCP: account globali e project-scoped Notion/Todoist, token mascherato salvato nel secret store locale, test connessione e binding di progetto.
+- [x] Runtime MCP read-only: toggle server per chat nel pannello destro, default spento, risoluzione account progetto/globale e tool di lettura `mcp_call` per Notion/Todoist.
 - [x] Modello, provider e livello di reasoning configurabili per chat.
 - [x] Esportazione della risposta in PDF.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.

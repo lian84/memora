@@ -228,6 +228,22 @@ async function main() {
     assert.equal(createdMcpAccount.status, 201, 'POST /api/admin/mcp/accounts deve creare un account globale');
     const mcpAccountBody = await createdMcpAccount.json();
     assert.match(mcpAccountBody.account.id, /^acc_notion_/);
+    const selectedMcp = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/mcp`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: ['notion'] }),
+    });
+    assert.equal(selectedMcp.status, 200, 'PATCH sessione MCP deve funzionare');
+    assert.deepEqual((await selectedMcp.json()).mcp.enabled, ['notion']);
+    const mcpSession = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/mcp`);
+    assert.equal(mcpSession.status, 200);
+    assert.deepEqual((await mcpSession.json()).mcp.enabled, ['notion']);
+    await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/mcp`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: [] }),
+    });
+
     const mcpAccounts = await authFetch(`${baseUrl}/api/admin/mcp/accounts`);
     assert.equal(mcpAccounts.status, 200);
     assert.ok((await mcpAccounts.json()).accounts.some(account => account.id === mcpAccountBody.account.id));

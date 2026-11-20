@@ -24,6 +24,7 @@ import {
   type AgentProfileSummary,
   type SessionAgentInfo,
   type McpAccount,
+  type McpSessionSettings,
   type ArtifactVersion,
   type SpreadsheetPreview,
   type WebSettingsView,
@@ -660,6 +661,18 @@ export async function setSessionAgent(sessionId: string, profileId: string | nul
     body: JSON.stringify({ profileId }),
   });
   return res.json();
+}
+
+export async function getSessionMcp(sessionId: string): Promise<McpSessionSettings> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/mcp`);
+  const data = await res.json() as { mcp: McpSessionSettings };
+  return data.mcp;
+}
+
+export async function setSessionMcp(sessionId: string, enabled: string[]): Promise<McpSessionSettings> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/mcp`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+  const data = await res.json() as { mcp: McpSessionSettings };
+  return data.mcp;
 }
 
 export async function createSession(modelId?: string, provider?: ProviderId, reasoningLevel?: ReasoningLevel, projectId?: string, agentProfileId?: string): Promise<CreateSessionResult> {

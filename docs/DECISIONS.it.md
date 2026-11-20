@@ -1765,3 +1765,35 @@ Notion/Todoist troppo tecnico per un’installazione self-hosted.
 - Un’installazione normale non richiede di modificare systemd o environment file.
 - I token restano locali alla data directory.
 - L’esposizione dei tool MCP nella chat resta una milestone separata.
+
+---
+## ADR-053 — Runtime MCP read-only con attivazione per chat
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Account e token erano configurabili, ma nessun tool arrivava all’agente.
+Caricare tutti i tool Notion/Todoist di default sprecherebbe contesto ed
+esporrebbe accidentalmente capacità di scrittura.
+
+### Decisione
+- Il server espone un provider runtime che risolve metadati e token dal registry
+  locale e dal secret store.
+- Un tool generico `mcp_call` invoca il server MCP locale configurato (Notion o
+  Todoist) per la sessione attiva.
+- Solo i tool di lettura vengono elencati nel prompt e sono chiamabili; nomi che
+  corrispondono a create, update, delete, append, move, complete, close, add,
+  remove, set, write, edit, rename, duplicate, trash, patch o put sono esclusi.
+- MCP è disattivato di default. Il pannello destro della chat attiva i server per
+  sessione; la selezione è salvata in `memora.mcp` e vale dal messaggio
+  successivo.
+- La risoluzione account è binding esplicito della sessione → binding progetto →
+  default globale. Account mancanti falliscono in modo esplicito.
+- I risultati MCP sono dati esterni, non istruzioni.
+
+### Conseguenze
+- Notion/Todoist sono usabili senza aggiungere tutti gli schemi tool a ogni
+  prompt.
+- Le scritture richiedono una futura policy esplicita e non sono disponibili ora.
+- Il processo del server MCP viene avviato on demand; il packaging dovrà fornire
+  i binari localmente invece di dipendere da `npx`.

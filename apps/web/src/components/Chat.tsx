@@ -8,6 +8,7 @@ import { ProjectFilesView } from './ProjectFilesView';
 import { SessionContextPanel } from './SessionContextPanel';
 import { ArtifactsPanel } from './ArtifactsPanel';
 import { WebSourcesPanel } from './WebSourcesPanel';
+import { McpPanel } from './McpPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { AgentProfilePicker } from './AgentProfilePicker';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -792,6 +793,8 @@ function messageTitle(content: string, html: string | null): string {
               hasProject={Boolean(project)}
               onChange={handleContextChange}
             />
+          ) : panelTab === 'mcp' ? (
+            <McpPanel sessionId={sessionId!} project={project} />
           ) : panelTab === 'artifacts' ? (
             <ArtifactsPanel
               sessionId={sessionId}

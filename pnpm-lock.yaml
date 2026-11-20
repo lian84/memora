@@ -264,6 +264,9 @@ importers:
       '@earendil-works/pi-coding-agent':
         specifier: 1.5.2
         version: 1.5.2(@aws-sdk/credential-provider-node@3.972.97)(@smithy/signature-v4@5.7.5)(supports-color@7.2.0)(ws@8.23.0)(zod@4.6.7)
+      '@earendil-works/pi-mcp':
+        specifier: 1.5.2
+        version: 1.5.2
       '@memora/shared':
         specifier: workspace:*
         version: link:../shared

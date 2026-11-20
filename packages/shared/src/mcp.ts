@@ -6,6 +6,9 @@ export const MCP_SERVER_DEFINITIONS = [
     description: 'Pagine, database e ricerca nel workspace Notion.',
     secretHint: 'Token di integrazione Notion, ad esempio ntn_...',
     tokenUrl: 'https://www.notion.so/profile/integrations',
+    command: 'npx',
+    args: ['-y', '@notionhq/notion-mcp-server', '--transport', 'stdio'],
+    tokenEnv: 'NOTION_TOKEN',
   },
   {
     id: 'todoist',
@@ -13,6 +16,9 @@ export const MCP_SERVER_DEFINITIONS = [
     description: 'Progetti e attività Todoist.',
     secretHint: 'API token Todoist.',
     tokenUrl: 'https://app.todoist.com/app/settings/integrations/developer',
+    command: 'npx',
+    args: ['-y', '@doist/todoist-mcp'],
+    tokenEnv: 'TODOIST_API_KEY',
   },
 ] as const;
 
@@ -33,6 +39,23 @@ export interface McpAccount {
   configured?: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface McpRuntimeAccount {
+  id: string;
+  serverId: McpServerId;
+  label: string;
+  token: string;
+  defaultForServer: boolean;
+}
+
+export interface McpRuntimeProvider {
+  listAccounts(): Promise<McpRuntimeAccount[]>;
+}
+
+export interface McpSessionSettings {
+  enabled: McpServerId[];
+  accounts: Partial<Record<McpServerId, string>>;
 }
 
 export interface McpAccountSummary {
