@@ -20,6 +20,7 @@ import {
   type ProjectFilePreview,
   type SessionContextSettings,
   type ChatArtifact,
+  type AgentProfileDetail,
   type AgentProfileSummary,
   type SessionAgentInfo,
   type ArtifactVersion,
@@ -583,6 +584,40 @@ export async function listAgentProfiles(): Promise<AgentProfileSummary[]> {
   const res = await request('/api/agents');
   const data = await res.json() as { profiles: AgentProfileSummary[] };
   return data.profiles;
+}
+
+export async function getAgentProfileDetail(profileId: string): Promise<AgentProfileDetail> {
+  const res = await request(`/api/admin/agents/${encodeURIComponent(profileId)}`);
+  const data = await res.json() as { profile: AgentProfileDetail };
+  return data.profile;
+}
+
+export async function createAgentProfile(input: Record<string, unknown>): Promise<AgentProfileDetail> {
+  const res = await request('/api/admin/agents', { method: 'POST', body: JSON.stringify(input) });
+  const data = await res.json() as { profile: AgentProfileDetail };
+  return data.profile;
+}
+
+export async function updateAgentProfile(profileId: string, input: Record<string, unknown>): Promise<AgentProfileDetail> {
+  const res = await request(`/api/admin/agents/${encodeURIComponent(profileId)}`, { method: 'PATCH', body: JSON.stringify(input) });
+  const data = await res.json() as { profile: AgentProfileDetail };
+  return data.profile;
+}
+
+export async function deleteAgentProfile(profileId: string): Promise<{ id: string; trashPath: string }> {
+  const res = await request(`/api/admin/agents/${encodeURIComponent(profileId)}?confirm=${encodeURIComponent(profileId)}`, { method: 'DELETE' });
+  return res.json();
+}
+
+export async function saveAgentSkill(profileId: string, input: Record<string, unknown>): Promise<AgentProfileDetail> {
+  const res = await request(`/api/admin/agents/${encodeURIComponent(profileId)}/skills`, { method: 'POST', body: JSON.stringify(input) });
+  const data = await res.json() as { profile: AgentProfileDetail };
+  return data.profile;
+}
+
+export async function deleteAgentSkill(profileId: string, skillName: string): Promise<{ id: string; skill: string; trashPath: string }> {
+  const res = await request(`/api/admin/agents/${encodeURIComponent(profileId)}/skills/${encodeURIComponent(skillName)}?confirm=${encodeURIComponent(skillName)}`, { method: 'DELETE' });
+  return res.json();
 }
 
 export async function setSessionAgent(sessionId: string, profileId: string | null): Promise<{ sessionId: string; agent?: SessionAgentInfo }> {

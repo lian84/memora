@@ -618,8 +618,8 @@ Before the first message, the composer shows the available **agent profiles**
 scoped prompt and lazily loaded skills; it does not add tools or permissions.
 If no profile is selected, Memo base is used. After sending, the picker
 disappears and the selected profile icon remains next to the attachment and web
-controls; the same icon appears beside the chat in the sidebar. Profiles are
-file-based under `$MEMORA_DATA_DIR/agents`; see
+controls; the same icon appears beside the chat in the sidebar. Profiles are file-based under `$MEMORA_DATA_DIR/agents` and can be managed from
+**Administration → Agents**; see
 [`docs/AGENT-PROFILES.md`](docs/AGENT-PROFILES.md).
 
 ### Chat controls

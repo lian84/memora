@@ -65,6 +65,16 @@ function sendMemoryWriterError(reply: FastifyReply, err: unknown) {
   return reply.status(500).send({ error: 'memory_candidate_failed' });
 }
 
+function sendAgentProfileError(reply: FastifyReply, err: unknown) {
+  if (err instanceof AgentServiceError) {
+    if (err.code === 'agent_profile_not_found' || err.code === 'agent_skill_not_found') return reply.status(404).send({ error: err.code, message: err.message });
+    if (err.code === 'agent_profile_exists') return reply.status(409).send({ error: err.code, message: err.message });
+    if (err.code === 'invalid_agent_profile' || err.code === 'invalid_agent_skill') return reply.status(400).send({ error: err.code, message: err.message });
+  }
+  app.log.error(err);
+  return reply.status(500).send({ error: 'agent_profile_failed' });
+}
+
 // --- Configurazione da environment (nessun percorso hardcoded) ---
 const host = memoraEnv('HOST') ?? '127.0.0.1';
 const port = Number(memoraEnv('PORT') ?? 3000);
@@ -418,6 +428,66 @@ app.post('/api/sessions', async (req, reply) => {
     if (err instanceof AgentServiceError && (err.code === 'agent_profile_not_found' || err.code === 'invalid_agent_profile')) return reply.status(err.code === 'agent_profile_not_found' ? 404 : 400).send({ error: err.code });
     app.log.error(err);
     return reply.status(500).send({ error: 'session_create_failed' });
+  }
+});
+
+// --- Gestione amministrativa dei profili agente ---
+app.get('/api/admin/agents', async (_req, reply) => {
+  try {
+    return reply.send({ profiles: await agentService.listAgentProfiles() });
+  } catch (err) {
+    app.log.error(err);
+    return reply.status(500).send({ error: 'agent_profiles_failed' });
+  }
+});
+
+app.get<{ Params: { id: string } }>('/api/admin/agents/:id', async (req, reply) => {
+  try {
+    return reply.send({ profile: await agentService.getAgentProfileDetail(req.params.id) });
+  } catch (err) {
+    return sendAgentProfileError(reply, err);
+  }
+});
+
+app.post<{ Body: Record<string, unknown> | undefined }>('/api/admin/agents', async (req, reply) => {
+  try {
+    return reply.status(201).send({ profile: await agentService.createAgentProfile(req.body ?? {}) });
+  } catch (err) {
+    return sendAgentProfileError(reply, err);
+  }
+});
+
+app.patch<{ Params: { id: string }; Body: Record<string, unknown> | undefined }>('/api/admin/agents/:id', async (req, reply) => {
+  try {
+    return reply.send({ profile: await agentService.updateAgentProfile(req.params.id, req.body ?? {}) });
+  } catch (err) {
+    return sendAgentProfileError(reply, err);
+  }
+});
+
+app.delete<{ Params: { id: string }; Querystring: { confirm?: string } }>('/api/admin/agents/:id', async (req, reply) => {
+  try {
+    if (!req.query.confirm || req.query.confirm !== req.params.id) return reply.status(400).send({ error: 'invalid_agent_profile_confirmation' });
+    return reply.send(await agentService.deleteAgentProfile(req.params.id, req.query.confirm));
+  } catch (err) {
+    return sendAgentProfileError(reply, err);
+  }
+});
+
+app.post<{ Params: { id: string }; Body: Record<string, unknown> | undefined }>('/api/admin/agents/:id/skills', async (req, reply) => {
+  try {
+    return reply.send({ profile: await agentService.saveAgentSkill(req.params.id, req.body ?? {}) });
+  } catch (err) {
+    return sendAgentProfileError(reply, err);
+  }
+});
+
+app.delete<{ Params: { id: string; skill: string }; Querystring: { confirm?: string } }>('/api/admin/agents/:id/skills/:skill', async (req, reply) => {
+  try {
+    if (!req.query.confirm || req.query.confirm !== req.params.skill) return reply.status(400).send({ error: 'invalid_agent_skill_confirmation' });
+    return reply.send(await agentService.deleteAgentSkill(req.params.id, req.params.skill, req.query.confirm));
+  } catch (err) {
+    return sendAgentProfileError(reply, err);
   }
 });
 

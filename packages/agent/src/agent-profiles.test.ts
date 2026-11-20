@@ -51,4 +51,40 @@ describe('AgentProfileStore', () => {
     await expect(store.loadSkill('commercialista', '../../secret')).rejects.toMatchObject({ code: 'invalid_agent_skill' });
     await expect(store.loadSkill('commercialista', 'inesistente')).rejects.toMatchObject({ code: 'agent_profile_not_found' });
   });
+
+  it('crea, aggiorna, aggiunge competenze e sposta nel cestino', async () => {
+    const { root, store } = await fixture();
+    const created = await store.create({
+      id: 'custom',
+      name: 'Custom',
+      description: 'Profilo di test',
+      icon: 'terminal',
+      color: '#123456',
+      prompt: 'Istruzioni custom.',
+    });
+    expect(created.color).toBe('#123456');
+    expect(created.skills).toEqual([]);
+
+    const updated = await store.update('custom', { name: 'Custom aggiornato', prompt: 'Nuove istruzioni.' });
+    expect(updated.name).toBe('Custom aggiornato');
+    expect((await store.getDetail('custom'))?.prompt).toBe('Nuove istruzioni.');
+
+    const withSkill = await store.saveSkill('custom', {
+      name: 'checklist',
+      description: 'Checklist di test',
+      content: '# Checklist\n\n- Uno\n- Due',
+    });
+    expect(withSkill.skills[0]).toMatchObject({ name: 'checklist', description: 'Checklist di test' });
+    expect(withSkill.skills[0]?.content).toContain('# Checklist');
+    expect(withSkill.skills[0]?.content).not.toContain('name: checklist');
+
+    const deletedSkill = await store.deleteSkill('custom', 'checklist', 'checklist');
+    expect(deletedSkill.trashPath).toContain('.trash/agents');
+    expect((await store.getDetail('custom'))?.skills).toEqual([]);
+
+    const deleted = await store.purge('custom', 'custom');
+    expect(deleted.trashPath).toContain('.trash/agents');
+    expect(await store.getDetail('custom')).toBeNull();
+    expect(root).toBeTruthy();
+  });
 });

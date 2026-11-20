@@ -608,8 +608,8 @@ Prima del primo messaggio il composer mostra i **profili agente** disponibili
 un prompt circoscritto e competenze caricate on demand; non aggiunge tool o
 permessi. Se non ne viene scelto nessuno si usa Memo base. Dopo l’invio il
 selettore sparisce e l’icona del profilo resta accanto ai controlli allegati e
-web; la stessa icona compare accanto alla chat nella sidebar. I profili sono
-file-based in `$MEMORA_DATA_DIR/agents`; vedi
+web; la stessa icona compare accanto alla chat nella sidebar. I profili sono file-based in `$MEMORA_DATA_DIR/agents` e si gestiscono da
+**Amministrazione → Agenti**; vedi
 [`docs/AGENT-PROFILES.it.md`](docs/AGENT-PROFILES.it.md).
 
 ### Controlli chat

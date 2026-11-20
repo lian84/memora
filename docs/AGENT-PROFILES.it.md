@@ -51,6 +51,19 @@ directory del profilo, con limite di dimensione e protezione da path traversal.
 Le competenze sono istruzioni, non extension eseguibili. Una competenza non può
 aggiungere tool, permessi o accesso al filesystem.
 
+## Editor in amministrazione
+
+Apri **Amministrazione → Agenti** per creare, modificare e spostare nel cestino i
+profili. L’editor gestisce metadati, icona, colore, prompt e competenze; ogni
+competenza ha nome, descrizione per il routing e istruzioni Markdown. Il
+salvataggio aggiorna i file in `$MEMORA_DATA_DIR/agents`.
+
+Le chat che hanno già usato un profilo mantengono il loro snapshot del prompt.
+L’eliminazione sposta la directory in `.trash/agents`; il profilo sparisce dal
+selettore delle nuove chat senza rompere le conversazioni esistenti.
+
+Import/export di pacchetti profilo non fa parte di questo primo editor.
+
 ## Primo uso
 
 Quando `$MEMORA_DATA_DIR/agents` non esiste, Memora crea quattro esempi:

@@ -185,6 +185,31 @@ async function main() {
     assert.equal(clearedAgent.status, 200, 'PATCH profilo base deve funzionare');
     assert.equal((await clearedAgent.json()).agent, undefined);
 
+    const createdAgent = await authFetch(`${baseUrl}/api/admin/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: 'smoke-agent', name: 'Smoke Agent', description: 'Smoke profile', icon: 'terminal', color: '#123456', prompt: 'Smoke prompt.' }),
+    });
+    assert.equal(createdAgent.status, 201, 'POST /api/admin/agents deve creare un profilo');
+    assert.equal((await createdAgent.json()).profile.id, 'smoke-agent');
+    const updatedAgent = await authFetch(`${baseUrl}/api/admin/agents/smoke-agent`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Smoke Agent 2' }),
+    });
+    assert.equal(updatedAgent.status, 200, 'PATCH /api/admin/agents/:id deve aggiornare un profilo');
+    const savedSkill = await authFetch(`${baseUrl}/api/admin/agents/smoke-agent/skills`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'checklist', description: 'Checklist smoke', content: '# Checklist' }),
+    });
+    assert.equal(savedSkill.status, 200, 'POST /api/admin/agents/:id/skills deve salvare una competenza');
+    assert.equal((await savedSkill.json()).profile.skills[0].name, 'checklist');
+    const deletedSkill = await authFetch(`${baseUrl}/api/admin/agents/smoke-agent/skills/checklist?confirm=checklist`, { method: 'DELETE' });
+    assert.equal(deletedSkill.status, 200, 'DELETE skill deve spostare la competenza nel cestino');
+    const deletedAgent = await authFetch(`${baseUrl}/api/admin/agents/smoke-agent?confirm=smoke-agent`, { method: 'DELETE' });
+    assert.equal(deletedAgent.status, 200, 'DELETE /api/admin/agents/:id deve spostare il profilo nel cestino');
+
     const adminStatus = await authFetch(`${baseUrl}/api/admin/status`);
     assert.equal(adminStatus.status, 200, 'GET /api/admin/status deve funzionare');
     const adminStatusBody = await adminStatus.json();

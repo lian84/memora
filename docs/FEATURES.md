@@ -22,6 +22,7 @@ Last updated: 2026-11-20.
 - [x] Image preview and inclusion of image attachments in the turn.
 - [x] Per-chat context: global memory, project memory and project sources.
 - [x] File-based agent profiles selectable before the first message; colored profile icon in the composer and sidebar. Profiles add a scoped prompt and lazy-loaded skills without changing tools or memory policy.
+- [x] Administration → Agents: create, edit and soft-delete profiles; manage skills, icon and color.
 - [x] Model, provider and reasoning level configurable per chat.
 - [x] Export an answer to PDF.
 - [x] Extract memories from an answer with explicit review.

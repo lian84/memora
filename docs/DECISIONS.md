@@ -1785,6 +1785,8 @@ unpredictable.
 - Profiles do not add builtin tools. A coding profile can review pasted or
   attached code but cannot read the repository until a separate workspace/tool
   policy is designed.
+- Administration → Agents edits the same files, validates IDs and moves deleted
+  profiles/skills to `.trash/agents`; existing chats keep their snapshot.
 
 ### Consequences
 - Users can switch expertise per chat without duplicating projects or memory.

@@ -13,6 +13,7 @@ import {
   SettingsManager,
 } from '@earendil-works/pi-coding-agent';
 import {
+  AgentProfileDetail,
   AgentProfileSummary,
   AgentServiceConfig,
   AgentSkillSummary,
@@ -660,6 +661,66 @@ export class AgentService {
   /** Elenca i profili agente disponibili per il selettore della nuova chat. */
   async listAgentProfiles(): Promise<AgentProfileSummary[]> {
     return this.agentProfiles.list();
+  }
+
+  async getAgentProfileDetail(profileId: string): Promise<AgentProfileDetail> {
+    try {
+      const profile = await this.agentProfiles.getDetail(profileId);
+      if (!profile) throw new AgentServiceError('agent_profile_not_found', 'Profilo agente non trovato');
+      return profile;
+    } catch (err) {
+      this.throwAgentProfileError(err);
+    }
+  }
+
+  async createAgentProfile(input: Record<string, unknown>): Promise<AgentProfileDetail> {
+    try {
+      return await this.agentProfiles.create(input);
+    } catch (err) {
+      this.throwAgentProfileError(err);
+    }
+  }
+
+  async updateAgentProfile(profileId: string, input: Record<string, unknown>): Promise<AgentProfileDetail> {
+    try {
+      return await this.agentProfiles.update(profileId, input);
+    } catch (err) {
+      this.throwAgentProfileError(err);
+    }
+  }
+
+  async deleteAgentProfile(profileId: string, confirm: string): Promise<{ id: string; trashPath: string }> {
+    try {
+      return await this.agentProfiles.purge(profileId, confirm);
+    } catch (err) {
+      this.throwAgentProfileError(err);
+    }
+  }
+
+  async saveAgentSkill(profileId: string, input: Record<string, unknown>): Promise<AgentProfileDetail> {
+    try {
+      return await this.agentProfiles.saveSkill(profileId, input);
+    } catch (err) {
+      this.throwAgentProfileError(err);
+    }
+  }
+
+  async deleteAgentSkill(profileId: string, skillName: string, confirm: string): Promise<{ id: string; skill: string; trashPath: string }> {
+    try {
+      return await this.agentProfiles.deleteSkill(profileId, skillName, confirm);
+    } catch (err) {
+      this.throwAgentProfileError(err);
+    }
+  }
+
+  private throwAgentProfileError(err: unknown): never {
+    if (err instanceof AgentProfileError) {
+      const code = err.code === 'agent_profile_not_found' || err.code === 'agent_profile_exists' || err.code === 'agent_skill_not_found'
+        ? err.code
+        : err.code === 'invalid_agent_skill' ? 'invalid_agent_skill' : 'invalid_agent_profile';
+      throw new AgentServiceError(code, err.message);
+    }
+    throw err;
   }
 
   /** Associa un profilo alla sessione prima del primo messaggio. */

@@ -27,6 +27,7 @@ import {
 } from '../lib/api';
 import { ModelCombobox, filterModels } from './ModelCombobox';
 import { AppearanceSettings } from './AppearanceSettings';
+import { AgentsAdminPanel } from './AgentsAdminPanel';
 import {
   getBrowserNotificationPermission,
   isBrowserNotificationEnabled,
@@ -431,7 +432,7 @@ export function AdminSettingsView({
   const showCuratorKey = draft.curator.provider !== draft.chat.provider;
   const [activePage, setActivePage] = useState('appearance');
   const pages = [
-    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'],
+    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'],
     ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
   ] as const;
 
@@ -546,6 +547,10 @@ export function AdminSettingsView({
         <BrowserNotificationsSetting />
         <p className="admin-card-description">Il modello Chat viene usato solo dalle nuove sessioni; quelle esistenti mantengono il modello già persistito. I titoli automatici usano solo il primo messaggio della nuova chat; il titolo manuale non viene sovrascritto.</p>
       </section>
+      </div>
+
+      <div id="admin-page-agents" role="tabpanel" aria-labelledby="admin-tab-agents" className="admin-page" hidden={activePage !== 'agents'}>
+        <AgentsAdminPanel />
       </div>
 
       <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>
@@ -758,7 +763,7 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      {activePage !== 'web' && <div className="admin-savebar">
+      {activePage !== 'web' && activePage !== 'agents' && <div className="admin-savebar">
         <span>{activePage === 'appearance' ? t('Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.') : `${hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · ${t('I valori gestiti dall’ambiente non vengono inviati.')}`}</span>
         <div className="admin-savebar-actions">
           <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>{t('Annulla')}</button>

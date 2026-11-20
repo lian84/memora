@@ -57,3 +57,13 @@ export interface SessionAgentInfo {
   icon: AgentIcon;
   color: string;
 }
+
+/** Competenza completa usata dall'editor amministrativo. */
+export interface AgentSkillDetail extends AgentSkillSummary {
+  content: string;
+}
+
+/** Profilo con il contenuto delle competenze, solo per l'editor admin. */
+export interface AgentProfileDetail extends Omit<AgentProfile, 'skills'> {
+  skills: AgentSkillDetail[];
+}

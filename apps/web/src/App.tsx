@@ -117,7 +117,12 @@ export default function App() {
   useEffect(() => { initAppearance(); }, []);
 
   useEffect(() => {
-    void listAgentProfiles().then(setAgentProfiles).catch(() => setAgentProfiles([]));
+    const refreshAgentProfiles = () => {
+      void listAgentProfiles().then(setAgentProfiles).catch(() => setAgentProfiles([]));
+    };
+    refreshAgentProfiles();
+    window.addEventListener('memora-agent-profiles-changed', refreshAgentProfiles);
+    return () => window.removeEventListener('memora-agent-profiles-changed', refreshAgentProfiles);
   }, []);
 
   useEffect(() => {

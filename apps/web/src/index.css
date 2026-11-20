@@ -1627,3 +1627,63 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
   .agent-picker-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .agent-picker-default { max-width: 100%; }
 }
+
+/* Admin agent profiles */
+.agents-admin { padding-bottom: 48px; }
+.agents-admin-layout { display: grid; grid-template-columns: minmax(260px, .78fr) minmax(0, 1.45fr); gap: 14px; align-items: start; }
+.agents-admin-list, .agents-admin-editor { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-sm); }
+.agents-admin-list-heading, .agents-admin-editor-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.agents-admin-list-heading h3, .agents-admin-editor-heading h3 { margin: 0 0 3px; color: var(--text); font-size: 16px; }
+.agents-admin-editor-heading .admin-close { height: 28px; padding: 0 8px; }
+.agents-admin-cards { display: flex; flex-direction: column; gap: 6px; }
+.agents-admin-card { position: relative; display: flex; align-items: stretch; min-width: 0; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); transition: border-color .14s ease, background .14s ease; }
+.agents-admin-card:hover { border-color: color-mix(in srgb, var(--agent-color, var(--accent)) 34%, var(--border)); background: color-mix(in srgb, var(--agent-color, var(--accent)) 7%, var(--surface)); }
+.agents-admin-card.is-selected { border-color: color-mix(in srgb, var(--agent-color, var(--accent)) 48%, var(--border)); background: color-mix(in srgb, var(--agent-color, var(--accent)) 10%, var(--surface)); }
+.agents-admin-card-main { min-width: 0; flex: 1; display: flex; align-items: center; gap: 9px; padding: 9px 26px 9px 9px; border: 0; background: transparent; color: var(--text-soft); text-align: left; cursor: pointer; }
+.agents-admin-card-icon { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--agent-color, var(--accent)) 15%, var(--surface)); color: var(--agent-color, var(--accent)); }
+.agents-admin-card-copy { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.agents-admin-card-copy strong { overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.agents-admin-card-copy small { overflow: hidden; color: var(--muted); font-size: 10px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.agents-admin-card-copy em { color: var(--agent-color, var(--accent)); font-size: 9px; font-style: normal; font-weight: 650; }
+.agents-admin-card-delete { position: absolute; top: 6px; right: 6px; width: 19px; height: 19px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; opacity: .55; }
+.agents-admin-card-delete:hover { background: var(--danger-soft-strong); color: var(--danger); opacity: 1; }
+.agents-admin-placeholder { min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); text-align: center; }
+.agents-admin-placeholder p { max-width: 260px; margin: 0; font-size: 11px; line-height: 1.45; }
+.agents-admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.agents-admin-color-row { display: flex; align-items: flex-end; gap: 12px; margin-top: 10px; }
+.agents-admin-color-row .admin-label { flex: 0 0 90px; }
+.admin-label input[type="color"] { width: 100%; height: 34px; padding: 3px; cursor: pointer; }
+.agents-admin-preview { min-height: 34px; display: flex; align-items: center; gap: 7px; padding: 4px 9px 4px 5px; border: 1px solid color-mix(in srgb, var(--agent-color, var(--accent)) 32%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--agent-color, var(--accent)) 10%, var(--surface)); color: var(--agent-color, var(--accent)); }
+.agents-admin-preview span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--agent-color, var(--accent)) 15%, var(--surface)); }
+.agents-admin-preview strong { color: var(--text-soft); font-size: 11px; }
+.agents-admin-editor > .admin-label { margin-top: 10px; }
+.agents-admin-editor textarea { width: 100%; box-sizing: border-box; padding: 8px 9px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; resize: vertical; }
+.agents-admin-editor textarea:focus { outline: none; border-color: var(--accent-border); box-shadow: 0 0 0 3px rgba(37, 99, 235, .1); }
+.agents-admin-skills { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.agents-admin-skills-layout { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(0, 1.3fr); gap: 12px; align-items: start; }
+.agents-admin-skill-list { display: flex; flex-direction: column; gap: 5px; }
+.agents-admin-skill { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.agents-admin-skill.is-selected { border-color: var(--accent-border); background: var(--accent-soft); }
+.agents-admin-skill-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 7px 23px 7px 8px; border: 0; background: transparent; color: var(--text-soft); text-align: left; cursor: pointer; }
+.agents-admin-skill-main strong { overflow: hidden; color: var(--text); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.agents-admin-skill-main small { overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.agents-admin-skill-delete { width: 19px; height: 19px; align-self: flex-start; margin: 5px 4px 0 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
+.agents-admin-skill-delete:hover { background: var(--danger-soft-strong); color: var(--danger); }
+.agents-admin-skill-editor h4 { margin: 0 0 8px; color: var(--text-soft); font-size: 12px; }
+.agents-admin-skill-editor .admin-label { margin-top: 7px; }
+.agents-admin-skill-editor .admin-actions { margin-top: 8px; }
+.admin-field-note { color: var(--muted); font-size: 10px; line-height: 1.4; }
+
+@media (max-width: 900px) {
+  .agents-admin-layout, .agents-admin-skills-layout { grid-template-columns: 1fr; }
+  .agents-admin-placeholder { min-height: 100px; }
+}
+@media (max-width: 640px) {
+  .agents-admin-form-grid { grid-template-columns: 1fr; }
+  .agents-admin-color-row { align-items: stretch; flex-direction: column; }
+  .agents-admin-color-row .admin-label { flex: 0 0 auto; }
+}
+
+.agents-admin-list-heading > button { height: 30px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 11px; font-weight: 650; cursor: pointer; }
+.agents-admin-list-heading > button:hover { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-strong); }
+.agents-admin-list-heading .admin-primary { border-color: var(--accent); background: var(--accent); color: #fff; }

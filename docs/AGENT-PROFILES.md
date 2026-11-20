@@ -50,6 +50,18 @@ profile directory, with a size limit and path-traversal protection.
 Skills are instructions, not executable extensions. A skill cannot add tools,
 permissions or filesystem access.
 
+## Admin editor
+
+Open **Administration → Agents** to create, edit and move profiles to the trash. The editor covers metadata, icon, color, prompt and
+skills; each skill has a name, routing description and Markdown instructions.
+Saving a profile updates the files under `$MEMORA_DATA_DIR/agents`.
+
+Profiles already used by chats keep their prompt snapshot. Deleting a profile
+moves its directory to `.trash/agents`; it disappears from the new-chat picker
+without breaking existing conversations.
+
+Import/export of profile bundles is not part of this first editor.
+
 ## First use
 
 When `$MEMORA_DATA_DIR/agents` does not exist, Memora seeds four examples:

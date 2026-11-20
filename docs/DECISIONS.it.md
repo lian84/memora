@@ -1627,6 +1627,9 @@ il comportamento imprevedibile.
 - I profili non aggiungono tool builtin. Un profilo coding può revisionare codice
   incollato o allegato, ma non leggere il repository finché non viene progettata
   una policy workspace/tool separata.
+- **Amministrazione → Agenti** modifica gli stessi file, valida gli ID e sposta
+  profili/competenze eliminati in `.trash/agents`; le chat esistenti mantengono
+  lo snapshot.
 
 ### Conseguenze
 - L’utente cambia competenza per chat senza duplicare progetti o memoria.
