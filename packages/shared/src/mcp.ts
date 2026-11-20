@@ -56,6 +56,8 @@ export interface McpRuntimeProvider {
 export interface McpSessionSettings {
   enabled: McpServerId[];
   accounts: Partial<Record<McpServerId, string>>;
+  /** Scritture MCP consentite esplicitamente per questa chat. */
+  allowWrites?: boolean;
 }
 
 export interface McpAccountSummary {

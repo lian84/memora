@@ -1949,3 +1949,28 @@ capabilities accidentally.
 - Writes require a future explicit policy and are not available now.
 - The local server process is started on demand; packaging should later provide
   the MCP server binaries locally instead of relying on `npx`.
+
+---
+## ADR-054 — Per-chat opt-in for MCP writes
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Read-only MCP was safe but prevented useful Notion/Todoist operations. Exposing
+write tools by default would be dangerous for external data.
+
+### Decision
+- `McpSessionSettings` carries `allowWrites`, default false.
+- The MCP panel exposes **Allow writes** with a confirmation dialog and a visible
+  warning.
+- When false, the prompt lists only read tools and `mcp_call` rejects write tool
+  names. When true, all tools are exposed for the active servers.
+- The model is instructed to ask explicit confirmation before destructive
+  operations.
+- The setting is persisted in `memora.mcp` and applies from the next message.
+
+### Consequences
+- Full Notion/Todoist workflows are possible without making writes the default.
+- Writes are scoped to a chat and can be revoked at any time.
+- Prompt-level confirmation is not a hard security boundary; stronger
+  per-tool approval can be added later if needed.

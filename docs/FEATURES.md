@@ -25,7 +25,7 @@ Last updated: 2026-11-20.
 - [x] Explicit **Refresh profile** in an existing chat: applies the current prompt/skills from the next message; display metadata is always live.
 - [x] Administration → Agents: create, edit and soft-delete profiles; manage skills, icon and color.
 - [x] Administration → MCP: global and project-scoped Notion/Todoist accounts, masked token entry stored in the local secret store, test connection and project bindings.
-- [x] Read-only MCP runtime: per-chat server toggles in the right panel, default off, project/global account resolution and `mcp_call` read tools for Notion/Todoist.
+- [x] MCP runtime: per-chat server toggles in the right panel, default off, project/global account resolution and `mcp_call` tools for Notion/Todoist. Writes require the explicit **Allow writes** confirmation.
 - [x] Model, provider and reasoning level configurable per chat.
 - [x] Export an answer to PDF.
 - [x] Extract memories from an answer with explicit review.

@@ -231,10 +231,12 @@ async function main() {
     const selectedMcp = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/mcp`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: ['notion'] }),
+      body: JSON.stringify({ enabled: ['notion'], allowWrites: true }),
     });
     assert.equal(selectedMcp.status, 200, 'PATCH sessione MCP deve funzionare');
-    assert.deepEqual((await selectedMcp.json()).mcp.enabled, ['notion']);
+    const selectedMcpBody = await selectedMcp.json();
+    assert.deepEqual(selectedMcpBody.mcp.enabled, ['notion']);
+    assert.equal(selectedMcpBody.mcp.allowWrites, true);
     const mcpSession = await authFetch(`${baseUrl}/api/sessions/${createdBody.sessionId}/mcp`);
     assert.equal(mcpSession.status, 200);
     assert.deepEqual((await mcpSession.json()).mcp.enabled, ['notion']);

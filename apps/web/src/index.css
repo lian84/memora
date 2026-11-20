@@ -1761,3 +1761,9 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .mcp-toggle.is-on span { background: #fff; transform: translateX(15px); }
 .mcp-toggle:disabled { cursor: not-allowed; opacity: .45; }
 .mcp-panel-note { margin: 12px 0 0; }
+
+.mcp-write-setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-muted); }
+.mcp-write-setting.is-enabled { border-color: var(--warning-border); background: var(--warning-soft); }
+.mcp-write-setting > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mcp-write-setting strong { color: var(--text); font-size: 11px; }
+.mcp-write-setting small { color: var(--muted); font-size: 9px; line-height: 1.4; }

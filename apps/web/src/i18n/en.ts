@@ -548,4 +548,12 @@ export const en: Record<string, string> = {
   'Attiva {server}': 'Enable {server}',
   'Disattiva {server}': 'Disable {server}',
   'I tool MCP sono di sola lettura nella prima versione. Le modifiche valgono dal prossimo messaggio.': 'MCP tools are read-only in the first version. Changes apply from the next message.',
+  'Consenti scritture': 'Allow writes',
+  'L’agente può modificare i dati nei servizi attivi.': 'The agent can modify data in the active services.',
+  'Lettura soltanto. Le scritture sono disabilitate.': 'Read-only. Writes are disabled.',
+  'Le modifiche valgono dal prossimo messaggio. Per eliminazioni o modifiche distruttive l’agente deve chiedere conferma.': 'Changes apply from the next message. For deletions or destructive changes the agent must ask for confirmation.',
+  'Abilitare le scritture MCP?': 'Enable MCP writes?',
+  'Abilita scritture': 'Enable writes',
+  'Abilitazione…': 'Enabling…',
+  'Da questo momento l’agente può creare, modificare o eliminare contenuti in Notion e Todoist, in base ai tool esposti dai server attivi. Usa questa opzione solo quando necessario.': 'From now on the agent can create, edit or delete content in Notion and Todoist, based on the tools exposed by active servers. Use this only when needed.',
 };

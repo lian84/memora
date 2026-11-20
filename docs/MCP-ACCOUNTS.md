@@ -73,10 +73,11 @@ means “use the global default”.
 ## Status
 
 The account registry, token storage, connection test and project bindings are
-implemented. The read-only MCP runtime is active: enabling Notion or Todoist in
-the chat right panel starts the local MCP server and exposes only read tools
-through `mcp_call`. The MCP panel is disabled by default and applies changes from
-the next message.
+implemented. The MCP runtime is active: enabling Notion or Todoist in the chat
+right panel starts the local MCP server and exposes its tools through
+`mcp_call`. The MCP panel is disabled by default and applies changes from the
+next message. A separate **Allow writes** switch, off by default and protected by
+a confirmation dialog, enables write tools for that chat.
 
 ## Security
 

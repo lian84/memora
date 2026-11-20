@@ -25,7 +25,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] **Aggiorna profilo** esplicito in una chat esistente: applica prompt/competenze correnti dal messaggio successivo; i metadati visivi sono sempre live.
 - [x] Amministrazione → Agenti: crea, modifica ed elimina (cestino) profili; gestisce competenze, icona e colore.
 - [x] Amministrazione → MCP: account globali e project-scoped Notion/Todoist, token mascherato salvato nel secret store locale, test connessione e binding di progetto.
-- [x] Runtime MCP read-only: toggle server per chat nel pannello destro, default spento, risoluzione account progetto/globale e tool di lettura `mcp_call` per Notion/Todoist.
+- [x] Runtime MCP: toggle server per chat nel pannello destro, default spento, risoluzione account progetto/globale e tool `mcp_call` per Notion/Todoist. Le scritture richiedono la conferma esplicita **Consenti scritture**.
 - [x] Modello, provider e livello di reasoning configurabili per chat.
 - [x] Esportazione della risposta in PDF.
 - [x] Estrazione di memorie dalla risposta con revisione esplicita.

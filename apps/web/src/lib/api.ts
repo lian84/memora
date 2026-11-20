@@ -669,8 +669,8 @@ export async function getSessionMcp(sessionId: string): Promise<McpSessionSettin
   return data.mcp;
 }
 
-export async function setSessionMcp(sessionId: string, enabled: string[]): Promise<McpSessionSettings> {
-  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/mcp`, { method: 'PATCH', body: JSON.stringify({ enabled }) });
+export async function setSessionMcp(sessionId: string, enabled: string[], allowWrites = false): Promise<McpSessionSettings> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/mcp`, { method: 'PATCH', body: JSON.stringify({ enabled, allowWrites }) });
   const data = await res.json() as { mcp: McpSessionSettings };
   return data.mcp;
 }

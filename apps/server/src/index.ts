@@ -539,8 +539,8 @@ app.get<{ Params: { id: string } }>('/api/sessions/:id/mcp', async (req, reply) 
   }
 });
 
-app.patch<{ Params: { id: string }; Body: { enabled?: unknown } }>('/api/sessions/:id/mcp', async (req, reply) => {
-  try { return reply.send({ mcp: await agentService.setSessionMcp(req.params.id, req.body?.enabled) }); }
+app.patch<{ Params: { id: string }; Body: { enabled?: unknown; allowWrites?: unknown } }>('/api/sessions/:id/mcp', async (req, reply) => {
+  try { return reply.send({ mcp: await agentService.setSessionMcp(req.params.id, req.body?.enabled, req.body?.allowWrites) }); }
   catch (err) {
     if (err instanceof AgentServiceError) {
       if (err.code === 'session_not_found') return reply.status(404).send({ error: err.code });

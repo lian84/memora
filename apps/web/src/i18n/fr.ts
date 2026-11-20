@@ -549,4 +549,12 @@ export const fr: Record<string, string> = {
   'Attiva {server}': 'Activer {server}',
   'Disattiva {server}': 'Désactiver {server}',
   'I tool MCP sono di sola lettura nella prima versione. Le modifiche valgono dal prossimo messaggio.': 'Les outils MCP sont en lecture seule dans cette première version. Les modifications s’appliquent au message suivant.',
+  'Consenti scritture': 'Autoriser les écritures',
+  'L’agente può modificare i dati nei servizi attivi.': 'L’agent peut modifier les données des services actifs.',
+  'Lettura soltanto. Le scritture sono disabilitate.': 'Lecture seule. Les écritures sont désactivées.',
+  'Le modifiche valgono dal prossimo messaggio. Per eliminazioni o modifiche distruttive l’agente deve chiedere conferma.': 'Les modifications s’appliquent au message suivant. Pour les suppressions ou modifications destructives, l’agent doit demander confirmation.',
+  'Abilitare le scritture MCP?': 'Activer les écritures MCP ?',
+  'Abilita scritture': 'Activer les écritures',
+  'Abilitazione…': 'Activation…',
+  'Da questo momento l’agente può creare, modificare o eliminare contenuti in Notion e Todoist, in base ai tool esposti dai server attivi. Usa questa opzione solo quando necessario.': 'À partir de maintenant, l’agent peut créer, modifier ou supprimer du contenu dans Notion et Todoist, selon les outils exposés par les serveurs actifs. Utilisez cette option uniquement si nécessaire.',
 };

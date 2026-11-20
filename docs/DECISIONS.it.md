@@ -1797,3 +1797,29 @@ esporrebbe accidentalmente capacità di scrittura.
 - Le scritture richiedono una futura policy esplicita e non sono disponibili ora.
 - Il processo del server MCP viene avviato on demand; il packaging dovrà fornire
   i binari localmente invece di dipendere da `npx`.
+
+---
+## ADR-054 — Opt-in per chat per le scritture MCP
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Il read-only MCP era sicuro ma impediva operazioni utili su Notion/Todoist.
+Esporre i tool di scrittura di default sarebbe pericoloso per i dati esterni.
+
+### Decisione
+- `McpSessionSettings` contiene `allowWrites`, default false.
+- Il pannello MCP espone **Consenti scritture** con conferma e avviso visibile.
+- Quando è false, il prompt elenca solo i tool di lettura e `mcp_call` rifiuta i
+  nomi dei tool di scrittura. Quando è true, tutti i tool dei server attivi sono
+  esposti.
+- Il modello riceve l’istruzione di chiedere conferma esplicita prima delle
+  operazioni distruttive.
+- L’impostazione è salvata in `memora.mcp` e vale dal messaggio successivo.
+
+### Conseguenze
+- È possibile operare completamente su Notion/Todoist senza rendere le scritture
+  il default.
+- Le scritture sono limitate a una chat e revocabili in ogni momento.
+- La conferma nel prompt non è un confine di sicurezza rigido; si potrà
+  aggiungere un’approvazione per singolo tool.
