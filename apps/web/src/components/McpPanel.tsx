@@ -22,7 +22,7 @@ export function McpPanel({ sessionId, project = null }: McpPanelProps) {
     setError(null);
     try {
       const [nextAccounts, nextSettings] = await Promise.all([listMcpAccounts(project?.id), getSessionMcp(sessionId)]);
-      setAccounts(nextAccounts);
+      setAccounts(nextAccounts.filter(account => account.scope === 'global' || (project?.id && account.projectId === project.id)));
       setSettings(nextSettings);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
