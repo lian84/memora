@@ -350,9 +350,8 @@ export function AgentsAdminPanel() {
                     {colorInput.trim() && !normalizeColorInput(colorInput) ? t('Usa un codice esadecimale come #2563eb.') : form.color}
                   </small>
                 </div>
-                <div className="agents-admin-preview" style={{ '--agent-color': form.color } as CSSProperties}>
+                <div className="agents-admin-preview" style={{ '--agent-color': form.color } as CSSProperties} aria-hidden="true">
                   <span><AppIcon name={form.icon} size={18} /></span>
-                  <strong>{form.name || t('Anteprima')}</strong>
                 </div>
               </div>
               <label className="admin-label">{t('Icona')}
