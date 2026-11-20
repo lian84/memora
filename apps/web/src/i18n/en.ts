@@ -556,4 +556,8 @@ export const en: Record<string, string> = {
   'Abilita scritture': 'Enable writes',
   'Abilitazione…': 'Enabling…',
   'Da questo momento l’agente può creare, modificare o eliminare contenuti in Notion e Todoist, in base ai tool esposti dai server attivi. Usa questa opzione solo quando necessario.': 'From now on the agent can create, edit or delete content in Notion and Todoist, based on the tools exposed by active servers. Use this only when needed.',
+  'Scegli un account globale oppure crea un account dedicato a questo progetto. I token restano nel secret store. La selezione viene salvata automaticamente.': 'Choose a global account or create one dedicated to this project. Tokens stay in the secret store. The selection is saved automatically.',
+  'Account MCP salvati.': 'MCP accounts saved.',
+  'Salvataggio account MCP…': 'Saving MCP accounts…',
+  'Riprova salvataggio': 'Retry save',
 };

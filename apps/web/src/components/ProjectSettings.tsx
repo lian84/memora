@@ -38,6 +38,9 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   const [mcpAccounts, setMcpAccounts] = useState<Partial<Record<McpServerId, string>>>(project.mcpAccounts ?? {});
   const [availableMcpAccounts, setAvailableMcpAccounts] = useState<McpAccount[]>([]);
   const [mcpAccountForm, setMcpAccountForm] = useState<{ serverId: McpServerId | null; label: string; token: string }>({ serverId: null, label: '', token: '' });
+  const [mcpSaving, setMcpSaving] = useState(false);
+  const [mcpMessage, setMcpMessage] = useState<string | null>(null);
+  const [mcpError, setMcpError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -212,12 +215,27 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
     }
   };
 
+  const persistMcpAccounts = useCallback(async (next: Partial<Record<McpServerId, string>>) => {
+    setMcpSaving(true);
+    setMcpMessage(null);
+    setMcpError(null);
+    try {
+      const updated = await updateProject(project.id, { mcpAccounts: next });
+      setMcpAccounts(updated.mcpAccounts ?? {});
+      onSaved(updated);
+      setMcpMessage(t('Account MCP salvati.'));
+    } catch (err) {
+      setMcpError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMcpSaving(false);
+    }
+  }, [onSaved, project.id, t]);
+
   const setServerAccount = (serverId: McpServerId, accountId: string) => {
-    setMcpAccounts(current => {
-      const next = { ...current };
-      if (accountId) next[serverId] = accountId; else delete next[serverId];
-      return next;
-    });
+    const next = { ...mcpAccounts };
+    if (accountId) next[serverId] = accountId; else delete next[serverId];
+    setMcpAccounts(next);
+    void persistMcpAccounts(next);
   };
 
   const createProjectMcpAccount = async () => {
@@ -234,9 +252,11 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         defaultForServer: false,
       });
       setAvailableMcpAccounts(current => [...current, account]);
-      setMcpAccounts(current => ({ ...current, [account.serverId]: account.id }));
+      const next = { ...mcpAccounts, [account.serverId]: account.id };
+      setMcpAccounts(next);
       setMcpAccountForm({ serverId: null, label: '', token: '' });
-      setMessage(t('Account MCP di progetto creato.'));
+      await persistMcpAccounts(next);
+      setMcpMessage(t('Account MCP di progetto creato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -299,7 +319,11 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
 
       <section className="admin-card">
         <h3>{t('Account MCP del progetto')}</h3>
-        <p className="admin-card-description">{t('Scegli un account globale oppure crea un account dedicato a questo progetto. I token restano nel secret store.')}</p>
+        <p className="admin-card-description">{t('Scegli un account globale oppure crea un account dedicato a questo progetto. I token restano nel secret store. La selezione viene salvata automaticamente.')}</p>
+        {mcpSaving && <div className="admin-field-note">{t('Salvataggio account MCP…')}</div>}
+        {mcpMessage && <div className="admin-field-note">{mcpMessage}</div>}
+        {mcpError && <div role="alert" className="admin-alert is-error">{mcpError}</div>}
+        {mcpError && <div className="admin-actions"><button type="button" onClick={() => void persistMcpAccounts(mcpAccounts)}>{t('Riprova salvataggio')}</button></div>}
         {MCP_SERVER_DEFINITIONS.map(server => {
           const accounts = availableMcpAccounts.filter(account => account.serverId === server.id);
           const globalAccounts = accounts.filter(account => account.scope === 'global');
@@ -307,7 +331,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
           return (
             <div className="project-mcp-row" key={server.id}>
               <label className="admin-label">{server.label}
-                <select value={mcpAccounts[server.id] ?? ''} onChange={event => setServerAccount(server.id, event.target.value)}>
+                <select value={mcpAccounts[server.id] ?? ''} disabled={mcpSaving} onChange={event => setServerAccount(server.id, event.target.value)}>
                   <option value="">{t('Usa il predefinito globale')}</option>
                   {globalAccounts.length > 0 && <optgroup label={t('Globali')}>
                     {globalAccounts.map(account => <option key={account.id} value={account.id}>{account.label}{account.defaultForServer ? ` · ${t('predefinito')}` : ''}</option>)}
@@ -335,7 +359,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
             </div>
             <a className="admin-token-link" href={MCP_SERVER_DEFINITIONS.find(server => server.id === mcpAccountForm.serverId)?.tokenUrl} target="_blank" rel="noopener noreferrer">{t('Apri la pagina per creare il token')} ↗</a>
             <div className="admin-actions">
-              <button type="button" className="admin-primary" onClick={() => void createProjectMcpAccount()} disabled={saving}>{t('Crea account progetto')}</button>
+              <button type="button" className="admin-primary" onClick={() => void createProjectMcpAccount()} disabled={saving || mcpSaving}>{t('Crea account progetto')}</button>
               <button type="button" onClick={() => setMcpAccountForm({ serverId: null, label: '', token: '' })}>{t('Annulla')}</button>
             </div>
           </div>

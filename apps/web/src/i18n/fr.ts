@@ -557,4 +557,8 @@ export const fr: Record<string, string> = {
   'Abilita scritture': 'Activer les écritures',
   'Abilitazione…': 'Activation…',
   'Da questo momento l’agente può creare, modificare o eliminare contenuti in Notion e Todoist, in base ai tool esposti dai server attivi. Usa questa opzione solo quando necessario.': 'À partir de maintenant, l’agent peut créer, modifier ou supprimer du contenu dans Notion et Todoist, selon les outils exposés par les serveurs actifs. Utilisez cette option uniquement si nécessaire.',
+  'Scegli un account globale oppure crea un account dedicato a questo progetto. I token restano nel secret store. La selezione viene salvata automaticamente.': 'Choisissez un compte global ou créez-en un dédié à ce projet. Les tokens restent dans le secret store. La sélection est enregistrée automatiquement.',
+  'Account MCP salvati.': 'Comptes MCP enregistrés.',
+  'Salvataggio account MCP…': 'Enregistrement des comptes MCP…',
+  'Riprova salvataggio': 'Réessayer l’enregistrement',
 };
