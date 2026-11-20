@@ -197,11 +197,10 @@ function sanitizeHtmlForPdf(input: string): string {
 
 const PRINT_PAGINATION_CSS = `<style id="memora-print-pagination">
 @media print {
-  html, body { margin: 0 !important; }
   body { overflow-wrap: break-word; orphans: 3; widows: 3; }
   h1, h2, h3, h4, h5, h6 { break-after: avoid-page; page-break-after: avoid; }
   p, li, blockquote, pre, figure, img { break-inside: avoid-page; page-break-inside: avoid; }
-  table { width: 100%; break-inside: avoid-page; page-break-inside: avoid; }
+  table { break-inside: avoid-page; page-break-inside: avoid; }
   thead { display: table-header-group; }
   tfoot { display: table-footer-group; }
   tr { break-inside: avoid-page; page-break-inside: avoid; }
