@@ -1009,7 +1009,7 @@ export class AgentService {
       }
     }
     if (entry.mcp.allowWrites && entry.mcp.enabled.includes('notion')) {
-      lines.push('Notion: per creare una pagina nella radice usa parent {"type":"workspace"}; per crearla sotto una pagina usa {"page_id":"..."}, sotto un database {"database_id":"..."}. Per una pagina workspace properties.title è obbligatorio.');
+      lines.push('Notion: non usare parent {"type":"workspace"}: le integrazioni interne non possono creare pagine root. Crea nuove pagine solo sotto una pagina condivisa (parent.page_id) o in un database condiviso (parent.database_id); se l’utente non indica un contenitore, chiedi dove crearla.');
     }
     lines.push('In mcp_call, arguments deve essere un oggetto JSON con i nomi esatti indicati dopo "argomenti"; i campi con * sono obbligatori.');
     lines.push(entry.mcp.allowWrites
