@@ -199,7 +199,7 @@ async function testProvider(serverId: McpServerId, token: string): Promise<void>
           headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2022-06-28' },
           signal: controller.signal,
         })
-      : await fetch('https://api.todoist.com/rest/v2/projects', {
+      : await fetch('https://api.todoist.com/api/v1/projects', {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         });
