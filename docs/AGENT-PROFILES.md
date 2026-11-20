@@ -56,9 +56,11 @@ Open **Administration → Agents** to create, edit and move profiles to the tras
 skills; each skill has a name, routing description and Markdown instructions.
 Saving a profile updates the files under `$MEMORA_DATA_DIR/agents`.
 
-Profiles already used by chats keep their prompt snapshot. Deleting a profile
-moves its directory to `.trash/agents`; it disappears from the new-chat picker
-without breaking existing conversations.
+Profiles already used by chats keep their prompt and skill snapshot. Their
+name, icon and color are resolved from the current profile, so a change to those
+visual fields updates existing chats too. Deleting a profile moves its directory
+to `.trash/agents`; it disappears from the new-chat picker without breaking
+existing conversations.
 
 Import/export of profile bundles is not part of this first editor.
 

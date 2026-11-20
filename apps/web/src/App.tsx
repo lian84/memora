@@ -119,11 +119,14 @@ export default function App() {
   useEffect(() => {
     const refreshAgentProfiles = () => {
       void listAgentProfiles().then(setAgentProfiles).catch(() => setAgentProfiles([]));
+      // I metadati visivi delle sessioni (icona/nome/colore) sono risolti dal
+      // profilo corrente; ricarica la lista per aggiornare le chat esistenti.
+      void load(archivedView);
     };
     refreshAgentProfiles();
     window.addEventListener('memora-agent-profiles-changed', refreshAgentProfiles);
     return () => window.removeEventListener('memora-agent-profiles-changed', refreshAgentProfiles);
-  }, []);
+  }, [archivedView, load]);
 
   useEffect(() => {
     void getAdminStatus()

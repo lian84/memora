@@ -1786,7 +1786,9 @@ unpredictable.
   attached code but cannot read the repository until a separate workspace/tool
   policy is designed.
 - Administration → Agents edits the same files, validates IDs and moves deleted
-  profiles/skills to `.trash/agents`; existing chats keep their snapshot.
+  profiles/skills to `.trash/agents`; existing chats keep their prompt/skill
+  snapshot, while name, icon and color are resolved from the current profile
+  for display.
 
 ### Consequences
 - Users can switch expertise per chat without duplicating projects or memory.

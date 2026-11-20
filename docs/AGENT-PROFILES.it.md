@@ -58,7 +58,9 @@ profili. L’editor gestisce metadati, icona, colore, prompt e competenze; ogni
 competenza ha nome, descrizione per il routing e istruzioni Markdown. Il
 salvataggio aggiorna i file in `$MEMORA_DATA_DIR/agents`.
 
-Le chat che hanno già usato un profilo mantengono il loro snapshot del prompt.
+Le chat che hanno già usato un profilo mantengono lo snapshot di prompt e
+competenze. Nome, icona e colore vengono invece risolti dal profilo corrente,
+quindi una modifica a questi campi visivi aggiorna anche le chat esistenti.
 L’eliminazione sposta la directory in `.trash/agents`; il profilo sparisce dal
 selettore delle nuove chat senza rompere le conversazioni esistenti.
 

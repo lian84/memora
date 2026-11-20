@@ -453,7 +453,8 @@ export class AgentService {
   async resumeSession(sessionId: SessionId): Promise<{ sessionId: string; modelId: string; provider?: ChatProvider; reasoningLevel?: ReasoningLevel; projectId?: string; agent?: SessionAgentInfo }> {
     const existing = this.sessions.get(sessionId);
     if (existing) {
-      return { sessionId: existing.session.sessionId, modelId: existing.modelId, provider: existing.provider, reasoningLevel: existing.reasoningLevel, ...(existing.projectId ? { projectId: existing.projectId } : {}), ...(existing.agent ? { agent: this.toSessionAgent(existing.agent) } : {}) }; // già caricata in memoria
+      const existingAgent = existing.agent ? await this.currentAgentInfoFor(existing.agent) : undefined;
+      return { sessionId: existing.session.sessionId, modelId: existing.modelId, provider: existing.provider, reasoningLevel: existing.reasoningLevel, ...(existing.projectId ? { projectId: existing.projectId } : {}), ...(existingAgent ? { agent: existingAgent } : {}) }; // già caricata in memoria
     }
 
     const modelRuntime = await this.createModelRuntime();
@@ -515,7 +516,7 @@ export class AgentService {
       agentRef,
     });
 
-    return { sessionId: session.sessionId, modelId: resolved.modelId, provider: resolved.provider, reasoningLevel: effectiveReasoning, ...(sessionMeta.projectId ? { projectId: sessionMeta.projectId } : {}), ...(sessionAgent ? { agent: this.toSessionAgent(sessionAgent) } : {}) };
+    return { sessionId: session.sessionId, modelId: resolved.modelId, provider: resolved.provider, reasoningLevel: effectiveReasoning, ...(sessionMeta.projectId ? { projectId: sessionMeta.projectId } : {}), ...(sessionAgent ? { agent: await this.currentAgentInfoFor(sessionAgent) } : {}) };
   }
 
   /** Restituisce i messaggi di una sessione esistente (per il ripristino della conversazione).
@@ -763,6 +764,30 @@ export class AgentService {
     return { id: agent.id, name: agent.name, icon: agent.icon, color: agent.color };
   }
 
+  /**
+   * Risolve i metadati visivi dal profilo corrente, mantenendo lo snapshot
+   * della sessione per prompt e competenze. Icona, nome e colore sono solo
+   * presentazione: se il profilo viene modificato, le chat esistenti devono
+   * mostrare il badge aggiornato.
+   */
+  private currentAgentInfo(agent: SessionAgentSnapshot | null | undefined, profiles: Map<string, AgentProfileSummary>): SessionAgentInfo | undefined {
+    if (!agent) return undefined;
+    const current = profiles.get(agent.id);
+    return current
+      ? { id: current.id, name: current.name, icon: current.icon, color: current.color }
+      : this.toSessionAgent(agent);
+  }
+
+  private async currentAgentInfoFor(agent: SessionAgentSnapshot): Promise<SessionAgentInfo> {
+    try {
+      const current = await this.agentProfiles.get(agent.id);
+      if (current) return { id: current.id, name: current.name, icon: current.icon, color: current.color };
+    } catch {
+      // fallback allo snapshot
+    }
+    return this.toSessionAgent(agent);
+  }
+
   private parseSessionAgent(value: unknown): SessionAgentSnapshot | undefined {
     if (!value || typeof value !== 'object') return undefined;
     const data = value as Record<string, unknown>;
@@ -809,6 +834,12 @@ export class AgentService {
   async listSessions(onlyArchived = false): Promise<SessionInfo[]> {
     const infos = await SessionManager.listAll(this.sessionDir);
     const persistedIds = new Set(infos.map((info) => info.id));
+    let currentProfiles = new Map<string, AgentProfileSummary>();
+    try {
+      currentProfiles = new Map((await this.agentProfiles.list()).map(profile => [profile.id, profile]));
+    } catch {
+      // Se lo store è temporaneamente illeggibile, usa gli snapshot delle sessioni.
+    }
 
     const result: SessionInfo[] = [];
     for (const info of infos) {
@@ -825,7 +856,7 @@ export class AgentService {
         name: info.name,
         archived: meta.archived,
         ...(meta.projectId ? { projectId: meta.projectId } : {}),
-        ...(meta.agent ? { agent: this.toSessionAgent(meta.agent) } : {}),
+        ...(this.currentAgentInfo(meta.agent ?? null, currentProfiles) ? { agent: this.currentAgentInfo(meta.agent ?? null, currentProfiles) } : {}),
       });
     }
 
@@ -848,7 +879,7 @@ export class AgentService {
           name: entry.session.sessionName,
           archived: false,
           ...(entry.projectId ? { projectId: entry.projectId } : {}),
-          ...(entry.agent ? { agent: this.toSessionAgent(entry.agent) } : {}),
+          ...(this.currentAgentInfo(entry.agent, currentProfiles) ? { agent: this.currentAgentInfo(entry.agent, currentProfiles) } : {}),
           draft: true,
         });
       }

@@ -206,6 +206,27 @@ describe('AgentService', () => {
       }
     });
 
+    it('mostra i metadati visivi aggiornati anche nelle chat esistenti', async () => {
+      const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-live-'));
+      try {
+        const service = new AgentService({ ...baseConfig, dataDir });
+        const created = await service.createSession();
+        await service.setSessionAgent(created.sessionId, 'commercialista');
+        await service.updateAgentProfile('commercialista', { icon: 'terminal', color: '#123456', name: 'Commercialista aggiornato' });
+        const sessions = await service.listSessions();
+        expect(sessions.find(session => session.sessionId === created.sessionId)?.agent).toEqual({
+          id: 'commercialista',
+          name: 'Commercialista aggiornato',
+          icon: 'terminal',
+          color: '#123456',
+        });
+        service.disposeAll();
+      } finally {
+        const { rm } = await import('node:fs/promises');
+        await rm(dataDir, { recursive: true, force: true });
+      }
+    });
+
     it('rifiuta il cambio profilo dopo il primo messaggio utente', async () => {
       const dataDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp('/tmp/memora-agent-lock-'));
       try {

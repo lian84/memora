@@ -1629,7 +1629,8 @@ il comportamento imprevedibile.
   una policy workspace/tool separata.
 - **Amministrazione → Agenti** modifica gli stessi file, valida gli ID e sposta
   profili/competenze eliminati in `.trash/agents`; le chat esistenti mantengono
-  lo snapshot.
+  lo snapshot di prompt/competenze, mentre nome, icona e colore vengono risolti
+  dal profilo corrente per la visualizzazione.
 
 ### Conseguenze
 - L’utente cambia competenza per chat senza duplicare progetti o memoria.
