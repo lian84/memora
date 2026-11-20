@@ -1016,6 +1016,19 @@ export class AgentService {
     return lines.join('\n');
   }
 
+  /** I provider possono serializzare gli argomenti come stringa JSON: normalizzali prima della chiamata MCP. */
+  private parseMcpArguments(value: unknown): Record<string, unknown> {
+    if (typeof value === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+      } catch {
+        return {};
+      }
+    }
+    return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  }
+
   private async callMcpTool(sessionId: string, serverName: unknown, toolName: unknown, args: unknown): Promise<unknown> {
     if (!isMcpServerId(serverName)) throw new AgentServiceError('invalid_mcp_server', 'Server MCP non valido');
     if (typeof toolName !== 'string' || !toolName) throw new AgentServiceError('invalid_mcp_tool', 'Tool MCP non valido');
@@ -1023,7 +1036,7 @@ export class AgentService {
     const entry = this.sessions.get(sessionId);
     if (!tools.some(tool => tool.name === toolName)) throw new AgentServiceError('mcp_tool_not_allowed', 'Questo tool non è disponibile');
     if (!entry?.mcp.allowWrites && !this.isReadOnlyMcpTool(toolName)) throw new AgentServiceError('mcp_writes_disabled', 'Le scritture MCP non sono abilitate in questa chat');
-    return client.callTool(toolName, args && typeof args === 'object' && !Array.isArray(args) ? args as Record<string, unknown> : {}, { timeoutMs: 60_000 });
+    return client.callTool(toolName, this.parseMcpArguments(args), { timeoutMs: 60_000 });
   }
 
   /** Project associato alla sessione, usato per archiviare gli allegati nel progetto. */
@@ -2012,7 +2025,7 @@ export class AgentService {
             parameters: Type.Object({
               server: Type.String({ description: 'ID server MCP, per esempio notion o todoist' }),
               tool: Type.String({ description: 'Nome esatto del tool MCP elencato nel system prompt' }),
-              arguments: Type.Optional(Type.Any({ description: 'Argomenti JSON del tool' })),
+              arguments: Type.Optional(Type.Record(Type.String(), Type.Any(), { description: 'Argomenti JSON del tool' })),
             }),
             execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
               const result = await this.callMcpTool(ctx.sessionManager.getSessionId(), params.server, params.tool, params.arguments) as { isError?: boolean };
