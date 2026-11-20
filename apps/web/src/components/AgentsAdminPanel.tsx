@@ -237,7 +237,7 @@ export function AgentsAdminPanel() {
           <div className="agents-admin-list-heading">
             <div>
               <h3>{t('Agenti')}</h3>
-              <p className="admin-card-description">{t('Profili selezionabili prima del primo messaggio.')}</p>
+              <p className="admin-card-description">{t('Profili selezionabili prima del primo messaggio. Clicca un agente per modificarlo.')}</p>
             </div>
             <button type="button" className="admin-primary" onClick={startNew}>+ {t('Nuovo agente')}</button>
           </div>
@@ -250,12 +250,13 @@ export function AgentsAdminPanel() {
                 className={`agents-admin-card${editingId === profile.id ? ' is-selected' : ''}`}
                 style={{ '--agent-color': profile.color } as CSSProperties}
               >
-                <button type="button" className="agents-admin-card-main" onClick={() => void startEdit(profile)}>
+                <button type="button" className="agents-admin-card-main" title={t('Modifica agente')} onClick={() => void startEdit(profile)}>
                   <span className="agents-admin-card-icon"><AppIcon name={profile.icon} size={18} /></span>
                   <span className="agents-admin-card-copy">
                     <strong>{profile.name}</strong>
                     <small>{profile.description || t('Nessuna descrizione')}</small>
                     <em>{t('Competenze: {count}', { count: profile.skills.length })}</em>
+                    <span className="agents-admin-card-edit">{t('Modifica')}</span>
                   </span>
                 </button>
                 <button type="button" className="agents-admin-card-delete" title={t('Elimina agente')} aria-label={t('Elimina agente')} onClick={() => setDeleteProfile(profile)}>
@@ -278,7 +279,7 @@ export function AgentsAdminPanel() {
               <div className="agents-admin-editor-heading">
                 <div>
                   <h3>{editingId ? t('Modifica agente') : t('Crea agente')}</h3>
-                  <p className="admin-card-description">{t('Il profilo viene salvato in MEMORA_DATA_DIR/agents.')}</p>
+                  <p className="admin-card-description">{t('Il profilo viene salvato in MEMORA_DATA_DIR/agents. L’ID resta bloccato; gli altri campi sono modificabili.')}</p>
                 </div>
                 <button type="button" className="admin-close" onClick={resetEditor}>{t('Chiudi')}</button>
               </div>

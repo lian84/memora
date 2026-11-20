@@ -444,7 +444,7 @@ export const en: Record<string, string> = {
   'Configura il provider web in amministrazione': 'Configure the web provider in Administration',
   'Agenti': 'Agents',
   'Nuovo agente': 'New agent',
-  'Profili selezionabili prima del primo messaggio.': 'Profiles selectable before the first message.',
+  'Profili selezionabili prima del primo messaggio. Clicca un agente per modificarlo.': 'Profiles selectable before the first message. Click an agent to edit it.',
   'Nessun agente configurato.': 'No agents configured.',
   'Nessuna descrizione': 'No description',
   'Competenze: {count}': 'Skills: {count}',
@@ -487,4 +487,5 @@ export const en: Record<string, string> = {
   'calculator': 'Calculator',
   'terminal': 'Terminal',
   'megaphone': 'Megaphone',
+  'Il profilo viene salvato in MEMORA_DATA_DIR/agents. L’ID resta bloccato; gli altri campi sono modificabili.': 'The profile is saved in MEMORA_DATA_DIR/agents. The ID stays locked; the other fields are editable.',
 };
