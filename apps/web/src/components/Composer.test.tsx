@@ -19,7 +19,7 @@ test('mostra gli allegati in attesa e il pulsante di caricamento', () => {
 
 test('mostra l’icona non interattiva del profilo agente vicino agli strumenti', () => {
   const markup = renderToStaticMarkup(
-    <Composer onSend={() => undefined} onAbort={() => undefined} agent={{ id: 'commercialista', name: 'Commercialista', icon: 'briefcase' }} />,
+    <Composer onSend={() => undefined} onAbort={() => undefined} agent={{ id: 'commercialista', name: 'Commercialista', icon: 'calculator', color: '#0f8a6a' }} />,
   );
   expect(markup).toContain('Chat con Commercialista');
   expect(markup).toContain('composer-agent');

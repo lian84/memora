@@ -42,6 +42,7 @@ import {
   type WebSource,
   REASONING_LEVELS,
   isProjectIcon,
+  defaultAgentColor,
 } from '@memora/shared';
 
 import { ArtifactStore, type ArtifactSource } from './artifacts.js';
@@ -685,6 +686,7 @@ export class AgentService {
         id: profile.id,
         name: profile.name,
         icon: profile.icon,
+        color: profile.color,
         prompt: profile.prompt,
         skills: profile.skills,
       };
@@ -697,7 +699,7 @@ export class AgentService {
   }
 
   private toSessionAgent(agent: SessionAgentSnapshot): SessionAgentInfo {
-    return { id: agent.id, name: agent.name, icon: agent.icon };
+    return { id: agent.id, name: agent.name, icon: agent.icon, color: agent.color };
   }
 
   private parseSessionAgent(value: unknown): SessionAgentSnapshot | undefined {
@@ -706,6 +708,7 @@ export class AgentService {
     if (typeof data.id !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(data.id)) return undefined;
     if (typeof data.name !== 'string' || !data.name.trim()) return undefined;
     if (!isProjectIcon(data.icon)) return undefined;
+    const color = typeof data.color === 'string' && /^#[0-9a-f]{6}$/i.test(data.color) ? data.color : defaultAgentColor(data.id);
     if (typeof data.prompt !== 'string') return undefined;
     if (!Array.isArray(data.skills)) return undefined;
     const skills = data.skills.flatMap((item): AgentSkillSummary[] => {
@@ -718,6 +721,7 @@ export class AgentService {
       id: data.id,
       name: data.name.trim().slice(0, 120),
       icon: data.icon,
+      color,
       prompt: data.prompt.slice(0, 16_000),
       skills,
     };
@@ -1322,6 +1326,7 @@ export class AgentService {
             id: entry.agent.id,
             name: entry.agent.name,
             icon: entry.agent.icon,
+            color: entry.agent.color,
             prompt: entry.agent.prompt,
             skills: entry.agent.skills,
           },

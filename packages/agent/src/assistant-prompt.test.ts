@@ -112,7 +112,8 @@ describe('Personal Assistant memory conversation policy', () => {
       {
         id: 'commercialista',
         name: 'Commercialista',
-        icon: 'briefcase',
+        icon: 'calculator',
+        color: '#0f8a6a',
         prompt: 'Sei un esperto di contabilità.',
         skills: [{ name: 'iva', description: 'Calcolo IVA.' }],
       },

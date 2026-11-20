@@ -24,6 +24,8 @@ describe('AgentProfileStore', () => {
 
     const commercialista = await store.get('commercialista');
     expect(commercialista?.name).toBe('Commercialista');
+    expect(commercialista?.color).toBe('#0f8a6a');
+    expect(commercialista?.icon).toBe('calculator');
     expect(commercialista?.prompt).toContain('modalità Commercialista');
     expect(commercialista?.skills.map(skill => skill.name)).toContain('iva');
 
@@ -40,6 +42,7 @@ describe('AgentProfileStore', () => {
     await writeFile(join(extra, 'PROMPT.md'), 'Istruzioni custom');
     const profiles = await store.list();
     expect(profiles.map(profile => profile.id)).toContain('custom');
+    expect(profiles.find(profile => profile.id === 'custom')?.color).toBe('#2563eb');
     expect(profiles.some(profile => profile.id === 'commercialista')).toBe(true);
   });
 

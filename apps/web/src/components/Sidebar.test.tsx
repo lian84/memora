@@ -104,7 +104,7 @@ test('mostra i pallini di risposta in corso e non letta', () => {
 
 test('mostra l’icona del profilo agente accanto alla sessione', () => {
   const markup = renderToStaticMarkup(
-    <Sidebar {...baseProps} sessions={[{ ...session, agent: { id: 'commercialista', name: 'Commercialista', icon: 'briefcase' } }]} />,
+    <Sidebar {...baseProps} sessions={[{ ...session, agent: { id: 'commercialista', name: 'Commercialista', icon: 'calculator', color: '#0f8a6a' } }]} />,
   );
   expect(markup).toContain('Chat con Commercialista');
   expect(markup).toContain('session-agent-icon');

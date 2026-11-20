@@ -1621,7 +1621,7 @@ il comportamento imprevedibile.
   composer mostrano solo il riepilogo del profilo.
 - Le nuove chat mostrano i chip dei profili sopra il composer fino al primo
   turno. Selezionare **Memo base** significa nessun profilo. Dopo l’invio il
-  selettore sparisce e il profilo scelto compare come icona non interattiva
+  selettore sparisce e il profilo scelto compare come icona colorata non interattiva
   accanto ai controlli allegati e web. La stessa icona compare accanto alla
   sessione nella sidebar solo per i profili diversi da base.
 - I profili non aggiungono tool builtin. Un profilo coding può revisionare codice

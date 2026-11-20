@@ -173,7 +173,7 @@ async function main() {
     });
     assert.equal(selectedAgent.status, 200, 'PATCH /api/sessions/:id/agent deve funzionare');
     const selectedAgentBody = await selectedAgent.json();
-    assert.deepEqual(selectedAgentBody.agent, { id: 'commercialista', name: 'Commercialista', icon: 'briefcase' });
+    assert.deepEqual(selectedAgentBody.agent, { id: 'commercialista', name: 'Commercialista', icon: 'calculator', color: '#0f8a6a' });
     const sessionsWithAgent = await (await authFetch(`${baseUrl}/api/sessions`)).json();
     assert.equal(sessionsWithAgent.sessions.find(session => session.sessionId === createdBody.sessionId)?.agent?.id, 'commercialista');
 

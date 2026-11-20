@@ -177,7 +177,7 @@ describe('AgentService', () => {
         const service = new AgentService({ ...baseConfig, dataDir });
         const created = await service.createSession();
         const selected = await service.setSessionAgent(created.sessionId, 'commercialista');
-        expect(selected.agent).toEqual({ id: 'commercialista', name: 'Commercialista', icon: 'briefcase' });
+        expect(selected.agent).toEqual({ id: 'commercialista', name: 'Commercialista', icon: 'calculator', color: '#0f8a6a' });
         const sessions = await service.listSessions();
         expect(sessions.find(session => session.sessionId === created.sessionId)?.agent).toEqual(selected.agent);
         service.disposeAll();

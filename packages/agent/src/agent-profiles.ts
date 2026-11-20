@@ -5,6 +5,8 @@ import {
   isProjectIcon,
   type AgentProfile,
   type AgentProfileSummary,
+  defaultAgentColor,
+  isAgentColor,
   type ProjectIcon,
 } from '@memora/shared';
 
@@ -18,6 +20,7 @@ interface SeedProfile {
   name: string;
   description: string;
   icon: ProjectIcon;
+  color: string;
   prompt: string;
   skills: Array<{ name: string; description: string; body: string }>;
 }
@@ -27,7 +30,8 @@ const DEFAULT_PROFILES: SeedProfile[] = [
     id: 'brainstorming',
     name: 'Brainstorming',
     description: 'Genera e organizza idee, alternative e ipotesi prima di decidere.',
-    icon: 'star',
+    icon: 'lightbulb',
+    color: '#d97706',
     prompt: `Sei Memo in modalità Brainstorming. Aiuti l'utente a esplorare un problema prima di scegliere una soluzione.
 
 - Parti dal problema e dagli obiettivi, non dalla prima idea che viene in mente.
@@ -44,7 +48,8 @@ const DEFAULT_PROFILES: SeedProfile[] = [
     id: 'commercialista',
     name: 'Commercialista',
     description: 'Supporto a contabilità, bilancio, adempimenti e analisi economica.',
-    icon: 'briefcase',
+    icon: 'calculator',
+    color: '#0f8a6a',
     prompt: `Sei Memo in modalità Commercialista. Offri supporto informativo a contabilità, bilancio e adempimenti, senza sostituirti a un professionista abilitato.
 
 - Prima di rispondere chiedi, se mancano: giurisdizione, anno fiscale, regime contabile e tipo di soggetto.
@@ -61,7 +66,8 @@ const DEFAULT_PROFILES: SeedProfile[] = [
     id: 'sviluppatore',
     name: 'Sviluppatore',
     description: 'Architettura, debugging, code review e scelte tecniche motivate.',
-    icon: 'code',
+    icon: 'terminal',
+    color: '#2563eb',
     prompt: `Sei Memo in modalità Sviluppatore. Aiuti a progettare, capire e correggere software con rigore.
 
 - Prima di proporre codice chiarisci stack, vincoli, ambiente e comportamento atteso.
@@ -78,7 +84,8 @@ const DEFAULT_PROFILES: SeedProfile[] = [
     id: 'social-media',
     name: 'Social media',
     description: 'Pianificazione editoriale, copy e adattamento dei contenuti ai canali.',
-    icon: 'globe',
+    icon: 'megaphone',
+    color: '#c026d3',
     prompt: `Sei Memo in modalità Social media. Aiuti a trasformare obiettivi e contenuti in un piano editoriale chiaro.
 
 - Chiedi pubblico, canale, obiettivo, tono di voce e vincoli di brand quando mancano.
@@ -109,15 +116,16 @@ function clampText(value: string, max: number): string {
   return normalized.length > max ? `${normalized.slice(0, max)}\n\n[contenuto troncato]` : normalized;
 }
 
-function parseProfileMetadata(value: unknown, fallbackId: string): { id: string; name: string; description: string; icon: ProjectIcon } {
+function parseProfileMetadata(value: unknown, fallbackId: string): { id: string; name: string; description: string; icon: ProjectIcon; color: string } {
   if (!value || typeof value !== 'object') throw new AgentProfileError('invalid_agent_profile', 'Metadati profilo mancanti');
   const data = value as Record<string, unknown>;
   const id = typeof data.id === 'string' && data.id ? data.id : fallbackId;
   const name = typeof data.name === 'string' ? data.name.trim() : '';
   const description = typeof data.description === 'string' ? data.description.trim() : '';
   const icon = isProjectIcon(data.icon) ? data.icon : DEFAULT_ICON;
+  const color = isAgentColor(data.color) ? data.color : defaultAgentColor(id);
   if (!PROFILE_ID.test(id) || id !== fallbackId || id === 'base' || id === 'memo' || !name) throw new AgentProfileError('invalid_agent_profile', 'Metadati profilo non validi');
-  return { id, name: clampText(name, 120), description: clampText(description, 280), icon };
+  return { id, name: clampText(name, 120), description: clampText(description, 280), icon, color };
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -163,6 +171,7 @@ export class AgentProfileStore {
         name: profile.name,
         description: profile.description,
         icon: profile.icon,
+        color: profile.color,
         createdAt: now,
         updatedAt: now,
       }, null, 2)}\n`, { mode: 0o600 });
@@ -224,6 +233,7 @@ export class AgentProfileStore {
           name: profile.name,
           description: profile.description,
           icon: profile.icon,
+          color: profile.color,
           skills: profile.skills.map(skill => skill.name),
         });
       } catch {
@@ -241,6 +251,7 @@ export class AgentProfileStore {
       name: profile.name,
       description: profile.description,
       icon: profile.icon,
+      color: profile.color,
       prompt: profile.prompt,
       skills: profile.skills,
       createdAt: profile.createdAt,

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { AgentProfileSummary, SessionAgentInfo } from '@memora/shared';
 import { useI18n } from '../i18n';
 import { AppIcon } from './AppIcon';
@@ -43,6 +44,7 @@ export function AgentProfilePicker({ profiles, selected, saving = false, error =
             disabled={saving}
             onClick={() => onSelect(profile.id)}
             title={profile.description}
+            style={{ '--agent-color': profile.color } as CSSProperties}
           >
             <span className="agent-chip-icon" aria-hidden="true"><AppIcon name={profile.icon} size={15} /></span>
             <span>{profile.name}</span>

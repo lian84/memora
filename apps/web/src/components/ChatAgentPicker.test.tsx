@@ -7,7 +7,7 @@ const props = {
   messages: [],
   onStartTurn: () => undefined,
   onStreamingUpdate: () => undefined,
-  agentProfiles: [{ id: 'commercialista', name: 'Commercialista', description: 'Contabilità', icon: 'briefcase' as const, skills: ['iva'] }],
+  agentProfiles: [{ id: 'commercialista', name: 'Commercialista', description: 'Contabilità', icon: 'calculator' as const, color: '#0f8a6a', skills: ['iva'] }],
   agent: null,
 };
 

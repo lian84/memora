@@ -3,8 +3,8 @@ import { expect, test } from 'vitest';
 import { AgentProfilePicker } from './AgentProfilePicker';
 
 const profiles = [
-  { id: 'commercialista', name: 'Commercialista', description: 'Contabilità', icon: 'briefcase' as const, skills: ['iva'] },
-  { id: 'sviluppatore', name: 'Sviluppatore', description: 'Codice', icon: 'code' as const, skills: ['debugging'] },
+  { id: 'commercialista', name: 'Commercialista', description: 'Contabilità', icon: 'calculator' as const, color: '#0f8a6a', skills: ['iva'] },
+  { id: 'sviluppatore', name: 'Sviluppatore', description: 'Codice', icon: 'terminal' as const, color: '#2563eb', skills: ['debugging'] },
 ];
 
 test('mostra Memo base selezionato e i profili disponibili', () => {
@@ -20,7 +20,7 @@ test('mostra Memo base selezionato e i profili disponibili', () => {
 
 test('evidenzia il profilo selezionato', () => {
   const markup = renderToStaticMarkup(
-    <AgentProfilePicker profiles={profiles} selected={{ id: 'sviluppatore', name: 'Sviluppatore', icon: 'code' }} onSelect={() => undefined} />,
+    <AgentProfilePicker profiles={profiles} selected={{ id: 'sviluppatore', name: 'Sviluppatore', icon: 'terminal', color: '#2563eb' }} onSelect={() => undefined} />,
   );
   expect(markup).toContain('aria-pressed="true"');
   expect(markup).toContain('Sviluppatore');

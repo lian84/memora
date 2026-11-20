@@ -1779,7 +1779,7 @@ unpredictable.
   show only the profile summary.
 - New chats expose profile chips above the composer until the first turn.
   Selecting `Memo base` means no profile. After sending, the picker disappears
-  and the selected profile is shown as a non-interactive icon beside the
+  and the selected profile is shown as a non-interactive colored icon beside the
   attachment and web controls. The same icon appears beside the session in the
   sidebar only for non-base profiles.
 - Profiles do not add builtin tools. A coding profile can review pasted or

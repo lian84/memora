@@ -30,12 +30,14 @@ $MEMORA_DATA_DIR/agents/
   "id": "commercialista",
   "name": "Commercialista",
   "description": "Supporto a contabilità, bilancio e adempimenti.",
-  "icon": "briefcase"
+  "icon": "calculator",
+  "color": "#0f8a6a"
 }
 ```
 
-The icon must be one of the project icons (`briefcase`, `code`, `star`, `globe`,
-`book`, `rocket`, and so on). `PROMPT.md` is added after the immutable Memora
+The icon must be one of the project icons (`calculator`, `terminal`, `lightbulb`,
+`megaphone`, `briefcase`, `code`, `star`, `globe`, and so on). `color` is an
+optional hex color used for the profile badge; it defaults by profile id. `PROMPT.md` is added after the immutable Memora
 base prompt. The `skills/` directory uses the Agent Skills format, with a
 `SKILL.md` containing `name` and `description` frontmatter.
 

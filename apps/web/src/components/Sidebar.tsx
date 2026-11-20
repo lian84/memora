@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { SessionInfo, TurnStatus } from '../lib/api';
 import type { ProjectRecord, ProjectSection } from '@memora/shared';
 import { SidebarTree } from './SidebarTree';
@@ -218,10 +218,11 @@ export function Sidebar({
               <span
                 className="session-agent-icon"
                 role="img"
+                style={{ '--agent-color': session.agent.color } as CSSProperties}
                 title={t('Chat con {name}', { name: session.agent.name })}
                 aria-label={t('Chat con {name}', { name: session.agent.name })}
               >
-                <AppIcon name={session.agent.icon} size={13} />
+                <AppIcon name={session.agent.icon} size={14} />
               </span>
             )}
             <span className="session-title">{title}</span>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { ChatAttachment, SessionAgentInfo } from '@memora/shared';
 import { AppIcon } from './AppIcon';
 import { useI18n } from '../i18n';
@@ -92,8 +93,8 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
         }}
       />
       {agent && (
-        <span className="composer-agent" role="img" title={t('Chat con {name}', { name: agent.name })} aria-label={t('Chat con {name}', { name: agent.name })}>
-          <AppIcon name={agent.icon} size={17} />
+        <span className="composer-agent" role="img" style={{ '--agent-color': agent.color } as CSSProperties} title={t('Chat con {name}', { name: agent.name })} aria-label={t('Chat con {name}', { name: agent.name })}>
+          <AppIcon name={agent.icon} size={18} />
         </span>
       )}
       {onToggleWeb && (

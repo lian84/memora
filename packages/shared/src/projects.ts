@@ -19,6 +19,10 @@ export const PROJECT_ICON_NAMES = [
   'camera',
   'gamepad',
   'leaf',
+  'lightbulb',
+  'calculator',
+  'terminal',
+  'megaphone',
 ] as const;
 
 export type ProjectIcon = typeof PROJECT_ICON_NAMES[number];

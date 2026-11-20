@@ -18,6 +18,10 @@ const paths: Record<ProjectIcon, ReactNode> = {
   camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="4" /></>,
   gamepad: <><path d="M6 8h12a4 4 0 0 1 4 4v1a4 4 0 0 1-7 2l-1-1h-4l-1 1a4 4 0 0 1-7-2v-1a4 4 0 0 1 4-4Z" /><path d="M7 11v4M5 13h4M16 12h.01M18 14h.01" /></>,
   leaf: <><path d="M20 4C12 4 5 8 5 16c0 2 1 4 3 4 8 0 12-7 12-16Z" /><path d="M4 21c3-6 7-9 13-13" /></>,
+  lightbulb: <><path d="M9 18h6M10 22h4M9 13.5a6 6 0 1 1 6 0c-.8.7-1 1.5-1 2.5h-4c0-1-.2-1.8-1-2.5Z" /></>,
+  calculator: <><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2M8 19h2M14 19h2" /></>,
+  terminal: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3M13 16h4" /></>,
+  megaphone: <><path d="m3 11 17-6-2 13-6-2-3 5-2-1 2-4-6-2Z" /><path d="M7 15h3" /></>,
 };
 
 export function AppIcon({ name, size = 16, className }: { name: ProjectIcon; size?: number; className?: string }) {
