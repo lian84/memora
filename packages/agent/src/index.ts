@@ -1008,6 +1008,9 @@ export class AgentService {
         lines.push(`${mcpServerLabel(server)}: non disponibile`);
       }
     }
+    if (entry.mcp.allowWrites && entry.mcp.enabled.includes('notion')) {
+      lines.push('Notion: per creare una pagina nella radice usa parent {"type":"workspace"}; per crearla sotto una pagina usa {"page_id":"..."}, sotto un database {"database_id":"..."}. Per una pagina workspace properties.title è obbligatorio.');
+    }
     lines.push('In mcp_call, arguments deve essere un oggetto JSON con i nomi esatti indicati dopo "argomenti"; i campi con * sono obbligatori.');
     lines.push(entry.mcp.allowWrites
       ? 'Usa mcp_call con il nome del server e del tool. Le scritture sono consentite solo se richieste esplicitamente dall’utente; per eliminazioni o modifiche distruttive chiedi conferma prima di eseguire. Non inventare tool o risultati.'
