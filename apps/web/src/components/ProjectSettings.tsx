@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ProjectIcon, ProjectRecord, ProjectSection } from '@memora/shared';
+import { MCP_SERVER_DEFINITIONS, type McpAccount, type McpServerId, type ProjectIcon, type ProjectRecord, type ProjectSection } from '@memora/shared';
 import {
+  createMcpAccount,
   createProjectSource,
   deleteProjectSource,
+  listMcpAccounts,
   exportProject,
   getProjectSource,
   listProjectSources,
@@ -33,6 +35,9 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   const [icon, setIcon] = useState<ProjectIcon>(project.icon ?? 'folder');
   const [includeGlobal, setIncludeGlobal] = useState(project.retrieval.includeGlobal);
   const [showArchivedSessions, setShowArchivedSessions] = useState(project.showArchivedSessions === true);
+  const [mcpAccounts, setMcpAccounts] = useState<Partial<Record<McpServerId, string>>>(project.mcpAccounts ?? {});
+  const [availableMcpAccounts, setAvailableMcpAccounts] = useState<McpAccount[]>([]);
+  const [mcpAccountForm, setMcpAccountForm] = useState<{ serverId: McpServerId | null; label: string; secretRef: string }>({ serverId: null, label: '', secretRef: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -57,6 +62,10 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
 
   useEffect(() => { void loadSources(); }, [loadSources]);
 
+  useEffect(() => {
+    void listMcpAccounts(project.id).then(setAvailableMcpAccounts).catch(() => setAvailableMcpAccounts([]));
+  }, [project.id]);
+
   const saveProject = async () => {
     setSaving(true);
     setError(null);
@@ -69,6 +78,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         sectionId: sectionId || null,
         icon,
         showArchivedSessions,
+        mcpAccounts,
         retrieval: { ...project.retrieval, includeGlobal },
       });
       onSaved(updated);
@@ -202,6 +212,38 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
     }
   };
 
+  const setServerAccount = (serverId: McpServerId, accountId: string) => {
+    setMcpAccounts(current => {
+      const next = { ...current };
+      if (accountId) next[serverId] = accountId; else delete next[serverId];
+      return next;
+    });
+  };
+
+  const createProjectMcpAccount = async () => {
+    if (!mcpAccountForm.serverId || !mcpAccountForm.label.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const account = await createMcpAccount({
+        serverId: mcpAccountForm.serverId,
+        scope: 'project',
+        projectId: project.id,
+        label: mcpAccountForm.label.trim(),
+        secretRef: mcpAccountForm.secretRef.trim(),
+        defaultForServer: false,
+      });
+      setAvailableMcpAccounts(current => [...current, account]);
+      setMcpAccounts(current => ({ ...current, [account.serverId]: account.id }));
+      setMcpAccountForm({ serverId: null, label: '', secretRef: '' });
+      setMessage(t('Account MCP di progetto creato.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section className="project-settings" aria-label={`${t('Progetto')} ${project.name}`}>
       <div className="project-settings-header">
@@ -253,6 +295,49 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         <div className="admin-actions">
           <button type="button" className="admin-primary" onClick={() => void saveProject()} disabled={saving}>{saving ? t('Salvo…') : t('Salva progetto')}</button>
         </div>
+      </section>
+
+      <section className="admin-card">
+        <h3>{t('Account MCP del progetto')}</h3>
+        <p className="admin-card-description">{t('Scegli un account globale oppure crea un account dedicato a questo progetto. I token restano nel secret store.')}</p>
+        {MCP_SERVER_DEFINITIONS.map(server => {
+          const accounts = availableMcpAccounts.filter(account => account.serverId === server.id);
+          const globalAccounts = accounts.filter(account => account.scope === 'global');
+          const projectAccounts = accounts.filter(account => account.scope === 'project' && account.projectId === project.id);
+          return (
+            <div className="project-mcp-row" key={server.id}>
+              <label className="admin-label">{server.label}
+                <select value={mcpAccounts[server.id] ?? ''} onChange={event => setServerAccount(server.id, event.target.value)}>
+                  <option value="">{t('Usa il predefinito globale')}</option>
+                  {globalAccounts.length > 0 && <optgroup label={t('Globali')}>
+                    {globalAccounts.map(account => <option key={account.id} value={account.id}>{account.label}{account.defaultForServer ? ` · ${t('predefinito')}` : ''}</option>)}
+                  </optgroup>}
+                  {projectAccounts.length > 0 && <optgroup label={t('Di questo progetto')}>
+                    {projectAccounts.map(account => <option key={account.id} value={account.id}>{account.label}</option>)}
+                  </optgroup>}
+                </select>
+              </label>
+              <button type="button" className="admin-link-button" onClick={() => setMcpAccountForm({ serverId: server.id, label: '', secretRef: '' })}>{t('+ Account progetto')}</button>
+            </div>
+          );
+        })}
+        {mcpAccountForm.serverId && (
+          <div className="project-mcp-new">
+            <h4>{t('Nuovo account progetto per {server}', { server: MCP_SERVER_DEFINITIONS.find(server => server.id === mcpAccountForm.serverId)?.label ?? '' })}</h4>
+            <div className="project-mcp-form-grid">
+              <label className="admin-label">{t('Nome account')}
+                <input value={mcpAccountForm.label} onChange={event => setMcpAccountForm(current => ({ ...current, label: event.target.value }))} placeholder="Orione lavoro" maxLength={120} />
+              </label>
+              <label className="admin-label">{t('Riferimento token')}
+                <input value={mcpAccountForm.secretRef} onChange={event => setMcpAccountForm(current => ({ ...current, secretRef: event.target.value }))} placeholder="env:NOTION_ORIONE_TOKEN" spellCheck={false} />
+              </label>
+            </div>
+            <div className="admin-actions">
+              <button type="button" className="admin-primary" onClick={() => void createProjectMcpAccount()} disabled={saving}>{t('Crea account progetto')}</button>
+              <button type="button" onClick={() => setMcpAccountForm({ serverId: null, label: '', secretRef: '' })}>{t('Annulla')}</button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="admin-card">

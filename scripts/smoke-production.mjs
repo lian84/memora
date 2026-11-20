@@ -220,6 +220,20 @@ async function main() {
     const deletedAgent = await authFetch(`${baseUrl}/api/admin/agents/smoke-agent?confirm=smoke-agent`, { method: 'DELETE' });
     assert.equal(deletedAgent.status, 200, 'DELETE /api/admin/agents/:id deve spostare il profilo nel cestino');
 
+    const createdMcpAccount = await authFetch(`${baseUrl}/api/admin/mcp/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope: 'global', serverId: 'notion', label: 'Smoke Notion', secretRef: 'env:SMOKE_NOTION_TOKEN', defaultForServer: true }),
+    });
+    assert.equal(createdMcpAccount.status, 201, 'POST /api/admin/mcp/accounts deve creare un account globale');
+    const mcpAccountBody = await createdMcpAccount.json();
+    assert.match(mcpAccountBody.account.id, /^acc_notion_/);
+    const mcpAccounts = await authFetch(`${baseUrl}/api/admin/mcp/accounts`);
+    assert.equal(mcpAccounts.status, 200);
+    assert.ok((await mcpAccounts.json()).accounts.some(account => account.id === mcpAccountBody.account.id));
+    const deletedMcpAccount = await authFetch(`${baseUrl}/api/admin/mcp/accounts/${mcpAccountBody.account.id}?confirm=${mcpAccountBody.account.id}`, { method: 'DELETE' });
+    assert.equal(deletedMcpAccount.status, 200, 'DELETE account MCP deve funzionare');
+
     const adminStatus = await authFetch(`${baseUrl}/api/admin/status`);
     assert.equal(adminStatus.status, 200, 'GET /api/admin/status deve funzionare');
     const adminStatusBody = await adminStatus.json();

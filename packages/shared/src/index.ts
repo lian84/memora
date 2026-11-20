@@ -375,3 +375,5 @@ export { PROJECT_ICON_NAMES, isProjectIcon } from './projects.js';
 export { classifyProjectFile, isOfficeArtifactKind } from './projects.js';
 
 export * from './agents.js';
+
+export * from './mcp.js';

@@ -7,6 +7,7 @@ const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const REASONING_LEVELS = new Set(['minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 const PROVIDERS = new Set(['openrouter', 'opencode-go']);
 const DEFAULT_INCLUDE = ['**/*.md', 'sources/**/*.txt'];
+const MCP_ACCOUNT_ID = /^acc_[a-z0-9][a-z0-9_-]{2,63}$/;
 
 export class ProjectError extends Error {
   constructor(public readonly code: string, message: string, public readonly statusCode = 400) {
@@ -174,7 +175,7 @@ export class ProjectStore {
     const current = await this.get(id);
     if (!current) throw new ProjectError('project_not_found', 'Progetto non trovato', 404);
     if (!isRecord(patch)) throw new ProjectError('invalid_project_patch', 'Patch progetto non valida');
-    const allowed = new Set(['name', 'description', 'prompt', 'status', 'showArchivedSessions', 'defaults', 'retrieval', 'sources', 'sectionId', 'icon']);
+    const allowed = new Set(['name', 'description', 'prompt', 'status', 'showArchivedSessions', 'mcpAccounts', 'defaults', 'retrieval', 'sources', 'sectionId', 'icon']);
     for (const key of Object.keys(patch)) if (!allowed.has(key)) throw new ProjectError('unknown_project_field', `Campo progetto non modificabile: ${key}`);
     if (containsSecretKey(patch)) throw new ProjectError('project_secret_forbidden', 'La patch non può contenere segreti');
     if (patch.sectionId !== undefined && patch.sectionId !== null && (typeof patch.sectionId !== 'string' || !SLUG_PATTERN.test(patch.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
@@ -189,6 +190,7 @@ export class ProjectStore {
       ...(typeof patch.prompt === 'string' ? { prompt: patch.prompt } : {}),
       ...(typeof patch.status === 'string' ? { status: patch.status } : {}),
       ...(typeof patch.showArchivedSessions === 'boolean' ? { showArchivedSessions: patch.showArchivedSessions } : {}),
+      ...(isRecord(patch.mcpAccounts) ? { mcpAccounts: patch.mcpAccounts } : {}),
       ...(isRecord(patch.defaults) ? { defaults: { ...current.defaults, ...patch.defaults } } : {}),
       ...(isRecord(patch.retrieval) ? { retrieval: { ...current.retrieval, ...patch.retrieval } } : {}),
       ...(isRecord(patch.sources) ? { sources: { ...current.sources, ...patch.sources } } : {}),
@@ -226,6 +228,7 @@ export class ProjectStore {
           status: project.status,
           prompt: project.prompt,
           showArchivedSessions: project.showArchivedSessions === true,
+          ...(project.mcpAccounts ? { mcpAccounts: project.mcpAccounts } : {}),
           defaults: project.defaults,
           retrieval: project.retrieval,
           sources: project.sources,
@@ -249,6 +252,10 @@ export class ProjectStore {
     if (typeof value.description !== 'string' || value.description.length > 500) throw new ProjectError('invalid_project_description', 'Descrizione progetto non valida');
     if (value.status !== 'active' && value.status !== 'archived') throw new ProjectError('invalid_project_status', 'Stato progetto non valido');
     if (value.showArchivedSessions !== undefined && typeof value.showArchivedSessions !== 'boolean') throw new ProjectError('invalid_project_show_archived', 'Impostazione chat archiviate non valida');
+    const mcpAccounts = isRecord(value.mcpAccounts) ? value.mcpAccounts : {};
+    for (const [serverId, accountId] of Object.entries(mcpAccounts)) {
+      if (!['notion', 'todoist'].includes(serverId) || typeof accountId !== 'string' || !MCP_ACCOUNT_ID.test(accountId)) throw new ProjectError('invalid_project_mcp_account', 'Account MCP del progetto non valido');
+    }
     if (typeof value.prompt !== 'string' || value.prompt.length > 8000) throw new ProjectError('invalid_project_prompt', 'Prompt progetto non valido');
     if (value.sectionId !== undefined && (typeof value.sectionId !== 'string' || !SLUG_PATTERN.test(value.sectionId))) throw new ProjectError('invalid_project_section', 'Sezione progetto non valida');
     if (value.icon !== undefined && !isProjectIcon(value.icon)) throw new ProjectError('invalid_project_icon', 'Icona progetto non valida');
@@ -284,6 +291,7 @@ export class ProjectStore {
       status: value.status as ProjectStatus,
       prompt: value.prompt,
       showArchivedSessions: value.showArchivedSessions === true,
+      mcpAccounts: Object.fromEntries(Object.entries(mcpAccounts).map(([server, account]) => [server, String(account)])),
       ...(typeof value.sectionId === 'string' ? { sectionId: value.sectionId } : {}),
       ...(isProjectIcon(value.icon) ? { icon: value.icon } : {}),
       defaults: {

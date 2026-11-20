@@ -23,6 +23,7 @@ import {
   type AgentProfileDetail,
   type AgentProfileSummary,
   type SessionAgentInfo,
+  type McpAccount,
   type ArtifactVersion,
   type SpreadsheetPreview,
   type WebSettingsView,
@@ -73,7 +74,7 @@ export interface SessionInfo {
   agent?: SessionAgentInfo;
 }
 
-export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'showArchivedSessions' | 'defaults' | 'retrieval' | 'sources'>> & { sectionId?: string | null; icon?: ProjectIcon | null };
+export type ProjectPatch = Partial<Pick<ProjectRecord, 'name' | 'description' | 'prompt' | 'status' | 'showArchivedSessions' | 'mcpAccounts' | 'defaults' | 'retrieval' | 'sources'>> & { sectionId?: string | null; icon?: ProjectIcon | null };
 
 export interface MemorySource {
   id: string;
@@ -578,6 +579,29 @@ export async function getModels(provider?: ProviderId): Promise<AvailableModel[]
   const res = await request(`/api/models${provider ? `?provider=${encodeURIComponent(provider)}` : ''}`);
   const data = await res.json();
   return data.models;
+}
+
+export async function listMcpAccounts(projectId?: string): Promise<McpAccount[]> {
+  const res = await request(`/api/admin/mcp/accounts${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`);
+  const data = await res.json() as { accounts: McpAccount[] };
+  return data.accounts;
+}
+
+export async function createMcpAccount(input: Record<string, unknown>): Promise<McpAccount> {
+  const res = await request('/api/admin/mcp/accounts', { method: 'POST', body: JSON.stringify(input) });
+  const data = await res.json() as { account: McpAccount };
+  return data.account;
+}
+
+export async function updateMcpAccount(accountId: string, input: Record<string, unknown>): Promise<McpAccount> {
+  const res = await request(`/api/admin/mcp/accounts/${encodeURIComponent(accountId)}`, { method: 'PATCH', body: JSON.stringify(input) });
+  const data = await res.json() as { account: McpAccount };
+  return data.account;
+}
+
+export async function deleteMcpAccount(accountId: string): Promise<{ id: string }> {
+  const res = await request(`/api/admin/mcp/accounts/${encodeURIComponent(accountId)}?confirm=${encodeURIComponent(accountId)}`, { method: 'DELETE' });
+  return res.json();
 }
 
 export async function listAgentProfiles(): Promise<AgentProfileSummary[]> {

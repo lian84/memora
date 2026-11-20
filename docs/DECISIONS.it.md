@@ -1710,3 +1710,33 @@ viene richiesta.
   globale.
 - Le chat archiviate senza progetto restano raggiungibili.
 - I client precedenti che usano `?archived=true` continuano a funzionare.
+
+---
+## ADR-051 — Registry centrale account MCP e binding di progetto
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Notion e Todoist possono avere più account. I token non devono essere duplicati
+nei file di progetto o esportati con il progetto, ma un progetto deve comunque
+poter scegliere un account dedicato.
+
+### Decisione
+- Mantenere un `config/mcp-accounts.json` centrale con metadati di account
+  globali e project-scoped.
+- Salvare solo `secretRef` (`env:` o `secret:`), mai il token.
+- `project.json` salva `mcpAccounts` come riferimenti server → ID account.
+- Gli account globali si creano da Amministrazione → MCP; quelli project-scoped
+  dalle impostazioni del progetto e restano nel registry centrale con
+  `projectId`.
+- Gli ID account sono stabili. Eliminare un account non provoca un fallback
+  silenzioso a un’identità diversa.
+- La prima milestone implementa registry e binding; il runtime MCP che collega
+  gli account, espone i tool e applica policy read-only è una milestone separata.
+
+### Conseguenze
+- Un progetto non può far trapelare un token nel JSON o nell’export.
+- Progetti diversi possono usare account Notion/Todoist diversi.
+- La UI può preparare gli account prima che il runtime MCP sia attivo.
+- Eliminazione account e disponibilità runtime dovranno essere gestite
+  esplicitamente dalla futura integrazione MCP.

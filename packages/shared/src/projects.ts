@@ -1,4 +1,5 @@
 import type { ProviderId, ReasoningLevel } from './providers.js';
+import type { McpServerId } from './mcp.js';
 
 export type ProjectStatus = 'active' | 'archived';
 
@@ -93,6 +94,8 @@ export interface ProjectConfig {
   defaults: ProjectDefaults;
   /** Sezione della sidebar; assente = Senza sezione. */
   sectionId?: string;
+  /** Account MCP scelti dal progetto, indicizzati per server. */
+  mcpAccounts?: Partial<Record<McpServerId, string>>;
   icon?: ProjectIcon;
   retrieval: ProjectRetrievalConfig;
   sources: ProjectSourcesConfig;

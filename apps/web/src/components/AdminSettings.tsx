@@ -28,6 +28,7 @@ import {
 import { ModelCombobox, filterModels } from './ModelCombobox';
 import { AppearanceSettings } from './AppearanceSettings';
 import { AgentsAdminPanel } from './AgentsAdminPanel';
+import { McpAdminPanel } from './McpAdminPanel';
 import {
   getBrowserNotificationPermission,
   isBrowserNotificationEnabled,
@@ -432,7 +433,7 @@ export function AdminSettingsView({
   const showCuratorKey = draft.curator.provider !== draft.chat.provider;
   const [activePage, setActivePage] = useState('appearance');
   const pages = [
-    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'],
+    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'],
     ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
   ] as const;
 
@@ -551,6 +552,10 @@ export function AdminSettingsView({
 
       <div id="admin-page-agents" role="tabpanel" aria-labelledby="admin-tab-agents" className="admin-page" hidden={activePage !== 'agents'}>
         <AgentsAdminPanel />
+      </div>
+
+      <div id="admin-page-mcp" role="tabpanel" aria-labelledby="admin-tab-mcp" className="admin-page" hidden={activePage !== 'mcp'}>
+        <McpAdminPanel />
       </div>
 
       <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>
@@ -763,7 +768,7 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      {activePage !== 'web' && activePage !== 'agents' && <div className="admin-savebar">
+      {activePage !== 'web' && activePage !== 'agents' && activePage !== 'mcp' && <div className="admin-savebar">
         <span>{activePage === 'appearance' ? t('Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.') : `${hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · ${t('I valori gestiti dall’ambiente non vengono inviati.')}`}</span>
         <div className="admin-savebar-actions">
           <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>{t('Annulla')}</button>

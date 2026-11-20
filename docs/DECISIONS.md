@@ -1863,3 +1863,34 @@ attached to its project but disappear from the normal list unless requested.
 - Users can opt in per project to see archived chats without a global mode.
 - Unprojected archived chats remain reachable.
 - Older clients that use `?archived=true` keep working.
+
+---
+## ADR-051 — Central MCP account registry with project bindings
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Notion and Todoist can have multiple accounts. Tokens must not be duplicated in
+project files or exported with project data, while a project still needs to
+select a dedicated account.
+
+### Decision
+- Maintain a central `config/mcp-accounts.json` with global and project-scoped
+  account metadata.
+- Store only `secretRef` values (`env:` or `secret:`); never the token.
+- Project `project.json` stores `mcpAccounts` as server → account ID references.
+- Global accounts are created in Administration → MCP; project-scoped accounts
+  are created from project settings and stored in the same central registry with
+  `projectId`.
+- Account IDs are stable. Deleting an account does not silently fall back to a
+  different identity.
+- The first milestone implements the registry and bindings only; the MCP runtime
+  that connects accounts, exposes tools and enforces read-only policies is a
+  separate milestone.
+
+### Consequences
+- A project cannot leak a token through its JSON or export.
+- Different projects can use different Notion/Todoist accounts.
+- The UI can prepare accounts before the MCP runtime is enabled.
+- Account deletion and runtime availability must be handled explicitly by the
+  future MCP integration.

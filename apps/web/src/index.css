@@ -1710,3 +1710,33 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .session-row.is-archived { opacity: .58; }
 .session-row.is-archived.is-selected { opacity: 1; }
 .session-row.is-archived .session-title { font-style: italic; }
+
+/* Admin MCP accounts */
+.mcp-admin-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 14px; align-items: start; }
+.admin-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.admin-card-heading h3 { margin: 0 0 3px; }
+.admin-card-heading .admin-primary { height: 30px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.mcp-account-list { display: flex; flex-direction: column; gap: 5px; }
+.mcp-account-row { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.mcp-account-row.is-selected { border-color: var(--accent-border); background: var(--accent-soft); }
+.mcp-account-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 8px 28px 8px 9px; border: 0; background: transparent; color: var(--text-soft); text-align: left; cursor: pointer; }
+.mcp-account-main strong { color: var(--text); font-size: 12px; }
+.mcp-account-main span { color: var(--accent-strong); font-size: 10px; }
+.mcp-account-main small { overflow: hidden; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mcp-account-delete { width: 21px; height: 21px; align-self: flex-start; margin: 6px 5px 0 0; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
+.mcp-account-delete:hover { background: var(--danger-soft-strong); color: var(--danger); }
+.mcp-project-account-list { display: flex; flex-direction: column; gap: 5px; }
+.mcp-project-account { display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-muted); color: var(--text-soft); font-size: 11px; }
+.mcp-project-account span { color: var(--muted); font-size: 10px; }
+@media (max-width: 900px) { .mcp-admin-layout { grid-template-columns: 1fr; } }
+
+/* Project MCP account bindings */
+.project-mcp-row { display: flex; align-items: flex-end; gap: 9px; margin-top: 8px; }
+.project-mcp-row .admin-label { flex: 1; min-width: 0; }
+.project-mcp-row .admin-link-button { height: 34px; white-space: nowrap; }
+.admin-link-button { padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 10px; font-weight: 600; cursor: pointer; }
+.admin-link-button:hover { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-strong); }
+.project-mcp-new { margin-top: 12px; padding: 10px; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--surface-muted); }
+.project-mcp-new h4 { margin: 0 0 8px; color: var(--text-soft); font-size: 12px; }
+.project-mcp-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 640px) { .project-mcp-row { align-items: stretch; flex-direction: column; } .project-mcp-form-grid { grid-template-columns: 1fr; } }
