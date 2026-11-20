@@ -672,20 +672,8 @@ export class AgentService {
     entry.agent = profile;
     entry.agentRef.agent = profile;
     entry.agentRecorded = false;
-    if (entry.session.sessionFile) {
-      try {
-        entry.session.sessionManager.appendCustomEntry('memora.agent', { agent: profile ? {
-          id: profile.id,
-          name: profile.name,
-          icon: profile.icon,
-          prompt: profile.prompt,
-          skills: profile.skills,
-        } : null });
-        entry.agentRecorded = true;
-      } catch {
-        // La selezione resta in memoria; verrà persistita al primo turno.
-      }
-    }
+    // Non scrivere ancora nel JSONL: la selezione deve restare modificabile
+    // fino al primo invio e non deve materializzare una bozza vuota.
     return { sessionId, ...(profile ? { agent: this.toSessionAgent(profile) } : {}) };
   }
 
