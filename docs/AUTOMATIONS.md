@@ -68,6 +68,14 @@ restart, a due job runs once; missed intervals are not replayed multiple times.
   sleeping machine is not.
 - Run history is capped per job; the newest runs are kept.
 
+## Web search
+
+Web search is opt-in per automation. The job form shows the current web
+configuration status; when it is enabled, the headless session receives the
+same web-search policy as a normal chat. If web search is not configured, the
+automation still runs but the tool cannot produce results. Configure it in
+**Administration → Web** first.
+
 ## MCP
 
 Each job can enable Notion and/or Todoist. MCP is off by default. When enabled,

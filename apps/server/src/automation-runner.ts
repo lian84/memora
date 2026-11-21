@@ -85,6 +85,7 @@ export class AutomationRunner {
           if (job.mcp.enabled.length > 0) {
             await this.agentService.setSessionMcp(sessionId, job.mcp.enabled, job.mcp.allowWrites === true);
           }
+          if (job.webEnabled) await this.agentService.setSessionWebEnabled(sessionId, true);
 
           const timeoutMs = job.timeoutMinutes * 60_000;
           let timedOut = false;

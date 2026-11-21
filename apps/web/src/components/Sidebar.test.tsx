@@ -123,7 +123,7 @@ test('mostra il pulsante automazione e le automazioni dentro il progetto', () =>
     <Sidebar
       {...baseProps}
       projects={[project]}
-      automations={[{ id: 'job_1', name: 'Riepilogo', prompt: 'Riepilogo', cron: '0 9 * * *', timezone: 'Europe/Rome', enabled: true, projectId: 'orione', mcp: { enabled: [] }, notifyTelegram: false, timeoutMinutes: 10, maxAttempts: 1, createdAt: 1, updatedAt: 1 }]}
+      automations={[{ id: 'job_1', name: 'Riepilogo', prompt: 'Riepilogo', cron: '0 9 * * *', timezone: 'Europe/Rome', enabled: true, projectId: 'orione', mcp: { enabled: [] }, notifyTelegram: false, webEnabled: false, timeoutMinutes: 10, maxAttempts: 1, createdAt: 1, updatedAt: 1 }]}
       onCreateAutomation={() => undefined}
       onSelectAutomation={() => undefined}
       selectedProjectId="orione"

@@ -78,6 +78,7 @@ function normalizeJob(input: unknown, previous?: AutomationJob, now = Date.now()
   const agentProfileId = body.agentProfileId === undefined ? previous?.agentProfileId : optionalId(body.agentProfileId, 'Profilo agente');
   const mcp = body.mcp === undefined ? previous?.mcp ?? { enabled: [] } : normalizeMcp(body.mcp);
   const notifyTelegram = body.notifyTelegram === undefined ? previous?.notifyTelegram ?? false : body.notifyTelegram === true;
+  const webEnabled = body.webEnabled === undefined ? previous?.webEnabled ?? false : body.webEnabled === true;
   const telegramAccountId = body.telegramAccountId === undefined ? previous?.telegramAccountId : optionalId(body.telegramAccountId, 'Account Telegram');
   const timeoutMinutes = boundedNumber(
     body.timeoutMinutes,
@@ -111,6 +112,7 @@ function normalizeJob(input: unknown, previous?: AutomationJob, now = Date.now()
     ...(agentProfileId ? { agentProfileId } : {}),
     mcp,
     notifyTelegram,
+    webEnabled,
     ...(telegramAccountId ? { telegramAccountId } : {}),
     timeoutMinutes,
     maxAttempts,

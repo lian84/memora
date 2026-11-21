@@ -27,6 +27,7 @@ function fakeAgent(overrides: Record<string, unknown> = {}): AgentService {
   return {
     createSession: vi.fn(async () => ({ sessionId: 'session-1' })),
     setSessionMcp: vi.fn(async () => ({ enabled: [], accounts: {} })),
+    setSessionWebEnabled: vi.fn(async () => true),
     sendMessage: vi.fn(async () => ({ sourcesUsed: [], memoryCandidatesCreated: [] })),
     getSessionMessages: vi.fn(async () => [
       { entryId: 'u1', role: 'user', content: 'Fai il riepilogo', timestamp: Date.now() },
@@ -76,6 +77,16 @@ describe('AutomationRunner', () => {
     const run = await runner.run(updated, 'manual');
     expect(run.status).toBe('completed');
     expect(agent.setSessionMcp).toHaveBeenCalledWith('session-1', ['notion'], true);
+  });
+
+  it('abilita la ricerca web per il job', async () => {
+    const { store, job } = await setup();
+    const updated = await store.updateJob(job.id, { webEnabled: true });
+    const agent = fakeAgent();
+    const runner = new AutomationRunner({ store, agentService: agent, telegram: fakeTelegram() });
+    const run = await runner.run(updated, 'manual');
+    expect(run.status).toBe('completed');
+    expect(agent.setSessionWebEnabled).toHaveBeenCalledWith('session-1', true);
   });
 
   it('registra un errore del provider senza perdere la run', async () => {

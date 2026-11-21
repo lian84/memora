@@ -1968,3 +1968,27 @@ automazioni.
   restano nella cronologia e la consegna Telegram viene marcata come saltata.
 - Token separati per account mantengono il confine di privilegio tra notifiche
   personali e di progetto.
+
+---
+## ADR-060 — Ricerca web per automazione e cronologia live
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Ogni automazione ereditava il default della chat e la ricerca web era solo
+un’impostazione per chat. Serve decidere autonomamente se un’automazione può
+cercare sul web. La cronologia veniva caricata solo all’apertura, quindi le run
+lunghe non si aggiornavano visivamente.
+
+### Decisione
+- Persistere `webEnabled` su ogni automazione, default false.
+- Applicarlo alla sessione temporanea prima del prompt.
+- Mostrare lo stato della configurazione web nel form e avvisare se manca.
+- Aggiornare la cronologia selezionata ogni due secondi mentre il pannello è
+  aperto, senza ricaricare tutta la pagina automazioni.
+
+### Conseguenze
+- Un job può restare offline anche quando la ricerca web è disponibile.
+- La cronologia live riflette run in coda/in corso/completate e nuove run
+  pianificate.
+- Il polling è locale al pannello cronologia e si ferma allo smontaggio.

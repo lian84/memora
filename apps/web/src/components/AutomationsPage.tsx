@@ -12,6 +12,7 @@ import {
 import {
   createAutomation,
   deleteAutomation,
+  getWebStatus,
   listAgentProfiles,
   listAutomationRuns,
   listAutomations,
@@ -20,6 +21,7 @@ import {
   listProjects,
   runAutomation,
   updateAutomation,
+  type WebStatus,
 } from '../lib/api';
 import { useI18n } from '../i18n';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -35,6 +37,7 @@ interface JobForm {
   mcpEnabled: McpServerId[];
   allowWrites: boolean;
   notifyTelegram: boolean;
+  webEnabled: boolean;
   telegramAccountId: string;
   timeoutMinutes: number;
 }
@@ -66,6 +69,7 @@ function emptyForm(defaultProjectId?: string | null): JobForm {
     mcpEnabled: [],
     allowWrites: false,
     notifyTelegram: false,
+    webEnabled: false,
     telegramAccountId: '',
     timeoutMinutes: 10,
   };
@@ -83,6 +87,7 @@ function formFromJob(job: AutomationJob): JobForm {
     mcpEnabled: job.mcp.enabled,
     allowWrites: job.mcp.allowWrites === true,
     notifyTelegram: job.notifyTelegram,
+    webEnabled: job.webEnabled,
     telegramAccountId: job.telegramAccountId ?? '',
     timeoutMinutes: job.timeoutMinutes,
   };
@@ -114,6 +119,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [profiles, setProfiles] = useState<AgentProfileSummary[]>([]);
   const [accountsCount, setAccountsCount] = useState(0);
+  const [webStatus, setWebStatus] = useState<WebStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,27 +142,47 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
     setLoading(true);
     setError(null);
     try {
-      const [data, nextProjects, nextProfiles, accounts, nextTelegramAccounts] = await Promise.all([
+      const [data, nextProjects, nextProfiles, accounts, nextTelegramAccounts, nextWebStatus] = await Promise.all([
         listAutomations(),
         listProjects(),
         listAgentProfiles(),
         listMcpAccounts(),
         listTelegramAccounts(),
+        getWebStatus().catch(() => null),
       ]);
       setJobs(data.jobs);
       setTelegramAccounts(nextTelegramAccounts);
       setProjects(nextProjects.filter(project => project.status !== 'archived'));
       setProfiles(nextProfiles);
       setAccountsCount(accounts.length);
-      if (runsJobId) setRuns(await listAutomationRuns(runsJobId));
+      setWebStatus(nextWebStatus);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
-  }, [runsJobId]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!runsJobId) return;
+    let cancelled = false;
+    const refresh = async (initial: boolean) => {
+      if (initial) setRunsLoading(true);
+      try {
+        const next = await listAutomationRuns(runsJobId);
+        if (!cancelled) setRuns(next);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!cancelled && initial) setRunsLoading(false);
+      }
+    };
+    void refresh(true);
+    const timer = window.setInterval(() => { void refresh(false); }, 2_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [runsJobId]);
 
   useEffect(() => {
     if (loading || initializedRef.current) return;
@@ -207,6 +233,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
         agentProfileId: form.agentProfileId || null,
         mcp: { enabled: form.mcpEnabled, ...(form.allowWrites ? { allowWrites: true } : {}) },
         notifyTelegram: form.notifyTelegram,
+        webEnabled: form.webEnabled,
         telegramAccountId: form.notifyTelegram ? (form.telegramAccountId || null) : null,
         timeoutMinutes: form.timeoutMinutes,
       };
@@ -273,17 +300,9 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
     }
   };
 
-  const showRuns = async (jobId: string) => {
+  const showRuns = (jobId: string) => {
+    setRuns([]);
     setRunsJobId(jobId);
-    setRunsLoading(true);
-    setError(null);
-    try {
-      setRuns(await listAutomationRuns(jobId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setRunsLoading(false);
-    }
   };
 
   return (
@@ -325,6 +344,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                     <span>{job.nextRunAt ? `${t('Prossima')}: ${new Date(job.nextRunAt).toLocaleString(undefined, { timeZone: job.timezone })}` : t('Disattivata')}</span>
                     {job.projectId && <span>{t('Progetto')}: {projectName.get(job.projectId) ?? job.projectId}</span>}
                     {job.agentProfileId && <span>{t('Agente')}: {profileName.get(job.agentProfileId) ?? job.agentProfileId}</span>}
+                    {job.webEnabled && <span>{t('Ricerca web')}</span>}
                     {job.notifyTelegram && <span>Telegram: {job.telegramAccountId ? telegramAccountName.get(job.telegramAccountId) ?? job.telegramAccountId : defaultTelegramAccount?.label ?? t('account predefinito')}</span>}
                     {job.mcp.enabled.length > 0 && <span>MCP: {job.mcp.enabled.join(', ')}{job.mcp.allowWrites ? ` · ${t('scritture')}` : ''}</span>}
                   </div>
@@ -422,7 +442,12 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                 <input type="checkbox" checked={form.notifyTelegram} onChange={event => setForm(current => current ? { ...current, notifyTelegram: event.target.checked } : current)} />
                 <span>{t('Invia risultato su Telegram')}</span>
               </label>
+              <label className="admin-toggle">
+                <input type="checkbox" checked={form.webEnabled} onChange={event => setForm(current => current ? { ...current, webEnabled: event.target.checked } : current)} />
+                <span>{t('Abilita ricerca web')}</span>
+              </label>
             </div>
+            {form.webEnabled && webStatus && !webStatus.configured && <div className="admin-inline-warning">{t('La ricerca web non è configurata. Configurala in Amministrazione → Web prima di eseguire l’automazione.')}</div>}
             {form.notifyTelegram && (
               <label className="admin-label">{t('Account Telegram')}
                 <select value={form.telegramAccountId} onChange={event => setForm(current => current ? { ...current, telegramAccountId: event.target.value } : current)}>

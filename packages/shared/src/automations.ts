@@ -34,6 +34,8 @@ export interface AutomationJob {
   agentProfileId?: string;
   mcp: AutomationMcpSettings;
   notifyTelegram: boolean;
+  /** Ricerca web attiva per questa automazione. */
+  webEnabled: boolean;
   /** Account Telegram scelto; assente = account predefinito. */
   telegramAccountId?: string;
   timeoutMinutes: number;
@@ -72,6 +74,7 @@ export interface AutomationJobInput {
   agentProfileId?: string | null;
   mcp?: AutomationMcpSettings;
   notifyTelegram?: boolean;
+  webEnabled?: boolean;
   telegramAccountId?: string | null;
   timeoutMinutes?: number;
   maxAttempts?: number;

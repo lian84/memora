@@ -666,4 +666,6 @@ export const fr: Record<string, string> = {
   'Gli account Telegram si creano in Amministrazione → Telegram e possono essere usati da più automazioni.': 'Les comptes Telegram se créent dans Administration → Telegram et peuvent être utilisés par plusieurs automatisations.',
   'Nessun account Telegram configurato. Il risultato resterà nella cronologia, ma non verrà inviato.': 'Aucun compte Telegram configuré. Le résultat restera dans l’historique mais ne sera pas envoyé.',
   'Token gestito dalla variabile MEMORA_TELEGRAM_BOT_TOKEN.': 'Token géré par la variable MEMORA_TELEGRAM_BOT_TOKEN.',
+  'Abilita ricerca web': 'Activer la recherche web',
+  'La ricerca web non è configurata. Configurala in Amministrazione → Web prima di eseguire l’automazione.': 'La recherche web n’est pas configurée. Configurez-la dans Administration → Web avant d’exécuter l’automatisation.',
 };

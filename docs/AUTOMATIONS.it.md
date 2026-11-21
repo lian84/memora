@@ -69,6 +69,14 @@ vengono replicate più volte.
   una macchina sospesa no.
 - La cronologia viene limitata per job, mantenendo le esecuzioni più recenti.
 
+## Ricerca web
+
+La ricerca web è opt-in per singola automazione. Il form mostra lo stato della
+configurazione web; quando è attiva, la sessione headless riceve la stessa
+policy di una chat normale. Se la ricerca web non è configurata, l’automazione
+gira comunque ma il tool non può produrre risultati. Configurala prima in
+**Amministrazione → Web**.
+
 ## MCP
 
 Ogni job può abilitare Notion e/o Todoist. MCP è spento di default. Quando è

@@ -2120,3 +2120,27 @@ from multiple automations.
   remain in history and record Telegram delivery as skipped.
 - Per-account tokens preserve the least-privilege boundary between personal and
   project notifications.
+
+---
+## ADR-060 — Per-automation web search and live run history
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Every automation inherited the chat default and web search was only a per-chat
+setting. Operators need to decide independently whether an automation may
+research the web. Run history was loaded only when opened, so long runs did not
+update visibly.
+
+### Decision
+- Persist `webEnabled` on each automation, default false.
+- Apply it to the temporary session before the prompt.
+- Show the current web configuration state in the form and warn when it is not
+  configured.
+- Poll the selected run history every two seconds while the panel is open,
+  without reloading the whole automation page.
+
+### Consequences
+- A job can be read-only and offline even when web search is available.
+- Live history reflects queued/running/completed runs and new scheduled runs.
+- The polling is local to the open history panel and stops on unmount.
