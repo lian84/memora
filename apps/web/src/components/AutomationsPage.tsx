@@ -6,25 +6,20 @@ import {
   type AutomationRun,
   type McpServerId,
   type ProjectRecord,
-  type TelegramChat,
-  type TelegramSettingsView,
+  type TelegramAccountView,
   type AgentProfileSummary,
 } from '@memora/shared';
 import {
-  clearTelegramToken,
   createAutomation,
   deleteAutomation,
-  discoverTelegramChats,
   listAgentProfiles,
   listAutomationRuns,
   listAutomations,
   listMcpAccounts,
+  listTelegramAccounts,
   listProjects,
   runAutomation,
-  saveTelegramToken,
-  testTelegram,
   updateAutomation,
-  updateTelegramSettings,
 } from '../lib/api';
 import { useI18n } from '../i18n';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -40,6 +35,7 @@ interface JobForm {
   mcpEnabled: McpServerId[];
   allowWrites: boolean;
   notifyTelegram: boolean;
+  telegramAccountId: string;
   timeoutMinutes: number;
 }
 
@@ -70,6 +66,7 @@ function emptyForm(defaultProjectId?: string | null): JobForm {
     mcpEnabled: [],
     allowWrites: false,
     notifyTelegram: false,
+    telegramAccountId: '',
     timeoutMinutes: 10,
   };
 }
@@ -86,6 +83,7 @@ function formFromJob(job: AutomationJob): JobForm {
     mcpEnabled: job.mcp.enabled,
     allowWrites: job.mcp.allowWrites === true,
     notifyTelegram: job.notifyTelegram,
+    telegramAccountId: job.telegramAccountId ?? '',
     timeoutMinutes: job.timeoutMinutes,
   };
 }
@@ -112,7 +110,7 @@ interface AutomationsPageProps {
 export function AutomationsPage({ defaultProjectId = null, focusJobId = null, startCreate = false, onClose, onChanged }: AutomationsPageProps) {
   const { t } = useI18n();
   const [jobs, setJobs] = useState<AutomationJob[]>([]);
-  const [telegram, setTelegram] = useState<TelegramSettingsView | null>(null);
+  const [telegramAccounts, setTelegramAccounts] = useState<TelegramAccountView[]>([]);
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [profiles, setProfiles] = useState<AgentProfileSummary[]>([]);
   const [accountsCount, setAccountsCount] = useState(0);
@@ -129,11 +127,6 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
   const [runningIds, setRunningIds] = useState<string[]>([]);
   const initializedRef = useRef(false);
 
-  const [telegramEnabled, setTelegramEnabled] = useState(false);
-  const [telegramChatId, setTelegramChatId] = useState('');
-  const [telegramToken, setTelegramToken] = useState('');
-  const [telegramBusy, setTelegramBusy] = useState(false);
-  const [telegramDiscovery, setTelegramDiscovery] = useState<TelegramChat[]>([]);
 
   const notifyChanged = useCallback(() => {
     onChanged?.();
@@ -143,16 +136,15 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
     setLoading(true);
     setError(null);
     try {
-      const [data, nextProjects, nextProfiles, accounts] = await Promise.all([
+      const [data, nextProjects, nextProfiles, accounts, nextTelegramAccounts] = await Promise.all([
         listAutomations(),
         listProjects(),
         listAgentProfiles(),
         listMcpAccounts(),
+        listTelegramAccounts(),
       ]);
       setJobs(data.jobs);
-      setTelegram(data.telegram);
-      setTelegramEnabled(data.telegram.enabled);
-      setTelegramChatId(data.telegram.chatId);
+      setTelegramAccounts(nextTelegramAccounts);
       setProjects(nextProjects.filter(project => project.status !== 'archived'));
       setProfiles(nextProfiles);
       setAccountsCount(accounts.length);
@@ -179,10 +171,13 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
 
   const projectName = useMemo(() => new Map(projects.map(project => [project.id, project.name])), [projects]);
   const profileName = useMemo(() => new Map(profiles.map(profile => [profile.id, profile.name])), [profiles]);
+  const telegramAccountName = useMemo(() => new Map(telegramAccounts.map(account => [account.id, account.label])), [telegramAccounts]);
+  const defaultTelegramAccount = telegramAccounts.find(account => account.enabled) ?? telegramAccounts[0];
 
   const startNew = () => {
     setEditingId(null);
-    setForm({ ...emptyForm(defaultProjectId), notifyTelegram: Boolean(telegram?.enabled && telegram.chatId) });
+    const firstAccount = telegramAccounts.find(account => account.enabled) ?? telegramAccounts[0];
+    setForm({ ...emptyForm(defaultProjectId), telegramAccountId: firstAccount?.id ?? '', notifyTelegram: false });
     setError(null);
     setMessage(null);
   };
@@ -212,6 +207,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
         agentProfileId: form.agentProfileId || null,
         mcp: { enabled: form.mcpEnabled, ...(form.allowWrites ? { allowWrites: true } : {}) },
         notifyTelegram: form.notifyTelegram,
+        telegramAccountId: form.notifyTelegram ? (form.telegramAccountId || null) : null,
         timeoutMinutes: form.timeoutMinutes,
       };
       if (editingId) await updateAutomation(editingId, input);
@@ -290,79 +286,6 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
     }
   };
 
-  const saveTelegramSettings = async () => {
-    setTelegramBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const next = await updateTelegramSettings({ enabled: telegramEnabled, chatId: telegramChatId.trim() });
-      setTelegram(next);
-      setMessage(t('Impostazioni Telegram salvate.'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTelegramBusy(false);
-    }
-  };
-
-  const saveToken = async () => {
-    if (!telegramToken.trim()) { setError(t('Inserisci il token del bot Telegram.')); return; }
-    setTelegramBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const next = await saveTelegramToken(telegramToken.trim());
-      setTelegram(next);
-      setTelegramToken('');
-      setMessage(t('Token Telegram salvato.'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTelegramBusy(false);
-    }
-  };
-
-  const removeToken = async () => {
-    setTelegramBusy(true);
-    setError(null);
-    try {
-      setTelegram(await clearTelegramToken());
-      setMessage(t('Token Telegram rimosso.'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTelegramBusy(false);
-    }
-  };
-
-  const discoverChats = async () => {
-    setTelegramBusy(true);
-    setError(null);
-    setTelegramDiscovery([]);
-    try {
-      const chats = await discoverTelegramChats();
-      setTelegramDiscovery(chats);
-      setMessage(chats.length === 0 ? t('Nessuna chat trovata. Scrivi /start al bot da Telegram e riprova.') : t('Chat Telegram trovate.'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTelegramBusy(false);
-    }
-  };
-
-  const sendTelegramTest = async () => {
-    setTelegramBusy(true);
-    setError(null);
-    try {
-      await testTelegram();
-      setMessage(t('Messaggio di prova inviato su Telegram.'));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setTelegramBusy(false);
-    }
-  };
-
   return (
     <div className="automations-admin">
       <div className="automation-page-header">
@@ -375,50 +298,6 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
       </div>
       {error && <div role="alert" className="admin-alert is-error">{error}</div>}
       {message && <div className="admin-alert is-success">{message}</div>}
-
-      <section className="admin-card">
-        <div className="admin-card-heading">
-          <div>
-            <h3>{t('Telegram')}</h3>
-            <p className="admin-card-description">{t('Il bot invia i risultati delle automazioni quando la scheda Memora è chiusa. Il token resta nel secret store locale.')}</p>
-          </div>
-          <span className={`automation-pill${telegram?.tokenConfigured && telegram.chatId ? ' is-ok' : ''}`}>{telegram?.tokenConfigured && telegram.chatId ? t('Configurato') : t('Da configurare')}</span>
-        </div>
-        <div className="admin-grid-2">
-          <label className="admin-toggle">
-            <input type="checkbox" checked={telegramEnabled} onChange={event => setTelegramEnabled(event.target.checked)} />
-            <span>{t('Invia i risultati su Telegram')}</span>
-          </label>
-          <label className="admin-label">{t('Chat ID')}
-            <input value={telegramChatId} onChange={event => setTelegramChatId(event.target.value)} placeholder="-1001234567890" inputMode="numeric" />
-            <small>{t('Puoi trovarlo con “Cerca chat” dopo aver scritto /start al bot.')}</small>
-          </label>
-        </div>
-        <div className="admin-grid-2">
-          <label className="admin-label">{t('Token bot')}
-            <input type="password" value={telegramToken} onChange={event => setTelegramToken(event.target.value)} placeholder={telegram?.tokenConfigured ? t('Token già configurato') : '123456:ABC...'} autoComplete="new-password" spellCheck={false} disabled={telegram?.tokenEditable === false} />
-            <small>{telegram?.tokenSource === 'environment' ? t('Gestito dalla variabile MEMORA_TELEGRAM_BOT_TOKEN.') : t('Salvato in config/telegram-secrets.json con permessi 0600.')}</small>
-          </label>
-          <div className="admin-actions automation-actions">
-            <button type="button" onClick={() => void saveToken()} disabled={telegramBusy || telegram?.tokenEditable === false}>{t('Salva token')}</button>
-            {telegram?.tokenEditable !== false && telegram?.tokenConfigured && <button type="button" onClick={() => void removeToken()} disabled={telegramBusy}>{t('Rimuovi token')}</button>}
-          </div>
-        </div>
-        <div className="admin-actions automation-actions">
-          <button type="button" className="admin-primary" onClick={() => void saveTelegramSettings()} disabled={telegramBusy}>{t('Salva Telegram')}</button>
-          <button type="button" onClick={() => void discoverChats()} disabled={telegramBusy || !telegram?.tokenConfigured}>{t('Cerca chat')}</button>
-          <button type="button" onClick={() => void sendTelegramTest()} disabled={telegramBusy || !telegram?.tokenConfigured || !telegram.chatId}>{t('Invia test')}</button>
-        </div>
-        {telegramDiscovery.length > 0 && (
-          <div className="automation-discovery">
-            {telegramDiscovery.map(chat => (
-              <button type="button" key={chat.id} className={telegramChatId === chat.id ? 'is-selected' : ''} onClick={() => { setTelegramChatId(chat.id); }}>
-                <strong>{chat.label}</strong><span>{chat.id} · {chat.type}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
 
       <section className="admin-card">
         <div className="admin-card-heading">
@@ -446,7 +325,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                     <span>{job.nextRunAt ? `${t('Prossima')}: ${new Date(job.nextRunAt).toLocaleString(undefined, { timeZone: job.timezone })}` : t('Disattivata')}</span>
                     {job.projectId && <span>{t('Progetto')}: {projectName.get(job.projectId) ?? job.projectId}</span>}
                     {job.agentProfileId && <span>{t('Agente')}: {profileName.get(job.agentProfileId) ?? job.agentProfileId}</span>}
-                    {job.notifyTelegram && <span>Telegram</span>}
+                    {job.notifyTelegram && <span>Telegram: {job.telegramAccountId ? telegramAccountName.get(job.telegramAccountId) ?? job.telegramAccountId : defaultTelegramAccount?.label ?? t('account predefinito')}</span>}
                     {job.mcp.enabled.length > 0 && <span>MCP: {job.mcp.enabled.join(', ')}{job.mcp.allowWrites ? ` · ${t('scritture')}` : ''}</span>}
                   </div>
                   {job.lastRunAt && <span className="automation-last-run">{t('Ultima esecuzione')}: {new Date(job.lastRunAt).toLocaleString(undefined, { timeZone: job.timezone })}</span>}
@@ -544,7 +423,16 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                 <span>{t('Invia risultato su Telegram')}</span>
               </label>
             </div>
-            {form.notifyTelegram && !(telegram?.enabled && telegram.chatId) && <div className="admin-inline-warning">{t('Telegram non è ancora configurato. Il risultato resterà disponibile nella cronologia, ma non verrà inviato.')}</div>}
+            {form.notifyTelegram && (
+              <label className="admin-label">{t('Account Telegram')}
+                <select value={form.telegramAccountId} onChange={event => setForm(current => current ? { ...current, telegramAccountId: event.target.value } : current)}>
+                  <option value="">{t('Account predefinito')}{defaultTelegramAccount ? ` · ${defaultTelegramAccount.label}` : ''}</option>
+                  {telegramAccounts.filter(account => account.enabled).map(account => <option key={account.id} value={account.id}>{account.label}{account.chatId ? ` · ${account.chatId}` : ''}</option>)}
+                </select>
+                <small>{t('Gli account Telegram si creano in Amministrazione → Telegram e possono essere usati da più automazioni.')}</small>
+              </label>
+            )}
+            {form.notifyTelegram && telegramAccounts.length === 0 && <div className="admin-inline-warning">{t('Nessun account Telegram configurato. Il risultato resterà nella cronologia, ma non verrà inviato.')}</div>}
             <div className="admin-actions">
               <button type="button" className="admin-primary" onClick={() => void save()} disabled={saving}>{saving ? t('Salvo…') : t('Salva automazione')}</button>
               <button type="button" onClick={() => { setForm(null); setEditingId(null); }} disabled={saving}>{t('Annulla')}</button>

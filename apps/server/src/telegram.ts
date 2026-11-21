@@ -1,20 +1,33 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { TelegramChat, TelegramSettingsView } from '@memora/shared';
+import { randomUUID } from 'node:crypto';
+import type { TelegramAccount, TelegramAccountInput, TelegramAccountView, TelegramChat } from '@memora/shared';
 
 const TELEGRAM_ENV_TOKEN = 'MEMORA_TELEGRAM_BOT_TOKEN';
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 const MAX_MESSAGE_LENGTH = 4_000;
+const DEFAULT_ACCOUNT_ID = 'acc_tg_default';
+const ACCOUNT_ID_PATTERN = /^acc_tg_[a-zA-Z0-9-]+$/;
 
-interface TelegramConfigFile {
+interface AccountsFile {
   version: 1;
-  enabled: boolean;
-  chatId: string;
+  accounts: TelegramAccount[];
 }
 
-interface TelegramSecretsFile {
+interface TokensFile {
   version: 1;
-  botToken: string;
+  tokens: Record<string, string>;
+}
+
+interface LegacyConfigFile {
+  version?: 1;
+  enabled?: boolean;
+  chatId?: string;
+}
+
+interface LegacyTokenFile {
+  version?: 1;
+  botToken?: string;
 }
 
 export class TelegramError extends Error {
@@ -41,123 +54,221 @@ function validToken(value: unknown): string {
   return trimmed;
 }
 
-/** Impostazioni Telegram non segrete: abilitazione e destinazione. */
+function validLabel(value: unknown): string {
+  if (typeof value !== 'string') throw new TelegramError('invalid_telegram_label', 'Il nome dell’account Telegram è obbligatorio');
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 80) throw new TelegramError('invalid_telegram_label', 'Il nome dell’account Telegram non è valido');
+  return trimmed;
+}
+
+/** Registry di account Telegram (bot + chat) salvato nella data directory. */
 export class TelegramStore {
-  readonly configPath: string;
+  readonly accountsPath: string;
   readonly secretPath: string;
+  private readonly legacyConfigPath: string;
   private readonly configDir: string;
   private readonly env: NodeJS.ProcessEnv;
   private readonly warn: (message: string) => void;
-  private config: TelegramConfigFile = { version: 1, enabled: false, chatId: '' };
-  private storedToken = '';
+  private accounts: TelegramAccount[] = [];
+  private tokens: Record<string, string> = {};
   private writeChain: Promise<void> = Promise.resolve();
 
   constructor(options: { dataDir: string; env?: NodeJS.ProcessEnv; warn?: (message: string) => void }) {
     this.configDir = path.join(options.dataDir, 'config');
-    this.configPath = path.join(this.configDir, 'telegram.json');
+    this.accountsPath = path.join(this.configDir, 'telegram-accounts.json');
     this.secretPath = path.join(this.configDir, 'telegram-secrets.json');
+    this.legacyConfigPath = path.join(this.configDir, 'telegram.json');
     this.env = options.env ?? process.env;
     this.warn = options.warn ?? (() => {});
   }
 
   async load(): Promise<void> {
-    try {
-      const raw = JSON.parse(await fs.readFile(this.configPath, 'utf8')) as unknown;
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('invalid');
-      const data = raw as Partial<TelegramConfigFile>;
-      if (data.version !== 1) throw new Error('invalid');
-      this.config = {
-        version: 1,
-        enabled: data.enabled === true,
-        chatId: validChatId(data.chatId ?? ''),
-      };
-      await fs.chmod(this.configPath, 0o600).catch(() => undefined);
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.warn('telegram config ignored: invalid or unreadable format');
+    this.accounts = [];
+    this.tokens = {};
+    const accountsLoaded = await this.loadAccounts();
+    await this.loadTokens();
+    if (!accountsLoaded) await this.migrateLegacy();
+    // Un account default senza file può esistere solo per il token da ambiente.
+    if (this.accounts.length === 0 && this.env[TELEGRAM_ENV_TOKEN]) {
+      this.accounts = [{
+        id: DEFAULT_ACCOUNT_ID,
+        label: 'Telegram',
+        chatId: '',
+        enabled: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }];
+      await this.persistAccounts();
     }
+  }
+
+  listAccounts(): TelegramAccountView[] {
+    return this.accounts.map(account => this.toView(account));
+  }
+
+  getAccount(id: string): TelegramAccountView | undefined {
+    const account = this.accounts.find(item => item.id === id);
+    return account ? this.toView(account) : undefined;
+  }
+
+  /** Usa l'account richiesto o, per compatibilità, il primo account abilitato. */
+  resolveAccount(id?: string): TelegramAccountView | undefined {
+    if (id) return this.getAccount(id);
+    return this.listAccounts().find(account => account.enabled) ?? this.listAccounts()[0];
+  }
+
+  getToken(id: string): string | undefined {
+    if (id === DEFAULT_ACCOUNT_ID) {
+      const environment = this.env[TELEGRAM_ENV_TOKEN];
+      if (environment !== undefined && environment !== '') return environment;
+    }
+    return this.tokens[id] || undefined;
+  }
+
+  async createAccount(input: TelegramAccountInput): Promise<TelegramAccountView> {
+    const now = Date.now();
+    const account: TelegramAccount = {
+      id: `acc_tg_${randomUUID()}`,
+      label: validLabel(input.label),
+      chatId: validChatId(input.chatId ?? ''),
+      enabled: input.enabled !== false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const token = validToken(input.token);
+    this.accounts.push(account);
+    this.tokens[account.id] = token;
+    await this.persistAccounts();
+    await this.persistTokens();
+    return this.toView(account);
+  }
+
+  async updateAccount(id: string, input: Partial<TelegramAccountInput>): Promise<TelegramAccountView> {
+    const index = this.accounts.findIndex(item => item.id === id);
+    if (index < 0) throw new TelegramError('telegram_account_not_found', 'Account Telegram non trovato', 404);
+    const current = this.accounts[index];
+    const updated: TelegramAccount = {
+      ...current,
+      ...(input.label !== undefined ? { label: validLabel(input.label) } : {}),
+      ...(input.chatId !== undefined ? { chatId: validChatId(input.chatId) } : {}),
+      ...(input.enabled !== undefined ? { enabled: input.enabled === true } : {}),
+      updatedAt: Date.now(),
+    };
+    this.accounts[index] = updated;
+    if (input.token !== undefined) this.tokens[id] = validToken(input.token);
+    await this.persistAccounts();
+    if (input.token !== undefined) await this.persistTokens();
+    return this.toView(updated);
+  }
+
+  async deleteAccount(id: string): Promise<{ id: string }> {
+    const index = this.accounts.findIndex(item => item.id === id);
+    if (index < 0) throw new TelegramError('telegram_account_not_found', 'Account Telegram non trovato', 404);
+    this.accounts.splice(index, 1);
+    delete this.tokens[id];
+    await this.persistAccounts();
+    await this.persistTokens();
+    return { id };
+  }
+
+  private toView(account: TelegramAccount): TelegramAccountView {
+    const source = account.id === DEFAULT_ACCOUNT_ID && this.env[TELEGRAM_ENV_TOKEN] ? 'environment' : this.tokens[account.id] ? 'secret' : 'none';
+    return {
+      ...account,
+      tokenConfigured: source !== 'none',
+      tokenSource: source,
+    };
+  }
+
+  private async loadAccounts(): Promise<boolean> {
+    try {
+      const raw = JSON.parse(await fs.readFile(this.accountsPath, 'utf8')) as unknown;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('invalid');
+      const data = raw as Partial<AccountsFile>;
+      if (data.version !== 1 || !Array.isArray(data.accounts)) throw new Error('invalid');
+      for (const value of data.accounts) {
+        if (!value || typeof value !== 'object' || !ACCOUNT_ID_PATTERN.test(String(value.id))) continue;
+        const account = value as Partial<TelegramAccount>;
+        this.accounts.push({
+          id: account.id!,
+          label: validLabel(account.label),
+          chatId: validChatId(account.chatId ?? ''),
+          enabled: account.enabled === true,
+          createdAt: typeof account.createdAt === 'number' ? account.createdAt : Date.now(),
+          updatedAt: typeof account.updatedAt === 'number' ? account.updatedAt : Date.now(),
+        });
+      }
+      await fs.chmod(this.accountsPath, 0o600).catch(() => undefined);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.warn('telegram accounts ignored: invalid or unreadable format');
+      return false;
+    }
+  }
+
+  private async loadTokens(): Promise<void> {
     try {
       const raw = JSON.parse(await fs.readFile(this.secretPath, 'utf8')) as unknown;
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('invalid');
-      const data = raw as Partial<TelegramSecretsFile>;
-      if (data.version !== 1) throw new Error('invalid');
-      this.storedToken = typeof data.botToken === 'string' ? validToken(data.botToken) : '';
+      const data = raw as Partial<TokensFile & LegacyTokenFile>;
+      if (data.tokens && typeof data.tokens === 'object' && !Array.isArray(data.tokens)) {
+        for (const [id, token] of Object.entries(data.tokens)) {
+          if (ACCOUNT_ID_PATTERN.test(id) && typeof token === 'string') {
+            try { this.tokens[id] = validToken(token); } catch { /* ignore invalid entry */ }
+          }
+        }
+      } else if (typeof data.botToken === 'string') {
+        // Migrazione dal formato a token singolo.
+        this.tokens[this.accounts.some(account => account.id === DEFAULT_ACCOUNT_ID) ? DEFAULT_ACCOUNT_ID : this.accounts[0]?.id ?? DEFAULT_ACCOUNT_ID] = validToken(data.botToken);
+      }
       await fs.chmod(this.secretPath, 0o600).catch(() => undefined);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.warn('telegram secrets ignored: invalid or unreadable format');
     }
   }
 
-  getToken(): string | undefined {
-    const environment = this.env[TELEGRAM_ENV_TOKEN];
-    if (environment !== undefined && environment !== '') return environment;
-    return this.storedToken || undefined;
-  }
-
-  getSettings(): TelegramSettingsView {
-    const environment = this.env[TELEGRAM_ENV_TOKEN];
-    const source = environment !== undefined && environment !== '' ? 'environment' : this.storedToken ? 'secret' : 'none';
-    return {
-      enabled: this.config.enabled,
-      chatId: this.config.chatId,
-      tokenConfigured: source !== 'none',
-      tokenSource: source,
-      tokenEditable: source !== 'environment',
+  private async migrateLegacy(): Promise<void> {
+    let legacyConfig: LegacyConfigFile | null = null;
+    try {
+      legacyConfig = JSON.parse(await fs.readFile(this.legacyConfigPath, 'utf8')) as LegacyConfigFile;
+    } catch { /* nessuna configurazione legacy */ }
+    const legacyToken = this.tokens[DEFAULT_ACCOUNT_ID] ?? this.tokens[this.accounts[0]?.id ?? ''];
+    if (!legacyConfig && !legacyToken && !this.env[TELEGRAM_ENV_TOKEN]) return;
+    const now = Date.now();
+    let legacyChatId = '';
+    try { legacyChatId = validChatId(legacyConfig?.chatId ?? ''); } catch { /* legado non valido: mantieni vuoto */ }
+    const account: TelegramAccount = {
+      id: DEFAULT_ACCOUNT_ID,
+      label: 'Telegram',
+      chatId: legacyChatId,
+      enabled: legacyConfig?.enabled === true,
+      createdAt: now,
+      updatedAt: now,
     };
+    this.accounts = [account];
+    if (legacyToken) this.tokens[account.id] = legacyToken;
+    await this.persistAccounts();
+    if (legacyToken) await this.persistTokens();
   }
 
-  async update(input: unknown): Promise<TelegramSettingsView> {
-    if (!input || typeof input !== 'object' || Array.isArray(input)) {
-      throw new TelegramError('invalid_telegram_settings', 'Impostazioni Telegram non valide');
-    }
-    const body = input as Record<string, unknown>;
-    const next: TelegramConfigFile = { ...this.config };
-    if (body.enabled !== undefined) {
-      if (typeof body.enabled !== 'boolean') throw new TelegramError('invalid_telegram_settings', 'Valore enabled non valido');
-      next.enabled = body.enabled;
-    }
-    if (body.chatId !== undefined) next.chatId = validChatId(body.chatId);
-    this.config = next;
-    await this.persistConfig();
-    return this.getSettings();
-  }
-
-  async setToken(token: unknown): Promise<TelegramSettingsView> {
-    if (this.getSettings().tokenSource === 'environment') {
-      throw new TelegramError('telegram_token_managed_by_environment', 'Il token Telegram è gestito dall’ambiente', 409);
-    }
-    this.storedToken = validToken(token);
-    await this.persistSecrets();
-    return this.getSettings();
-  }
-
-  async clearToken(): Promise<TelegramSettingsView> {
-    if (this.getSettings().tokenSource === 'environment') {
-      throw new TelegramError('telegram_token_managed_by_environment', 'Il token Telegram è gestito dall’ambiente', 409);
-    }
-    this.storedToken = '';
-    await fs.unlink(this.secretPath).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== 'ENOENT') throw error;
-    });
-    return this.getSettings();
-  }
-
-  private persistConfig(): Promise<void> {
+  private persistAccounts(): Promise<void> {
+    const payload = JSON.stringify({ version: 1, accounts: this.accounts } satisfies AccountsFile, null, 2);
     this.writeChain = this.writeChain.then(async () => {
       await fs.mkdir(this.configDir, { recursive: true, mode: 0o700 });
-      const temporary = path.join(this.configDir, `.telegram.${process.pid}.${Date.now()}.tmp`);
-      await fs.writeFile(temporary, `${JSON.stringify(this.config, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
-      await fs.rename(temporary, this.configPath);
-      await fs.chmod(this.configPath, 0o600);
+      const temporary = path.join(this.configDir, `.telegram-accounts.${process.pid}.${Date.now()}.tmp`);
+      await fs.writeFile(temporary, `${payload}\n`, { mode: 0o600, flag: 'wx' });
+      await fs.rename(temporary, this.accountsPath);
+      await fs.chmod(this.accountsPath, 0o600);
     });
     return this.writeChain;
   }
 
-  private persistSecrets(): Promise<void> {
+  private persistTokens(): Promise<void> {
+    const payload = JSON.stringify({ version: 1, tokens: this.tokens } satisfies TokensFile, null, 2);
     this.writeChain = this.writeChain.then(async () => {
       await fs.mkdir(this.configDir, { recursive: true, mode: 0o700 });
-      const payload: TelegramSecretsFile = { version: 1, botToken: this.storedToken };
       const temporary = path.join(this.configDir, `.telegram-secrets.${process.pid}.${Date.now()}.tmp`);
-      await fs.writeFile(temporary, `${JSON.stringify(payload, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+      await fs.writeFile(temporary, `${payload}\n`, { mode: 0o600, flag: 'wx' });
       await fs.rename(temporary, this.secretPath);
       await fs.chmod(this.secretPath, 0o600);
     });
@@ -220,25 +331,21 @@ export class TelegramService {
     private readonly fetchImpl: FetchLike = fetch,
   ) {}
 
-  getSettings(): TelegramSettingsView {
-    return this.store.getSettings();
+  resolveAccount(accountId?: string): TelegramAccountView | undefined {
+    return this.store.resolveAccount(accountId);
   }
 
-  get configured(): boolean {
-    const settings = this.store.getSettings();
-    return Boolean(this.store.getToken() && settings.chatId);
-  }
-
-  async send(text: string, chatId = this.store.getSettings().chatId): Promise<number> {
-    const token = this.store.getToken();
-    const target = validChatId(chatId);
+  async send(text: string, accountId?: string): Promise<number> {
+    const account = this.store.resolveAccount(accountId);
+    if (!account) throw new TelegramError('telegram_not_configured', 'Nessun account Telegram configurato', 409);
+    const token = this.store.getToken(account.id);
     if (!token) throw new TelegramError('telegram_not_configured', 'Token Telegram non configurato', 409);
-    if (!target) throw new TelegramError('telegram_not_configured', 'Chat ID Telegram non configurato', 409);
+    if (!account.chatId) throw new TelegramError('telegram_not_configured', 'Chat ID Telegram non configurato', 409);
     const chunks = splitTelegramText(text);
     if (chunks.length === 0) return 0;
     for (const chunk of chunks) {
       await callTelegram(token, 'sendMessage', {
-        chat_id: target,
+        chat_id: account.chatId,
         text: chunk,
         disable_web_page_preview: true,
       }, this.fetchImpl);
@@ -246,15 +353,19 @@ export class TelegramService {
     return chunks.length;
   }
 
-  async test(chatId = this.store.getSettings().chatId): Promise<void> {
-    const token = this.store.getToken();
+  async test(accountId?: string): Promise<void> {
+    const account = this.store.resolveAccount(accountId);
+    if (!account) throw new TelegramError('telegram_not_configured', 'Nessun account Telegram configurato', 409);
+    const token = this.store.getToken(account.id);
     if (!token) throw new TelegramError('telegram_not_configured', 'Token Telegram non configurato', 409);
     await callTelegram(token, 'getMe', {}, this.fetchImpl);
-    await this.send('Memora · test connessione Telegram riuscito.', chatId);
+    await this.send('Memora · test connessione Telegram riuscito.', account.id);
   }
 
-  async discoverChats(): Promise<TelegramChat[]> {
-    const token = this.store.getToken();
+  async discoverChats(accountId?: string): Promise<TelegramChat[]> {
+    const account = this.store.resolveAccount(accountId);
+    if (!account) throw new TelegramError('telegram_not_configured', 'Nessun account Telegram configurato', 409);
+    const token = this.store.getToken(account.id);
     if (!token) throw new TelegramError('telegram_not_configured', 'Token Telegram non configurato', 409);
     const updates = await callTelegram<Array<Record<string, unknown>>>(token, 'getUpdates', {
       limit: 100,

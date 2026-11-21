@@ -2090,3 +2090,33 @@ them the same way they open chats.
 - The project context is explicit before a run and in the sidebar.
 - Telegram configuration remains in the automation workspace, not in general
   settings.
+
+---
+## ADR-059 — Reusable Telegram account registry
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+The first Telegram implementation stored one global token and chat ID. That did
+not let the user create separate bots/chats in Administration and reuse them
+from multiple automations.
+
+### Decision
+- Store Telegram accounts centrally in `config/telegram-accounts.json`; store
+  their bot tokens separately by account ID in `config/telegram-secrets.json`
+  (`0600`).
+- Let each automation choose a `telegramAccountId`; missing selection falls back
+  to the first enabled account for compatibility.
+- Create and test accounts in **Administration → Telegram**; discover chats per
+  account after `/start`.
+- Migrate the legacy single `telegram.json`/`telegram-secrets.json` pair to a
+  default account on load.
+- Keep `MEMORA_TELEGRAM_BOT_TOKEN` only as an override for the legacy default
+  account.
+
+### Consequences
+- One bot/chat can be shared by many automations without duplicating secrets.
+- Deleting an account affects every automation that references it; those runs
+  remain in history and record Telegram delivery as skipped.
+- Per-account tokens preserve the least-privilege boundary between personal and
+  project notifications.

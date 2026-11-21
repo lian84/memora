@@ -41,8 +41,7 @@ function fakeAgent(overrides: Record<string, unknown> = {}): AgentService {
 
 function fakeTelegram(overrides: Record<string, unknown> = {}): TelegramService {
   return {
-    configured: true,
-    getSettings: () => ({ enabled: true, chatId: '42', tokenConfigured: true, tokenSource: 'secret', tokenEditable: true }),
+    resolveAccount: () => ({ id: 'acc_tg_test', label: 'Test', chatId: '42', enabled: true, tokenConfigured: true, tokenSource: 'secret', createdAt: 1, updatedAt: 1 }),
     send: vi.fn(async () => 1),
     ...overrides,
   } as unknown as TelegramService;
@@ -97,14 +96,14 @@ describe('AutomationRunner', () => {
     const run = await runner.run(withTelegram, 'schedule');
     expect(run.status).toBe('completed');
     expect(run.telegramStatus).toBe('sent');
-    expect(telegram.send).toHaveBeenCalledWith(expect.stringContaining('Risultato finale'));
+    expect(telegram.send).toHaveBeenCalledWith(expect.stringContaining('Risultato finale'), 'acc_tg_test');
     expect((await store.getRun(run.id))?.telegramStatus).toBe('sent');
   });
 
   it('non fa fallire la run se Telegram è spento', async () => {
     const { store, job } = await setup();
     const withTelegram = await store.updateJob(job.id, { notifyTelegram: true });
-    const telegram = fakeTelegram({ configured: false, getSettings: () => ({ enabled: false, chatId: '', tokenConfigured: false, tokenSource: 'none', tokenEditable: true }) });
+    const telegram = fakeTelegram({ resolveAccount: () => undefined });
     const runner = new AutomationRunner({ store, agentService: fakeAgent(), telegram });
     const run = await runner.run(withTelegram, 'schedule');
     expect(run.status).toBe('completed');

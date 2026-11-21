@@ -83,25 +83,28 @@ the project page/database shared with its integration.
 
 ## Telegram delivery
 
-Telegram is an outbound notification channel. It sends the result of scheduled
-automations (and manual **Run now**) when the job has **Send result to
-Telegram** enabled. It does not create a Telegram chat session or receive
-messages yet.
+Telegram is an outbound notification channel. Accounts are created once in
+**Administration → Telegram**, then any number of automations can use them.
 
 1. Create a bot with BotFather.
-2. In Memora open **Automations** from the main sidebar, then the **Telegram** card.
-3. Paste the bot token and save it. It is written to
-   `config/telegram-secrets.json` with mode `0600` and is never returned by the
-   API.
-4. Send `/start` to the bot from the Telegram account/chat that should receive
-   results.
-5. Use **Find chats**, select the chat ID, then save Telegram settings.
-6. Use **Send test** to verify.
-7. Enable **Send result to Telegram** on the jobs that need it.
+2. In **Administration → Telegram**, create a new account with a label and the
+   bot token. The token is written to `config/telegram-secrets.json` with mode
+   `0600` and is never returned by the API.
+3. Send `/start` to the bot from the Telegram account/chat that should receive
+   results, then use **Find chats** to discover and select its chat ID.
+4. Use **Send test** to verify the account.
+5. In an automation, enable **Send result to Telegram** and choose the account.
+   The same account can be selected by many automations.
 
-The token can also be supplied through `MEMORA_TELEGRAM_BOT_TOKEN`; in that case
-the UI shows it as environment-managed and does not allow editing it. The chat
-ID remains a non-secret configuration value in `config/telegram.json`.
+If no account is selected, Memora uses the first enabled account. An
+automation whose selected account is disabled or missing records the run but
+marks Telegram delivery as skipped.
+
+Accounts are stored in `config/telegram-accounts.json` (no token) and tokens in
+`config/telegram-secrets.json`. Legacy single-account `telegram.json` /
+`telegram-secrets.json` data is migrated automatically. The
+`MEMORA_TELEGRAM_BOT_TOKEN` environment override is supported only for the
+default legacy account.
 
 Messages are split below Telegram's 4096-character limit. Results may contain
 personal data; only connect a bot/chat you control. Telegram delivery failure

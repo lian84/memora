@@ -165,9 +165,10 @@ export class AutomationRunner {
 
   private async notify(job: AutomationJob, run: AutomationRun): Promise<void> {
     try {
-      const settings = this.telegram.getSettings();
-      if (!settings.enabled || !settings.chatId || !this.telegram.configured) {
+      const account = this.telegram.resolveAccount(job.telegramAccountId);
+      if (!account || !account.enabled || !account.chatId || !account.tokenConfigured) {
         run.telegramStatus = 'skipped';
+        if (account) run.telegramAccountId = account.id;
         await this.store.saveRun(run);
         return;
       }
@@ -180,7 +181,8 @@ export class AutomationRunner {
         finishedAt: run.finishedAt ?? this.now(),
         timezone: job.timezone,
       });
-      await this.telegram.send(message);
+      await this.telegram.send(message, account.id);
+      run.telegramAccountId = account.id;
       run.telegramStatus = 'sent';
     } catch (error) {
       run.telegramStatus = 'failed';

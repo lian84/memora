@@ -34,6 +34,8 @@ export interface AutomationJob {
   agentProfileId?: string;
   mcp: AutomationMcpSettings;
   notifyTelegram: boolean;
+  /** Account Telegram scelto; assente = account predefinito. */
+  telegramAccountId?: string;
   timeoutMinutes: number;
   maxAttempts: number;
   createdAt: number;
@@ -56,6 +58,7 @@ export interface AutomationRun {
   output?: string;
   error?: string;
   telegramStatus?: AutomationTelegramStatus;
+  telegramAccountId?: string;
   telegramError?: string;
 }
 
@@ -69,16 +72,30 @@ export interface AutomationJobInput {
   agentProfileId?: string | null;
   mcp?: AutomationMcpSettings;
   notifyTelegram?: boolean;
+  telegramAccountId?: string | null;
   timeoutMinutes?: number;
   maxAttempts?: number;
 }
 
-export interface TelegramSettingsView {
-  enabled: boolean;
+export interface TelegramAccount {
+  id: string;
+  label: string;
   chatId: string;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TelegramAccountView extends TelegramAccount {
   tokenConfigured: boolean;
   tokenSource: 'environment' | 'secret' | 'none';
-  tokenEditable: boolean;
+}
+
+export interface TelegramAccountInput {
+  label: string;
+  chatId: string;
+  token?: string;
+  enabled?: boolean;
 }
 
 export interface TelegramChat {

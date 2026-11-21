@@ -24,6 +24,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Profili agente file-based selezionabili prima del primo messaggio; 15 default, palette di 10 colori e icone colorate nel composer e nella sidebar. I profili aggiungono un prompt circoscritto e competenze caricate on demand, senza cambiare tool o policy di memoria. Le chat esistenti possono aggiornare esplicitamente il profilo corrente; nome/icona/colore si aggiornano live.
 - [x] **Aggiorna profilo** esplicito in una chat esistente: applica prompt/competenze correnti dal messaggio successivo; i metadati visivi sono sempre live.
 - [x] Amministrazione → Agenti: crea, modifica ed elimina (cestino) profili; gestisce competenze, icona e colore.
+- [x] Amministrazione → Telegram: account bot/chat riutilizzabili con token per account, scoperta chat e messaggi di test.
 - [x] Amministrazione → MCP: account globali e project-scoped Notion/Todoist, token mascherato salvato nel secret store locale, test connessione e binding di progetto.
 - [x] Runtime MCP: toggle server per chat nel pannello destro, default spento, risoluzione account progetto/globale e tool `mcp_call` per Notion/Todoist. Le scritture richiedono la conferma esplicita **Consenti scritture**.
 - [x] Accesso Notion/Todoist a privilegio minimo: token di integrazione separati per account e condivisione Notion limitata a pagine o database specifici, così un progetto può accedere solo ai contenuti e all’account necessari.
@@ -44,7 +45,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 - [x] Pagina Automazioni: job con cron/timezone, selezione progetto e profilo agente, server MCP opzionali e scritture MCP esplicite.
 - [x] Scheduler headless con timeout, retry limitati, cronologia ed **Esegui ora**; cambiare la pianificazione non richiede il browser.
-- [x] Consegna Telegram opzionale dei risultati, con scoperta chat, messaggio di test e token nel secret store locale.
+- [x] Consegna Telegram opzionale dei risultati. Più account sono gestiti in Amministrazione → Telegram, i token restano per account nel secret store locale e lo stesso account può essere riusato da più automazioni.
 - [x] Job e cronologia in `$MEMORA_DATA_DIR/automations/`.
 
 ## 2. Memoria e Second Brain

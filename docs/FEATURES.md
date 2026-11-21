@@ -24,6 +24,7 @@ Last updated: 2026-11-20.
 - [x] File-based agent profiles selectable before the first message; 15 defaults, 10-color palette and colored profile icons in the composer and sidebar. Profiles add a scoped prompt and lazy-loaded skills without changing tools or memory policy. Existing chats can explicitly refresh the current profile; icon/name/color updates are live.
 - [x] Explicit **Refresh profile** in an existing chat: applies the current prompt/skills from the next message; display metadata is always live.
 - [x] Administration → Agents: create, edit and soft-delete profiles; manage skills, icon and color.
+- [x] Administration → Telegram: reusable bot/chat accounts with per-account tokens, chat discovery and test messages.
 - [x] Administration → MCP: global and project-scoped Notion/Todoist accounts, masked token entry stored in the local secret store, test connection and project bindings.
 - [x] MCP runtime: per-chat server toggles in the right panel, default off, project/global account resolution and `mcp_call` tools for Notion/Todoist. Writes require the explicit **Allow writes** confirmation.
 - [x] Least-privilege Notion/Todoist access: separate integration tokens can be used for different accounts, and each Notion integration is shared only with selected pages or databases, so a project can be limited to the content and account it needs.
@@ -54,7 +55,7 @@ Last updated: 2026-11-20.
 - [x] Manual rename always wins over automatic title generation.
 - [x] Automation page: cron/timezone jobs, project and agent profile selection, optional MCP servers and explicit MCP writes.
 - [x] Headless scheduler with timeout, limited retries, run history and **Run now**; changing the schedule does not require a browser.
-- [x] Optional Telegram delivery of automation results, with chat discovery, test message and a token kept in the local secret store.
+- [x] Optional Telegram delivery of automation results. Multiple accounts are managed in Administration → Telegram, tokens are kept per account in the local secret store, and one account can be reused by many automations.
 - [x] Jobs and run history stored under `$MEMORA_DATA_DIR/automations/`.
 
 ## 2. Memory and Second Brain

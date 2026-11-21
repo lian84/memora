@@ -252,31 +252,28 @@ async function main() {
     const deletedMcpAccount = await authFetch(`${baseUrl}/api/admin/mcp/accounts/${mcpAccountBody.account.id}?confirm=${mcpAccountBody.account.id}`, { method: 'DELETE' });
     assert.equal(deletedMcpAccount.status, 200, 'DELETE account MCP deve funzionare');
 
-    const telegram = await authFetch(`${baseUrl}/api/admin/telegram`);
-    assert.equal(telegram.status, 200, 'GET /api/admin/telegram deve funzionare');
-    const telegramBody = await telegram.json();
-    assert.equal(telegramBody.settings.tokenConfigured, false);
-    assert.doesNotMatch(JSON.stringify(telegramBody), /botToken|token"/i, 'il token Telegram non deve essere restituito');
-    const telegramToken = await authFetch(`${baseUrl}/api/admin/telegram/token`, {
-      method: 'PUT',
+    const telegramAccounts = await authFetch(`${baseUrl}/api/admin/telegram/accounts`);
+    assert.equal(telegramAccounts.status, 200, 'GET /api/admin/telegram/accounts deve funzionare');
+    assert.ok(Array.isArray((await telegramAccounts.json()).accounts), 'accounts deve essere un array');
+    const createdTelegram = await authFetch(`${baseUrl}/api/admin/telegram/accounts`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'smoke-telegram-token' }),
+      body: JSON.stringify({ label: 'Smoke Telegram', chatId: '424242', token: 'smoke-telegram-token' }),
     });
-    assert.equal(telegramToken.status, 200, 'PUT token Telegram deve salvarlo nel secret store');
-    const telegramTokenBody = await telegramToken.json();
-    assert.equal(telegramTokenBody.settings.tokenConfigured, true);
-    assert.doesNotMatch(JSON.stringify(telegramTokenBody), /smoke-telegram-token|botToken/i, 'il token Telegram non deve essere restituito');
-    const telegramTokenClear = await authFetch(`${baseUrl}/api/admin/telegram/token`, { method: 'DELETE' });
-    assert.equal(telegramTokenClear.status, 200, 'DELETE token Telegram deve rimuoverlo');
-    assert.equal((await telegramTokenClear.json()).settings.tokenConfigured, false);
-
-    const telegramPatch = await authFetch(`${baseUrl}/api/admin/telegram`, {
+    assert.equal(createdTelegram.status, 201, 'POST account Telegram deve funzionare');
+    const createdTelegramBody = await createdTelegram.json();
+    assert.match(createdTelegramBody.account.id, /^acc_tg_/);
+    assert.equal(createdTelegramBody.account.tokenConfigured, true);
+    assert.doesNotMatch(JSON.stringify(createdTelegramBody), /smoke-telegram-token|botToken/i, 'il token Telegram non deve essere restituito');
+    const updatedTelegram = await authFetch(`${baseUrl}/api/admin/telegram/accounts/${createdTelegramBody.account.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: true, chatId: '424242' }),
+      body: JSON.stringify({ label: 'Smoke Telegram 2', chatId: '424243' }),
     });
-    assert.equal(telegramPatch.status, 200, 'PATCH /api/admin/telegram deve salvare chat ID e abilitazione');
-    assert.equal((await telegramPatch.json()).settings.chatId, '424242');
+    assert.equal(updatedTelegram.status, 200, 'PATCH account Telegram deve funzionare');
+    assert.equal((await updatedTelegram.json()).account.label, 'Smoke Telegram 2');
+    const deletedTelegram = await authFetch(`${baseUrl}/api/admin/telegram/accounts/${createdTelegramBody.account.id}?confirm=${createdTelegramBody.account.id}`, { method: 'DELETE' });
+    assert.equal(deletedTelegram.status, 200, 'DELETE account Telegram deve funzionare');
 
     const automationsBefore = await authFetch(`${baseUrl}/api/admin/automations`);
     assert.equal(automationsBefore.status, 200, 'GET /api/admin/automations deve funzionare');
@@ -341,7 +338,7 @@ async function main() {
     console.log(`- GET /api/memory/sources: ok`);
     console.log(`- Admin settings/status + live PATCH: ok`);
     console.log(`- Admin secrets + OpenCode Go chat default: ok`);
-    console.log(`- Telegram settings + automations CRUD: ok`);
+    console.log(`- Telegram accounts + automations CRUD: ok`);
     console.log(`- API/asset mancanti: 404 senza fallback SPA`);
     console.log(`- SIGTERM: graceful shutdown`);
   } finally {

@@ -32,7 +32,8 @@ import {
   type AutomationJobInput,
   type AutomationRun,
   type TelegramChat,
-  type TelegramSettingsView,
+  type TelegramAccountInput,
+  type TelegramAccountView,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -1003,7 +1004,7 @@ export async function editMessage(
 }
 
 
-export async function listAutomations(): Promise<{ jobs: AutomationJob[]; telegram: TelegramSettingsView }> {
+export async function listAutomations(): Promise<{ jobs: AutomationJob[] }> {
   const res = await request('/api/admin/automations');
   return res.json();
 }
@@ -1037,31 +1038,36 @@ export async function listAutomationRuns(jobId?: string, limit = 50): Promise<Au
   return data.runs;
 }
 
-export async function updateTelegramSettings(input: { enabled?: boolean; chatId?: string }): Promise<TelegramSettingsView> {
-  const res = await request('/api/admin/telegram', { method: 'PATCH', body: JSON.stringify(input) });
-  const data = await res.json() as { settings: TelegramSettingsView };
-  return data.settings;
+export async function listTelegramAccounts(): Promise<TelegramAccountView[]> {
+  const res = await request('/api/admin/telegram/accounts');
+  const data = await res.json() as { accounts: TelegramAccountView[] };
+  return data.accounts;
 }
 
-export async function saveTelegramToken(token: string): Promise<TelegramSettingsView> {
-  const res = await request('/api/admin/telegram/token', { method: 'PUT', body: JSON.stringify({ token }) });
-  const data = await res.json() as { settings: TelegramSettingsView };
-  return data.settings;
+export async function createTelegramAccount(input: TelegramAccountInput): Promise<TelegramAccountView> {
+  const res = await request('/api/admin/telegram/accounts', { method: 'POST', body: JSON.stringify(input) });
+  const data = await res.json() as { account: TelegramAccountView };
+  return data.account;
 }
 
-export async function clearTelegramToken(): Promise<TelegramSettingsView> {
-  const res = await request('/api/admin/telegram/token', { method: 'DELETE' });
-  const data = await res.json() as { settings: TelegramSettingsView };
-  return data.settings;
+export async function updateTelegramAccount(accountId: string, input: Partial<TelegramAccountInput>): Promise<TelegramAccountView> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}`, { method: 'PATCH', body: JSON.stringify(input) });
+  const data = await res.json() as { account: TelegramAccountView };
+  return data.account;
 }
 
-export async function testTelegram(): Promise<{ ok: boolean }> {
-  const res = await request('/api/admin/telegram/test', { method: 'POST' });
+export async function deleteTelegramAccount(accountId: string): Promise<{ id: string }> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}?confirm=${encodeURIComponent(accountId)}`, { method: 'DELETE' });
   return res.json();
 }
 
-export async function discoverTelegramChats(): Promise<TelegramChat[]> {
-  const res = await request('/api/admin/telegram/discover', { method: 'POST' });
+export async function testTelegramAccount(accountId: string): Promise<{ ok: boolean }> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/test`, { method: 'POST' });
+  return res.json();
+}
+
+export async function discoverTelegramChats(accountId: string): Promise<TelegramChat[]> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/discover`, { method: 'POST' });
   const data = await res.json() as { chats: TelegramChat[] };
   return data.chats;
 }

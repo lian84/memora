@@ -84,24 +84,27 @@ account project-scoped condiviso solo con la pagina/database del progetto.
 
 ## Consegna Telegram
 
-Telegram è un canale di notifica in uscita. Invia il risultato delle automazioni
-pianificate (e di **Esegui ora**) quando il job ha **Invia risultato su
-Telegram**. Non crea ancora una sessione chat Telegram e non riceve messaggi.
+Telegram è un canale di notifica in uscita. Gli account si creano una volta in
+**Amministrazione → Telegram**, poi qualsiasi numero di automazioni può usarli.
 
 1. Crea un bot con BotFather.
-2. In Memora apri **Automazioni** dalla sidebar principale, poi la scheda **Telegram**.
-3. Incolla il token del bot e salvalo. Viene scritto in
-   `config/telegram-secrets.json` con permessi `0600` e non viene mai restituito
-   dall’API.
-4. Invia `/start` al bot dall’account/chat Telegram che deve ricevere i
-   risultati.
-5. Usa **Cerca chat**, seleziona il Chat ID e salva le impostazioni Telegram.
-6. Usa **Invia test** per verificare.
-7. Abilita **Invia risultato su Telegram** sui job interessati.
+2. In **Amministrazione → Telegram** crea un nuovo account con nome e token del
+   bot. Il token viene scritto in `config/telegram-secrets.json` con permessi
+   `0600` e non viene mai restituito dall’API.
+3. Invia `/start` al bot dall’account/chat Telegram che deve ricevere i
+   risultati, poi usa **Cerca chat** per trovare e selezionare il Chat ID.
+4. Usa **Invia test** per verificare l’account.
+5. In un’automazione abilita **Invia risultato su Telegram** e scegli l’account.
+   Lo stesso account può essere scelto da più automazioni.
 
-Il token può essere fornito anche tramite `MEMORA_TELEGRAM_BOT_TOKEN`; in quel
-caso la UI lo mostra come gestito dall’ambiente e non consente di modificarlo.
-Il Chat ID resta una configurazione non segreta in `config/telegram.json`.
+Se non viene scelto un account, Memora usa il primo account abilitato.
+Un’automazione il cui account è disattivato o mancante registra la run ma marca
+la consegna Telegram come saltata.
+
+Gli account sono in `config/telegram-accounts.json` (senza token) e i token in
+`config/telegram-secrets.json`. I vecchi file `telegram.json` /
+`telegram-secrets.json` vengono migrati automaticamente. L’override
+`MEMORA_TELEGRAM_BOT_TOKEN` è supportato solo per l’account predefinito legacy.
 
 I messaggi vengono spezzati sotto il limite Telegram di 4096 caratteri. I
 risultati possono contenere dati personali: collega solo un bot/chat che

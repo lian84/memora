@@ -1938,3 +1938,33 @@ ispezionare come le chat.
 - Il contesto di progetto è esplicito prima di un run e nella sidebar.
 - La configurazione Telegram resta nello spazio Automazioni, non nelle
   impostazioni generali.
+
+---
+## ADR-059 — Registry riutilizzabile di account Telegram
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+La prima implementazione Telegram salvava un token e un Chat ID globali. Non
+permetteva di creare bot/chat separati in Amministrazione e riutilizzarli da più
+automazioni.
+
+### Decisione
+- Salvare gli account Telegram centralmente in `config/telegram-accounts.json`;
+  salvare i token per ID account separatamente in `config/telegram-secrets.json`
+  (`0600`).
+- Far scegliere a ogni automazione un `telegramAccountId`; in assenza di scelta
+  usare il primo account abilitato per compatibilità.
+- Creare e testare gli account in **Amministrazione → Telegram**; scoprire le
+  chat per singolo account dopo `/start`.
+- Migrare la vecchia coppia `telegram.json`/`telegram-secrets.json` in un account
+  predefinito al caricamento.
+- Mantenere `MEMORA_TELEGRAM_BOT_TOKEN` solo come override per l’account
+  predefinito legacy.
+
+### Conseguenze
+- Un bot/chat può essere condiviso da più automazioni senza duplicare segreti.
+- Eliminare un account influisce su tutte le automazioni che lo usano; le run
+  restano nella cronologia e la consegna Telegram viene marcata come saltata.
+- Token separati per account mantengono il confine di privilegio tra notifiche
+  personali e di progetto.

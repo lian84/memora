@@ -26,7 +26,6 @@ export function registerAutomationRoutes(app: FastifyInstance, deps: AutomationR
   app.get('/api/admin/automations', async (_request, reply) => {
     return reply.send({
       jobs: deps.store.listJobs().sort((a, b) => (a.nextRunAt ?? Number.MAX_SAFE_INTEGER) - (b.nextRunAt ?? Number.MAX_SAFE_INTEGER)),
-      telegram: deps.telegramStore.getSettings(),
     });
   });
 
@@ -74,46 +73,49 @@ export function registerAutomationRoutes(app: FastifyInstance, deps: AutomationR
     }
   });
 
-  app.get('/api/admin/telegram', async (_request, reply) => {
-    return reply.send({ settings: deps.telegramStore.getSettings() });
+  app.get('/api/admin/telegram/accounts', async (_request, reply) => {
+    return reply.send({ accounts: deps.telegramStore.listAccounts() });
   });
 
-  app.patch<{ Body: Record<string, unknown> | undefined }>('/api/admin/telegram', async (request, reply) => {
+  app.post<{ Body: Record<string, unknown> | undefined }>('/api/admin/telegram/accounts', async (request, reply) => {
     try {
-      return reply.send({ settings: await deps.telegramStore.update(request.body ?? {}) });
+      const account = await deps.telegramStore.createAccount((request.body ?? {}) as never);
+      return reply.status(201).send({ account });
     } catch (error) {
       return sendError(reply, error);
     }
   });
 
-  app.put<{ Body: { token?: unknown } | undefined }>('/api/admin/telegram/token', async (request, reply) => {
+  app.patch<{ Params: { id: string }; Body: Record<string, unknown> | undefined }>('/api/admin/telegram/accounts/:id', async (request, reply) => {
     try {
-      return reply.send({ settings: await deps.telegramStore.setToken(request.body?.token) });
+      const account = await deps.telegramStore.updateAccount(request.params.id, (request.body ?? {}) as never);
+      return reply.send({ account });
     } catch (error) {
       return sendError(reply, error);
     }
   });
 
-  app.delete('/api/admin/telegram/token', async (_request, reply) => {
+  app.delete<{ Params: { id: string }; Querystring: { confirm?: string } }>('/api/admin/telegram/accounts/:id', async (request, reply) => {
     try {
-      return reply.send({ settings: await deps.telegramStore.clearToken() });
+      if (request.query.confirm !== request.params.id) return reply.status(400).send({ error: 'invalid_telegram_account_confirmation' });
+      return reply.send(await deps.telegramStore.deleteAccount(request.params.id));
     } catch (error) {
       return sendError(reply, error);
     }
   });
 
-  app.post('/api/admin/telegram/test', async (_request, reply) => {
+  app.post<{ Params: { id: string } }>('/api/admin/telegram/accounts/:id/test', async (request, reply) => {
     try {
-      await deps.telegram.test();
+      await deps.telegram.test(request.params.id);
       return reply.send({ ok: true });
     } catch (error) {
       return sendError(reply, error);
     }
   });
 
-  app.post('/api/admin/telegram/discover', async (_request, reply) => {
+  app.post<{ Params: { id: string } }>('/api/admin/telegram/accounts/:id/discover', async (request, reply) => {
     try {
-      return reply.send({ chats: await deps.telegram.discoverChats() });
+      return reply.send({ chats: await deps.telegram.discoverChats(request.params.id) });
     } catch (error) {
       return sendError(reply, error);
     }
