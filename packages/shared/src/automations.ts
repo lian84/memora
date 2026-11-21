@@ -61,6 +61,7 @@ export interface AutomationRun {
   error?: string;
   telegramStatus?: AutomationTelegramStatus;
   telegramAccountId?: string;
+  telegramDocuments?: number;
   telegramError?: string;
 }
 

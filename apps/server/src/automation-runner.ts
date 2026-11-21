@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { AgentService } from '@memora/agent';
 import type { AutomationJob, AutomationRun } from '@memora/shared';
 import type { AutomationStore } from './automation-store.js';
-import { formatAutomationTelegramMessage, type TelegramService } from './telegram.js';
+import { formatAutomationTelegramMessage, type TelegramDocument, type TelegramService } from './telegram.js';
 
 export interface AutomationRunnerDeps {
   store: AutomationStore;
@@ -52,7 +52,7 @@ export class AutomationRunner {
     await this.store.saveRun(run);
     let sessionId: string | undefined;
 
-    const finish = async (patch: Partial<AutomationRun>): Promise<AutomationRun> => {
+    const finish = async (patch: Partial<AutomationRun>, documents: TelegramDocument[] = []): Promise<AutomationRun> => {
       const finishedAt = this.now();
       const completed: AutomationRun = {
         ...run,
@@ -63,7 +63,7 @@ export class AutomationRunner {
         ...(sessionId ? { sessionId } : {}),
       };
       await this.store.saveRun(completed);
-      if (job.notifyTelegram) await this.notify(job, completed);
+      if (job.notifyTelegram) await this.notify(job, completed, documents);
       return completed;
     };
 
@@ -111,17 +111,19 @@ export class AutomationRunner {
           }
           if (outcome === 'timeout') {
             const output = await this.getOutput(sessionId);
+            const documents = await this.getDocuments(sessionId, run.startedAt);
             const result = await finish({
               status: 'timeout',
               error: `Timeout dopo ${job.timeoutMinutes} minuti`,
               ...(output ? { output } : {}),
-            });
+            }, documents);
             await this.archiveSession(sessionId, job);
             return result;
           }
 
           const output = await this.getOutput(sessionId);
-          const result = await finish({ status: 'completed', output });
+          const documents = await this.getDocuments(sessionId, run.startedAt);
+          const result = await finish({ status: 'completed', output }, documents);
           await this.archiveSession(sessionId, job);
           return result;
         } catch (error) {
@@ -131,12 +133,13 @@ export class AutomationRunner {
             continue;
           }
           const output = sessionId ? await this.getOutput(sessionId) : '';
+          const documents = sessionId ? await this.getDocuments(sessionId, run.startedAt) : [];
           if (sessionId) await this.archiveSession(sessionId, job);
           return finish({
             status: 'failed',
             error: safeError(error),
             ...(output ? { output } : {}),
-          });
+          }, documents);
         }
       }
       return finish({ status: 'failed', error: 'Nessun tentativo eseguito' });
@@ -155,6 +158,26 @@ export class AutomationRunner {
     }
   }
 
+  private async getDocuments(sessionId: string, startedAt: number): Promise<TelegramDocument[]> {
+    const documentKinds = new Set(['pdf', 'docx', 'xlsx', 'pptx']);
+    try {
+      const artifacts = await this.agentService.listArtifacts(sessionId);
+      const selected = artifacts.filter(artifact => documentKinds.has(artifact.kind) && artifact.createdAt >= startedAt - 1_000);
+      const documents: TelegramDocument[] = [];
+      for (const artifact of selected) {
+        try {
+          const full = await this.agentService.getArtifact(sessionId, artifact.id);
+          documents.push({ filename: full.name, mimeType: full.mimeType, buffer: full.buffer });
+        } catch {
+          // Un artefatto non leggibile non deve bloccare gli altri.
+        }
+      }
+      return documents;
+    } catch {
+      return [];
+    }
+  }
+
   private async archiveSession(sessionId: string, job: AutomationJob): Promise<void> {
     try {
       await this.agentService.renameSession(sessionId, `🤖 ${job.name}`.slice(0, 120));
@@ -164,7 +187,7 @@ export class AutomationRunner {
     }
   }
 
-  private async notify(job: AutomationJob, run: AutomationRun): Promise<void> {
+  private async notify(job: AutomationJob, run: AutomationRun, documents: TelegramDocument[] = []): Promise<void> {
     try {
       const account = this.telegram.resolveAccount(job.telegramAccountId);
       if (!account || !account.enabled || !account.chatId || !account.tokenConfigured) {
@@ -174,16 +197,21 @@ export class AutomationRunner {
         return;
       }
       const status = run.status === 'completed' ? 'completed' : run.status === 'timeout' ? 'timeout' : 'failed';
+      const documentNames = documents.map(document => document.filename).join(', ');
       const message = formatAutomationTelegramMessage({
         jobName: job.name,
         status,
-        output: run.output,
+        output: documents.length > 0 ? `Documenti allegati: ${documentNames}` : run.output,
         error: run.error,
         finishedAt: run.finishedAt ?? this.now(),
         timezone: job.timezone,
       });
       await this.telegram.send(message, account.id);
       run.telegramAccountId = account.id;
+      run.telegramDocuments = documents.length;
+      for (const document of documents) {
+        await this.telegram.sendDocument(document, account.id);
+      }
       run.telegramStatus = 'sent';
     } catch (error) {
       run.telegramStatus = 'failed';

@@ -485,7 +485,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                     <span className={`automation-status status-${run.status}`}>{t(runStatusLabel(run.status))}</span>
                     <span>{new Date(run.startedAt).toLocaleString()}</span>
                     <span>{run.trigger === 'manual' ? t('manuale') : t('pianificata')}</span>
-                    {run.telegramStatus && <span>Telegram: {run.telegramStatus}</span>}
+                    {run.telegramStatus && <span>Telegram: {run.telegramStatus}{run.telegramDocuments ? ` · ${run.telegramDocuments} file` : ''}</span>}
                     {typeof run.durationMs === 'number' && <span>{Math.round(run.durationMs / 1000)}s</span>}
                   </summary>
                   {run.error && <p className="automation-run-error">{run.error}</p>}

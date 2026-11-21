@@ -114,6 +114,11 @@ Gli account sono in `config/telegram-accounts.json` (senza token) e i token in
 `telegram-secrets.json` vengono migrati automaticamente. L’override
 `MEMORA_TELEGRAM_BOT_TOKEN` è supportato solo per l’account predefinito legacy.
 
+I PDF e i documenti DOCX, XLSX e PPTX generati dalla run vengono inviati come
+documenti Telegram, con un breve messaggio che elenca i nomi, invece di inviare
+l’HTML o il sorgente usato per crearli. Se non viene prodotto alcun documento,
+viene inviato il testo dell’assistente come prima.
+
 I messaggi vengono spezzati sotto il limite Telegram di 4096 caratteri. I
 risultati possono contenere dati personali: collega solo un bot/chat che
 controlli. Un errore di consegna Telegram non cambia lo stato della run: il

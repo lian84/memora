@@ -46,7 +46,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Pagina Automazioni: job con cron/timezone, selezione progetto e profilo agente, server MCP opzionali e scritture MCP esplicite.
 - [x] Scheduler headless con timeout, retry limitati, cronologia ed **Esegui ora**; cambiare la pianificazione non richiede il browser. La cronologia si aggiorna live mentre è aperta.
 - [x] Flag ricerca web per singola automazione, con avviso se la ricerca web non è configurata.
-- [x] Consegna Telegram opzionale dei risultati. Più account sono gestiti in Amministrazione → Telegram, i token restano per account nel secret store locale e lo stesso account può essere riusato da più automazioni.
+- [x] Consegna Telegram opzionale dei risultati. Più account sono gestiti in Amministrazione → Telegram, i token restano per account nel secret store locale e lo stesso account può essere riusato da più automazioni. I PDF e i documenti Office generati vengono consegnati come documenti Telegram.
 - [x] Job e cronologia in `$MEMORA_DATA_DIR/automations/`.
 
 ## 2. Memoria e Second Brain

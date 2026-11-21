@@ -87,6 +87,18 @@ describe('TelegramService', () => {
     expect(body.text).toHaveLength(4_000);
   });
 
+  it('invia un documento con multipart', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.sendDocument({ filename: 'report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') }, account.id);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/bot123:token/sendDocument');
+    expect((fetchMock.mock.calls[0]?.[1] as RequestInit).body).toBeInstanceOf(FormData);
+  });
+
   it('scopre le chat dagli update e ignora duplicati', async () => {
     const store = new TelegramStore({ dataDir: await tempDir() });
     await store.load();

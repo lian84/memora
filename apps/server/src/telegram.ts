@@ -309,6 +309,12 @@ async function callTelegram<T>(token: string, method: string, payload: Record<st
   return data.result as T;
 }
 
+export interface TelegramDocument {
+  filename: string;
+  mimeType: string;
+  buffer: Buffer;
+}
+
 export function splitTelegramText(text: string, limit = MAX_MESSAGE_LENGTH): string[] {
   const normalized = text.replace(/\r\n/g, '\n').trim();
   if (!normalized) return [];
@@ -323,6 +329,31 @@ export function splitTelegramText(text: string, limit = MAX_MESSAGE_LENGTH): str
   }
   if (remaining) chunks.push(remaining);
   return chunks;
+}
+
+async function callTelegramDocument(token: string, document: TelegramDocument, chatId: string, fetchImpl: FetchLike): Promise<void> {
+  const form = new FormData();
+  form.append('chat_id', chatId);
+  form.append('document', new Blob([new Uint8Array(document.buffer)], { type: document.mimeType }), document.filename);
+  let response: Response;
+  try {
+    response = await fetchImpl(`${TELEGRAM_API_BASE}/bot${token}/sendDocument`, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(60_000),
+    });
+  } catch {
+    throw new TelegramError('telegram_unreachable', 'Telegram non è raggiungibile', 502);
+  }
+  let data: TelegramApiResponse<unknown>;
+  try {
+    data = await response.json() as TelegramApiResponse<unknown>;
+  } catch {
+    throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
+  }
+  if (!response.ok || data.ok === false) {
+    throw new TelegramError('telegram_api_error', data.description ? `Telegram: ${data.description}` : 'Errore API Telegram', 502);
+  }
 }
 
 export class TelegramService {
@@ -351,6 +382,18 @@ export class TelegramService {
       }, this.fetchImpl);
     }
     return chunks.length;
+  }
+
+  async sendDocument(document: TelegramDocument, accountId?: string): Promise<void> {
+    const account = this.store.resolveAccount(accountId);
+    if (!account) throw new TelegramError('telegram_not_configured', 'Nessun account Telegram configurato', 409);
+    const token = this.store.getToken(account.id);
+    if (!token) throw new TelegramError('telegram_not_configured', 'Token Telegram non configurato', 409);
+    if (!account.chatId) throw new TelegramError('telegram_not_configured', 'Chat ID Telegram non configurato', 409);
+    if (document.buffer.byteLength > 50 * 1024 * 1024) {
+      throw new TelegramError('telegram_document_too_large', 'Documento troppo grande per Telegram', 413);
+    }
+    await callTelegramDocument(token, document, account.chatId, this.fetchImpl);
   }
 
   async test(accountId?: string): Promise<void> {

@@ -114,6 +114,11 @@ Accounts are stored in `config/telegram-accounts.json` (no token) and tokens in
 `MEMORA_TELEGRAM_BOT_TOKEN` environment override is supported only for the
 default legacy account.
 
+Generated PDF, DOCX, XLSX and PPTX artifacts from the run are sent as Telegram
+documents (with a short message listing their names) instead of sending the
+HTML or source used to build them. If no document artifact is produced, the
+assistant text is sent as before.
+
 Messages are split below Telegram's 4096-character limit. Results may contain
 personal data; only connect a bot/chat you control. Telegram delivery failure
 does not change the run status — the result stays in the web history and the

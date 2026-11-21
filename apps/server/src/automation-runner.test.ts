@@ -44,6 +44,7 @@ function fakeTelegram(overrides: Record<string, unknown> = {}): TelegramService 
   return {
     resolveAccount: () => ({ id: 'acc_tg_test', label: 'Test', chatId: '42', enabled: true, tokenConfigured: true, tokenSource: 'secret', createdAt: 1, updatedAt: 1 }),
     send: vi.fn(async () => 1),
+    sendDocument: vi.fn(async () => undefined),
     ...overrides,
   } as unknown as TelegramService;
 }
@@ -109,6 +110,26 @@ describe('AutomationRunner', () => {
     expect(run.telegramStatus).toBe('sent');
     expect(telegram.send).toHaveBeenCalledWith(expect.stringContaining('Risultato finale'), 'acc_tg_test');
     expect((await store.getRun(run.id))?.telegramStatus).toBe('sent');
+  });
+
+  it('invia i PDF generati come documenti Telegram invece del codice HTML', async () => {
+    const { store, job } = await setup();
+    const withTelegram = await store.updateJob(job.id, { notifyTelegram: true });
+    const artifact = {
+      id: 'artifact-pdf', sessionId: 'session-1', name: 'riepilogo.pdf', kind: 'pdf' as const,
+      mimeType: 'application/pdf', size: 4, createdAt: Date.now(), updatedAt: Date.now(), version: 1,
+    };
+    const agent = fakeAgent({
+      listArtifacts: vi.fn(async () => [artifact]),
+      getArtifact: vi.fn(async () => ({ ...artifact, buffer: Buffer.from('%PDF') })),
+    });
+    const telegram = fakeTelegram();
+    const runner = new AutomationRunner({ store, agentService: agent, telegram });
+    const run = await runner.run(withTelegram, 'schedule');
+    expect(run.status).toBe('completed');
+    expect(run.telegramDocuments).toBe(1);
+    expect(telegram.send).toHaveBeenCalledWith(expect.stringContaining('Documenti allegati: riepilogo.pdf'), 'acc_tg_test');
+    expect(telegram.sendDocument).toHaveBeenCalledWith(expect.objectContaining({ filename: 'riepilogo.pdf', mimeType: 'application/pdf' }), 'acc_tg_test');
   });
 
   it('non fa fallire la run se Telegram è spento', async () => {
