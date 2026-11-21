@@ -619,8 +619,8 @@ an automatic loop; the previous artifact version remains available.
 ### Agent profiles
 
 Before the first message, the composer shows the available **agent profiles**
-(15 examples including Brainstorming, Commercialista, Sviluppatore and Social
-media). A profile adds a scoped prompt and lazily loaded skills; it does not add tools or permissions.
+(16 examples including Brainstorming, Commercialista, Sviluppatore, Social
+media and Suno Songwriter). A profile adds a scoped prompt and lazily loaded skills; it does not add tools or permissions.
 If no profile is selected, Memo base is used. After sending, the picker
 disappears and the selected profile icon remains next to the attachment and web
 controls; the same icon appears beside the chat in the sidebar. Existing chats

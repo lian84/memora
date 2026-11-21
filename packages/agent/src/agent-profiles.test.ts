@@ -20,7 +20,7 @@ describe('AgentProfileStore', () => {
   it('inizializza i profili di esempio e carica le competenze on demand', async () => {
     const { store } = await fixture();
     const profiles = await store.list();
-    expect(profiles.map(profile => profile.id)).toEqual(['avvocato', 'brainstorming', 'business', 'chef', 'commercialista', 'designer', 'finanza', 'marketing', 'ricercatore', 'scrittore', 'social-media', 'sviluppatore', 'traduttore', 'tutor', 'viaggi']);
+    expect(profiles.map(profile => profile.id)).toEqual(['avvocato', 'brainstorming', 'business', 'chef', 'commercialista', 'designer', 'finanza', 'marketing', 'ricercatore', 'scrittore', 'social-media', 'suno-songwriter', 'sviluppatore', 'traduttore', 'tutor', 'viaggi']);
 
     const commercialista = await store.get('commercialista');
     expect(commercialista?.name).toBe('Commercialista');
@@ -31,6 +31,22 @@ describe('AgentProfileStore', () => {
 
     const iva = await store.loadSkill('commercialista', 'iva');
     expect(iva).toContain('# IVA');
+
+    const suno = await store.getDetail('suno-songwriter');
+    expect(suno?.name).toBe('Suno Songwriter');
+    expect(suno?.icon).toBe('music');
+    expect(suno?.prompt).toContain('FORMATO DI RISPOSTA');
+    expect(suno?.skills.map(skill => skill.name)).toEqual(['production-prompt', 'song-craft', 'suno-format']);
+  });
+
+  it('su una data directory già alla versione 2 aggiunge solo il nuovo profilo Suno', async () => {
+    const { root, store } = await fixture();
+    await import('node:fs/promises').then(({ mkdir }) => mkdir(join(root, 'agents'), { recursive: true }));
+    await writeFile(join(root, 'agents', '.defaults-version'), '2\n');
+    const profiles = await store.list();
+    expect(profiles.map(profile => profile.id)).toContain('suno-songwriter');
+    expect(profiles.map(profile => profile.id)).not.toContain('commercialista');
+    expect(await store.loadSkill('suno-songwriter', 'suno-format')).toContain('# Formato Suno');
   });
 
   it('non ricrea i profili se la directory esiste già', async () => {

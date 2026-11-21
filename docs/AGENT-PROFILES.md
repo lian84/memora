@@ -67,9 +67,14 @@ Import/export of profile bundles is not part of this first editor.
 
 ## First use
 
-Memora seeds 15 examples, including Brainstorming, Commercialista, Sviluppatore,
-Social media, Tutor, Avvocato, Traduttore, Scrittore, Chef, Viaggi, Finanza
-personale, Marketing, Designer, Ricercatore and Business. On an existing data
+Memora seeds 16 examples, including Brainstorming, Commercialista, Sviluppatore,
+Social media, Suno Songwriter, Tutor, Avvocato, Traduttore, Scrittore, Chef,
+Viaggi, Finanza personale, Marketing, Designer, Ricercatore and Business.
+
+**Suno Songwriter** prepares original songs in a copy-ready Suno format: title,
+style prompt, optional excluded styles, and lyrics with section tags. It knows
+prosody, hooks, song structure and production-prompt constraints, and never uses
+artist names or copyrighted material. On an existing data
 directory, only missing defaults are added once; existing files are not
 overwritten. They are ordinary files and can be copied, edited or removed.
 

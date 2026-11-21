@@ -72,9 +72,14 @@ Import/export di pacchetti profilo non fa parte di questo primo editor.
 
 ## Primo uso
 
-Memora crea 15 esempi, tra cui Brainstorming, Commercialista, Sviluppatore,
-Social media, Tutor, Avvocato, Traduttore, Scrittore, Chef, Viaggi, Finanza
-personale, Marketing, Designer, Ricercatore e Business. Su una data directory
+Memora crea 16 esempi, tra cui Brainstorming, Commercialista, Sviluppatore,
+Social media, Suno Songwriter, Tutor, Avvocato, Traduttore, Scrittore, Chef,
+Viaggi, Finanza personale, Marketing, Designer, Ricercatore e Business.
+
+**Suno Songwriter** prepara canzoni originali in formato copia-incolla per Suno:
+titolo, prompt di stile, eventuali stili esclusi e testo con tag di sezione.
+Conosce prosodia, hook, struttura e vincoli del prompt di produzione; non usa
+nomi di artisti né materiale protetto. Su una data directory
 esistente aggiunge una sola volta i default mancanti, senza sovrascrivere i file
 presenti. Sono normali file, copiabili, modificabili o eliminabili.
 
