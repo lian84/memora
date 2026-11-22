@@ -787,9 +787,6 @@ export function AdminSettingsView({
       <UpdateAdminPanel />
       </div>
 
-      </div>
-      </div>
-
       {['general', 'models', 'memory'].includes(activePage) && <div className="admin-savebar">
         <span>{hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · {t('I valori gestiti dall’ambiente non vengono inviati.')}</span>
         <div className="admin-savebar-actions">
@@ -797,6 +794,9 @@ export function AdminSettingsView({
           <button type="button" className="admin-primary" onClick={onSave} disabled={saving}>{saving ? t('Salvo…') : t('Salva impostazioni')}</button>
         </div>
       </div>}
+
+      </div>
+      </div>
     </section>
   );
 }

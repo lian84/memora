@@ -1915,20 +1915,18 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
   .admin-side-nav button { flex: 0 0 auto; min-height: 32px; white-space: nowrap; }
 }
 
-/* Keep the sticky save bar aligned with the admin content column, not the
-   navigation column. */
+/* The save bar is part of the content flow: it must sit after the settings,
+   never float over them. */
 .admin-settings { --admin-nav-width: 190px; --admin-nav-gap: 22px; }
 .admin-layout { grid-template-columns: var(--admin-nav-width) minmax(0, 1fr); gap: var(--admin-nav-gap); }
 .admin-savebar {
-  margin-left: calc(var(--admin-nav-width) + var(--admin-nav-gap));
-  z-index: 3;
-  padding: 12px 0 14px;
-  background: color-mix(in srgb, var(--bg) 94%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  position: static;
+  bottom: auto;
+  margin-top: 20px;
+  padding: 14px 0 2px;
+  background: transparent;
 }
 @media (max-width: 900px) {
   .admin-settings { --admin-nav-width: 0px; --admin-nav-gap: 12px; }
   .admin-layout { grid-template-columns: 1fr; gap: var(--admin-nav-gap); }
-  .admin-savebar { margin-left: 0; }
 }
