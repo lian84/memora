@@ -1,17 +1,50 @@
-# Memora
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/memora-logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/brand/memora-logo-light.png">
+    <img src="apps/web/public/brand/memora-logo-light.png" alt="Memora" width="360">
+  </picture>
+</div>
 
-**Italiano** | [English](README.md)
+<h1 align="center">Memora</h1>
 
-> Assistente personale self-hosted, file-first, costruito sopra Pi.
-> Documentazione italiana; versione inglese in [`README.md`](README.md).
+<p align="center">
+  <strong>Assistente personale self-hosted, file-first, costruito sopra Pi.</strong>
+</p>
 
-[![CI](https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg)](https://github.com/lian84/memora/actions/workflows/ci.yml)
-[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="docs/FEATURES.it.md">Funzionalità</a> ·
+  <a href="docs/BACKUP.it.md">Backup</a> ·
+  <a href="docs/UPDATES.it.md">Aggiornamenti</a> ·
+  <a href="docs/DECISIONS.it.md">Decisioni</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/lian84/memora/actions/workflows/ci.yml"><img src="https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/status-pre--release-orange" alt="Pre-release">
+  <img src="https://img.shields.io/badge/node-24-5FA04E" alt="Node.js 24">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg" alt="Licenza: AGPL-3.0-only"></a>
+</p>
+
+<p align="center">
+  Chat · Second Brain · Progetti · Artefatti · Automazioni · Telegram · Ricerca web
+</p>
+
+---
+
+> [!WARNING]
+> Memora è in sviluppo **pre-release**. Il codice è utilizzabile e testato, ma
+> installer, restore e migrazioni sono ancora in completamento. Non esporre il
+> servizio su Internet senza HTTPS, reverse proxy e una revisione della
+> configurazione.
 
 Memora è un assistente personale self-hosted costruito sopra
 [Pi](https://github.com/earendil-works/pi). Riunisce chat persistenti, un Second
-Brain in Markdown, memoria con approvazione umana, progetti, artefatti e ricerca
-web in un'unica interfaccia.
+Brain in Markdown, memoria con approvazione umana, progetti, artefatti, ricerca
+web e automazioni pianificate in un'unica interfaccia.
+
+<!-- Gli screenshot verranno aggiunti prima della prima release pubblica. -->
 
 Il registro completo delle funzionalità, con stato e limiti noti, è in
 [`docs/FEATURES.it.md`](docs/FEATURES.it.md). Le decisioni architetturali sono in
@@ -19,10 +52,10 @@ Il registro completo delle funzionalità, con stato e limiti noti, è in
 
 ## Stato
 
-Memora è in sviluppo **pre-release**. Il codice è utilizzabile e testato, ma
-l'installazione e le migrazioni non sono ancora considerate stabili. Non
-esporre il servizio su Internet senza HTTPS, reverse proxy e una revisione della
-configurazione.
+Pre-release: le funzionalità sono utilizzabili e testate; installer, restore e
+migrazioni sono ancora in completamento. Vedi
+[`docs/FEATURES.it.md`](docs/FEATURES.it.md) per lo stato aggiornato e i limiti
+noti.
 
 ## Funzionalità principali
 

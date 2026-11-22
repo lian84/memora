@@ -1,16 +1,50 @@
-# Memora
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/memora-logo-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/brand/memora-logo-light.png">
+    <img src="apps/web/public/brand/memora-logo-light.png" alt="Memora" width="360">
+  </picture>
+</div>
 
-**English** | [Italiano](README.it.md)
+<h1 align="center">Memora</h1>
 
-> Self-hosted, file-first personal AI assistant built on Pi.
+<p align="center">
+  <strong>Self-hosted, file-first personal AI assistant built on Pi.</strong>
+</p>
 
-[![CI](https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg)](https://github.com/lian84/memora/actions/workflows/ci.yml)
-[![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](LICENSE)
+<p align="center">
+  <a href="README.it.md">Italiano</a> ·
+  <a href="docs/FEATURES.md">Features</a> ·
+  <a href="docs/BACKUP.md">Backup</a> ·
+  <a href="docs/UPDATES.md">Updates</a> ·
+  <a href="docs/DECISIONS.md">Decisions</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/lian84/memora/actions/workflows/ci.yml"><img src="https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/status-pre--release-orange" alt="Pre-release">
+  <img src="https://img.shields.io/badge/node-24-5FA04E" alt="Node.js 24">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg" alt="License: AGPL-3.0-only"></a>
+</p>
+
+<p align="center">
+  Chat · Second Brain · Projects · Artifacts · Automations · Telegram · Web research
+</p>
+
+---
+
+> [!WARNING]
+> Memora is in **pre-release development**. The code is usable and tested, but
+> installation and migrations are not yet considered stable. Do not expose the
+> service to the public Internet without HTTPS, a reverse proxy and a review of
+> your configuration.
 
 Memora is a self-hosted personal assistant built on
 [Pi](https://github.com/earendil-works/pi). It brings persistent chats, a
-Markdown-based Second Brain, human-reviewed memory, projects, artifacts and web
-research into one interface.
+Markdown-based Second Brain, human-reviewed memory, projects, artifacts, web
+research and scheduled automations into one interface.
+
+<!-- Screenshots will be added before the first public release. -->
 
 The complete feature registry, with status and known limitations, is in
 [`docs/FEATURES.md`](docs/FEATURES.md). Architectural decisions are documented
@@ -18,10 +52,9 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Status
 
-Memora is in **pre-release development**. The code is usable and tested, but
-installation and migrations are not yet considered stable. Do not expose the
-service to the public Internet without HTTPS, a reverse proxy and a review of
-your configuration.
+Pre-release: features are usable and tested; installation, restore and
+migrations are still being completed. See [`docs/FEATURES.md`](docs/FEATURES.md)
+for the current registry and known limitations.
 
 ## Key features
 
