@@ -3,9 +3,9 @@
 **English** | [Italiano](BACKUP.it.md)
 
 Memora creates encrypted local snapshots that can be downloaded from
-**Administration → Backup**. The archive contains application data and secrets;
-the encryption password is chosen by the user and is never stored in the
-archive.
+**Administration → Backup**. The archive contains application data and secrets; the encryption password is
+chosen by the user and is not stored in the manifest. The archive also contains
+the encrypted configuration, so the password is required to restore it.
 
 ## What is included
 
@@ -35,7 +35,8 @@ Excluded because they are large or rebuildable:
 - The archive is encrypted with AES-256-GCM.
 - The key is derived from the backup password with scrypt.
 - The password is stored locally in `config/backup-secrets.json` with mode
-  `0600` so scheduled backups can run. It is never returned by the API.
+  `0600` so scheduled backups can run. It is never returned by the API and is
+  part of the encrypted archive configuration.
 - `MEMORA_BACKUP_PASSWORD` can be used instead; in that case the UI cannot
   change it.
 - If the password is lost, the backup cannot be restored.

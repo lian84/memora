@@ -3,8 +3,9 @@
 **Italiano** | [English](BACKUP.md)
 
 Memora crea snapshot locali cifrati, scaricabili da **Amministrazione →
-Backup**. L’archivio contiene dati applicativi e segreti; la password di
-cifratura viene scelta dall’utente e non viene salvata nell’archivio.
+Backup**. L’archivio contiene dati applicativi e segreti; la password di cifratura viene
+scelta dall’utente e non viene salvata nel manifest. L’archivio contiene anche
+la configurazione cifrata, quindi la password serve per ripristinarlo.
 
 ## Cosa viene incluso
 
@@ -35,7 +36,7 @@ Esclusi perché grandi o ricostruibili:
 - La chiave deriva dalla password con scrypt.
 - La password è conservata localmente in `config/backup-secrets.json` con
   permessi `0600` per permettere i backup pianificati. Non viene mai restituita
-  dall’API.
+  dall’API ed è parte della configurazione cifrata dell’archivio.
 - In alternativa si può usare `MEMORA_BACKUP_PASSWORD`; in quel caso la UI non
   può modificarla.
 - Se la password viene persa, il backup non è ripristinabile.

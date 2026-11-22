@@ -135,7 +135,7 @@ export function BackupAdminPanel() {
         <div className="admin-card-heading">
           <div>
             <h3>{t('Backup locale')}</h3>
-            <p className="admin-card-description">{t('Crea un archivio cifrato della memoria, delle chat, dei progetti e della configurazione. La password non viene salvata nell’archivio.')}</p>
+            <p className="admin-card-description">{t('Crea un archivio cifrato della memoria, delle chat, dei progetti e della configurazione. La password non viene restituita dall’API; l’archivio contiene la configurazione cifrata, quindi serve la password per ripristinarlo.')}</p>
           </div>
           <button type="button" className="admin-primary" onClick={() => void runBackup()} disabled={creating || !status?.passwordConfigured || status?.busy}>
             {creating ? t('Backup in corso…') : t('Crea backup ora')}
@@ -171,7 +171,7 @@ export function BackupAdminPanel() {
 
       <section className="admin-card">
         <h3>{t('Password del backup')}</h3>
-        <p className="admin-card-description">{t('La password cifra i backup. Non viene conservata nell’archivio e non può essere recuperata: senza password i backup non sono ripristinabili. Se la cambi, i backup precedenti richiedono la password vecchia.')}</p>
+        <p className="admin-card-description">{t('La password cifra i backup. Non viene restituita dall’API e non può essere recuperata: senza password i backup non sono ripristinabili. Se la cambi, i backup precedenti richiedono la password vecchia.')}</p>
         <div className="admin-grid-2">
           <label className="admin-label">{t('Nuova password')}
             <input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password" />

@@ -721,4 +721,6 @@ export const fr: Record<string, string> = {
   'Venerdì': 'Vendredi',
   'Sabato': 'Samedi',
   'Domenica': 'Dimanche',
+  'Crea un archivio cifrato della memoria, delle chat, dei progetti e della configurazione. La password non viene restituita dall’API; l’archivio contiene la configurazione cifrata, quindi serve la password per ripristinarlo.': 'Créez une archive chiffrée de la mémoire, des conversations, des projets et de la configuration. Le mot de passe n’est pas renvoyé par l’API ; l’archive contient la configuration chiffrée, le mot de passe est donc nécessaire pour la restaurer.',
+  'La password cifra i backup. Non viene restituita dall’API e non può essere recuperata: senza password i backup non sono ripristinabili. Se la cambi, i backup precedenti richiedono la password vecchia.': 'Le mot de passe chiffre les backups. Il n’est pas renvoyé par l’API et ne peut pas être récupéré : sans lui, les backups ne sont pas restaurables. Si vous le changez, les anciens backups exigent l’ancien mot de passe.',
 };

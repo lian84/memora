@@ -720,4 +720,6 @@ export const en: Record<string, string> = {
   'Venerdì': 'Friday',
   'Sabato': 'Saturday',
   'Domenica': 'Sunday',
+  'Crea un archivio cifrato della memoria, delle chat, dei progetti e della configurazione. La password non viene restituita dall’API; l’archivio contiene la configurazione cifrata, quindi serve la password per ripristinarlo.': 'Create an encrypted archive of memory, chats, projects and configuration. The password is not returned by the API; the archive contains encrypted configuration, so the password is required to restore it.',
+  'La password cifra i backup. Non viene restituita dall’API e non può essere recuperata: senza password i backup non sono ripristinabili. Se la cambi, i backup precedenti richiedono la password vecchia.': 'The password encrypts backups. It is not returned by the API and cannot be recovered: without it backups cannot be restored. If you change it, older backups require the old password.',
 };
