@@ -39,6 +39,7 @@ export interface MonitorServiceOptions {
   getRemoteStatus: () => Promise<BackupRemoteStatus>;
   getJobs: () => AutomationJob[];
   notify?: MonitorNotifier;
+  getDiskPercent?: (target: string) => Promise<number | null>;
   log?: (event: string, details?: Record<string, unknown>) => void;
   now?: () => number;
 }
@@ -79,6 +80,7 @@ export class MonitorService {
   private readonly getRemoteStatus: () => Promise<BackupRemoteStatus>;
   private readonly getJobs: () => AutomationJob[];
   private readonly notify?: MonitorNotifier;
+  private readonly getDiskPercent: (target: string) => Promise<number | null>;
   private readonly log: (event: string, details?: Record<string, unknown>) => void;
   private readonly now: () => number;
   private settings: MonitorSettings = { ...DEFAULT_SETTINGS };
@@ -93,6 +95,7 @@ export class MonitorService {
     this.getRemoteStatus = options.getRemoteStatus;
     this.getJobs = options.getJobs;
     this.notify = options.notify;
+    this.getDiskPercent = options.getDiskPercent ?? (target => this.measureDisk(target));
     this.log = options.log ?? (() => undefined);
     this.now = options.now ?? Date.now;
     this.configPath = path.join(options.dataDir, 'config', 'monitor.json');
@@ -152,7 +155,7 @@ export class MonitorService {
       const backup = this.getBackupStatus();
       const remote = await this.getRemoteStatus().catch(() => null);
       const jobs = this.getJobs();
-      diskPercent = await this.diskPercent(this.dataDir);
+      diskPercent = await this.getDiskPercent(this.dataDir);
       const alerts: MonitorAlert[] = [];
       const now = this.now();
 
@@ -251,7 +254,7 @@ export class MonitorService {
     };
   }
 
-  private async diskPercent(target: string): Promise<number | null> {
+  private async measureDisk(target: string): Promise<number | null> {
     try {
       const stats = await statfs(target);
       const total = Number(stats.blocks) * Number(stats.bsize);

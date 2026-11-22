@@ -38,6 +38,7 @@ describe('MonitorService', () => {
       getBackupStatus: () => backup({ lastBackup: { id: 'b', archiveName: 'b.mbackup', createdAt: Date.now() - 9 * 86_400_000, size: 1, sha256: 'x', encrypted: true, appVersion: 'test', trigger: 'manual' } }),
       getRemoteStatus: async () => remote({ lastError: 'upload failed' }),
       getJobs: () => [job({ lastRunStatus: 'failed', lastRunAt: Date.now() - 60_000 })],
+      getDiskPercent: async () => 10,
       notify,
     });
     await service.load();
@@ -57,6 +58,7 @@ describe('MonitorService', () => {
       getBackupStatus: () => backup({ lastBackup: { id: 'b', archiveName: 'b.mbackup', createdAt: Date.now(), size: 1, sha256: 'x', encrypted: true, appVersion: 'test', trigger: 'manual' } }),
       getRemoteStatus: async () => remoteStatus,
       getJobs: () => [],
+      getDiskPercent: async () => 10,
       notify,
     });
     await service.load();
@@ -69,7 +71,7 @@ describe('MonitorService', () => {
   });
 
   it('salva le soglie e disattiva il monitoraggio', async () => {
-    const service = new MonitorService({ dataDir: await tempDir(), getBackupStatus: () => backup(), getRemoteStatus: async () => remote({ configured: false }), getJobs: () => [] });
+    const service = new MonitorService({ dataDir: await tempDir(), getBackupStatus: () => backup(), getRemoteStatus: async () => remote({ configured: false }), getJobs: () => [], getDiskPercent: async () => 10 });
     await service.load();
     const status = await service.updateSettings({ enabled: false, diskWarningPercent: 70, diskCriticalPercent: 85, backupMaxAgeDays: 14 });
     expect(status.settings).toMatchObject({ enabled: false, diskWarningPercent: 70, diskCriticalPercent: 85, backupMaxAgeDays: 14 });
