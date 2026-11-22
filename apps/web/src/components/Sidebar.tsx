@@ -63,6 +63,7 @@ interface SidebarProps {
   automationsActive?: boolean;
   selectedAutomationId?: string | null;
   onCreateAutomation?: () => void;
+  onOpenAutomations?: () => void;
   onNewAutomationInProject?: (projectId: string) => void;
   onSelectAutomation?: (job: AutomationJob) => void;
   onOpenSecondBrain?: () => void;
@@ -101,6 +102,7 @@ export function Sidebar({
   automationsActive = false,
   selectedAutomationId = null,
   onCreateAutomation,
+  onOpenAutomations,
   onNewAutomationInProject,
   onSelectAutomation,
   onOpenSecondBrain,
@@ -289,6 +291,21 @@ export function Sidebar({
           </button>
         )}
       </div>
+      {onOpenAutomations && (
+        <button
+          type="button"
+          className={`sidebar-automations-link${automationsActive ? ' is-active' : ''}`}
+          onClick={onOpenAutomations}
+          title={t('Tutte le automazioni')}
+          aria-current={automationsActive ? 'page' : undefined}
+        >
+          <span className="sidebar-automations-link-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 1.5" /></svg>
+          </span>
+          <span>{t('Tutte le automazioni')}</span>
+          {automations.length > 0 && <span className="sidebar-automations-link-count">{automations.length}</span>}
+        </button>
+      )}
       {error && <div role="alert" className="sidebar-error">{error}</div>}
       <div className="session-list">
         {loading && sessions.length === 0 && <div className="session-list-empty">{t('Caricamento sessioni...')}</div>}

@@ -499,6 +499,10 @@ export default function App() {
     openAutomationsPage({ create: true, projectId: projectId === undefined ? selectedProjectId : projectId });
   }, [openAutomationsPage, selectedProjectId]);
 
+  const handleOpenAutomations = useCallback(() => {
+    openAutomationsPage({});
+  }, [openAutomationsPage]);
+
   const handleSelectAutomation = useCallback((job: AutomationJob) => {
     const projectId = job.projectId ?? null;
     setSelectedProjectId(projectId);
@@ -670,6 +674,7 @@ export default function App() {
         automationsActive={automationsOpen}
         selectedAutomationId={automationsOpen ? automationFocusId : null}
         onCreateAutomation={() => handleNewAutomation()}
+        onOpenAutomations={handleOpenAutomations}
         onNewAutomationInProject={handleNewAutomation}
         onSelectAutomation={handleSelectAutomation}
         collapsed={appearance.sidebarCollapsed}

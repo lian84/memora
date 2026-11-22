@@ -673,4 +673,5 @@ export const en: Record<string, string> = {
   'Default del progetto/chat': 'Project/chat default',
   'Modello LLM': 'LLM model',
   'Se non scegli provider e modello, l’automazione eredita il default del progetto o della chat.': 'If you do not choose a provider and model, the automation inherits the project or chat default.',
+  'Tutte le automazioni': 'All automations',
 };

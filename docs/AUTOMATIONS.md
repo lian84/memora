@@ -9,7 +9,9 @@ process) is running. It does not require a logged-in web session.
 ## Where to create them
 
 The main sidebar has **New chat** (two thirds) and **New automation** (one
-third) side by side. Automations are first-class objects: they appear under
+third) side by side. Below them, **All automations** opens a single page with
+every job, including jobs from all projects and unassociated jobs, with a live
+count. Automations are first-class objects: they appear under
 their project, next to chats, or under **Automations without a project** when
 no project is selected. Opening one shows its editor, run history and Telegram
 settings in the main workspace, without going through Administration.

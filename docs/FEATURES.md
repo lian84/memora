@@ -53,6 +53,7 @@ Last updated: 2026-11-20.
   the browser closed.
 - [x] End-to-end HTTP tests with two SSE clients and replay after reconnection.
 - [x] Manual rename always wins over automatic title generation.
+- [x] All-automations page with a sidebar shortcut, count and jobs from every project.
 - [x] Automation page: cron/timezone jobs, project and agent profile selection, optional MCP servers and explicit MCP writes.
 - [x] Headless scheduler with timeout, limited retries, run history and **Run now**; changing the schedule does not require a browser. Run history refreshes live while it is open.
 - [x] Per-automation LLM provider/model/reasoning selection, inherited from project/chat defaults when omitted.

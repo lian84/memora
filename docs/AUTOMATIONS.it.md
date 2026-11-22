@@ -9,7 +9,9 @@ processo equivalente) è attivo. Non richiede una sessione web autenticata.
 ## Dove crearle
 
 La sidebar principale mostra **Nuova chat** (due terzi) e **Nuova automazione**
-(un terzo) affiancati. Le automazioni sono oggetti di primo livello: compaiono
+(un terzo) affiancati. Sotto, **Tutte le automazioni** apre un’unica pagina con
+tutti i job, inclusi quelli di tutti i progetti e quelli senza progetto, con il
+conteggio live. Le automazioni sono oggetti di primo livello: compaiono
 nel progetto di appartenenza, accanto alle chat, oppure in **Automazioni senza
 progetto** quando non è associato un progetto. Aprendone una si vedono editor,
 cronologia e impostazioni Telegram nello spazio principale, senza passare da

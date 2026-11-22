@@ -135,3 +135,16 @@ test('mostra il pulsante automazione e le automazioni dentro il progetto', () =>
   expect(markup).toContain('sidebar-project-automations');
   expect(markup).toContain('Automazioni');
 });
+
+test('espone la pagina con tutte le automazioni', () => {
+  const markup = renderToStaticMarkup(
+    <Sidebar
+      {...baseProps}
+      automations={[{ id: 'job_1', name: 'Riepilogo', prompt: 'Riepilogo', cron: '0 9 * * *', timezone: 'Europe/Rome', enabled: true, mcp: { enabled: [] }, notifyTelegram: false, webEnabled: false, timeoutMinutes: 10, maxAttempts: 1, createdAt: 1, updatedAt: 1 }]}
+      onOpenAutomations={() => undefined}
+    />,
+  );
+  expect(markup).toContain('Tutte le automazioni');
+  expect(markup).toContain('sidebar-automations-link');
+  expect(markup).toContain('sidebar-automations-link-count');
+});
