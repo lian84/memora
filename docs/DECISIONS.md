@@ -2201,3 +2201,31 @@ installations.
   running.
 - A lost backup password means an unrecoverable archive.
 - Remote upload and installer restore are follow-up milestones.
+
+---
+## ADR-063 — Mega remote backup via rclone, latest copy only
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+The backup is local-only. A remote copy protects against host loss, and Mega's
+free 20 GB plan is enough for encrypted snapshots if only the latest is kept.
+
+### Decision
+- Use a dedicated rclone config under `config/rclone.conf` (`0600`) and a UI
+  wizard for Mega credentials, optional 2FA and remote folder.
+- Store the Mega password obscured in rclone config; never return it from the API.
+- Upload the latest local archive and manifest with `rclone sync` to a dedicated
+  remote folder, deleting older remote copies.
+- Let auto-upload run after a successful local backup, following the local
+  backup schedule.
+- Keep local retention independent (default four copies).
+- Require rclone on the host; the installer will provision it in a later
+  milestone.
+
+### Consequences
+- One encrypted remote copy is available without exposing secrets to the
+  application API.
+- The remote folder is managed by Memora and may be emptied of old backup files.
+- If rclone is missing or credentials expire, the backup remains local and the
+  remote error is shown in Administration.

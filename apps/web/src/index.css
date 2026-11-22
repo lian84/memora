@@ -1893,3 +1893,4 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .backup-schedule { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 .backup-admin .admin-card-description { margin-bottom: 8px; }
 @media (max-width: 760px) { .backup-row { align-items: flex-start; flex-direction: column; } }
+.backup-remote-form, .backup-remote-configured { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }

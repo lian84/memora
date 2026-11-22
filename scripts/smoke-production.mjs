@@ -305,6 +305,12 @@ async function main() {
     assert.equal(backupStatus.status, 200, 'GET /api/admin/backup deve funzionare');
     const backupStatusBody = await backupStatus.json();
     assert.equal(backupStatusBody.status.passwordConfigured, false);
+    const backupRemote = await authFetch(`${baseUrl}/api/admin/backup/remote`);
+    assert.equal(backupRemote.status, 200, 'GET /api/admin/backup/remote deve funzionare');
+    const backupRemoteBody = await backupRemote.json();
+    assert.equal(backupRemoteBody.status.configured, false);
+    assert.doesNotMatch(JSON.stringify(backupRemoteBody), /password|rclone-password/i, 'le credenziali remote non devono essere restituite');
+
     const backupPassword = await authFetch(`${baseUrl}/api/admin/backup/password`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -370,7 +376,7 @@ async function main() {
     console.log(`- Admin settings/status + live PATCH: ok`);
     console.log(`- Admin secrets + OpenCode Go chat default: ok`);
     console.log(`- Telegram accounts + automations CRUD: ok`);
-    console.log(`- Backup cifrato, download e pianificazione: ok`);
+    console.log(`- Backup cifrato, remote status, download e pianificazione: ok`);
     console.log(`- API/asset mancanti: 404 senza fallback SPA`);
     console.log(`- SIGTERM: graceful shutdown`);
   } finally {

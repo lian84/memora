@@ -37,6 +37,8 @@ import {
   type BackupRecord,
   type BackupSchedule,
   type BackupStatus,
+  type BackupRemoteInput,
+  type BackupRemoteStatus,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -1107,4 +1109,35 @@ export async function deleteBackup(id: string): Promise<{ id: string }> {
 
 export function backupDownloadUrl(id: string): string {
   return `/api/admin/backup/${encodeURIComponent(id)}/download`;
+}
+
+
+export async function getBackupRemoteStatus(): Promise<BackupRemoteStatus> {
+  const res = await request('/api/admin/backup/remote');
+  const data = await res.json() as { status: BackupRemoteStatus };
+  return data.status;
+}
+
+export async function configureBackupRemote(input: BackupRemoteInput): Promise<BackupRemoteStatus> {
+  const res = await request('/api/admin/backup/remote', { method: 'PUT', body: JSON.stringify(input) });
+  const data = await res.json() as { status: BackupRemoteStatus };
+  return data.status;
+}
+
+export async function setBackupRemoteAutoUpload(autoUpload: boolean): Promise<BackupRemoteStatus> {
+  const res = await request('/api/admin/backup/remote', { method: 'PATCH', body: JSON.stringify({ autoUpload }) });
+  const data = await res.json() as { status: BackupRemoteStatus };
+  return data.status;
+}
+
+export async function uploadLatestBackup(): Promise<BackupRemoteStatus> {
+  const res = await request('/api/admin/backup/remote/upload', { method: 'POST' });
+  const data = await res.json() as { status: BackupRemoteStatus };
+  return data.status;
+}
+
+export async function disconnectBackupRemote(): Promise<BackupRemoteStatus> {
+  const res = await request('/api/admin/backup/remote?confirm=remote', { method: 'DELETE' });
+  const data = await res.json() as { status: BackupRemoteStatus };
+  return data.status;
 }

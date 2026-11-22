@@ -92,6 +92,31 @@ Ogni archivio può essere scaricato dalla tabella. I file sono cifrati; per
 aprirli serve la password. L’eliminazione è esplicita e richiede conferma nella
 UI.
 
+## Backup remoto (Mega via rclone)
+
+La scheda Backup remoto in Amministrazione configura un remote **Mega**
+dedicato tramite rclone. Il wizard chiede:
+
+- nome remote (default `memora-mega`);
+- email e password Mega;
+- codice 2FA opzionale;
+- cartella remota;
+- upload automatico dopo ogni backup.
+
+La configurazione rclone viene scritta in `config/rclone.conf` con permessi
+`0600`; la password Mega è offuscata, non viene restituita dall’API ed è inclusa
+nel backup cifrato. La cartella remota è dedicata a Memora.
+
+Dopo ogni upload vengono copiati solo l’ultimo archivio locale e il manifest:
+`rclone sync` rimuove le copie remote precedenti. La retention locale continua
+a conservare il numero di copie configurato.
+
+`rclone` deve essere installato sull’host (`sudo apt install rclone` su Debian).
+L’installer gestirà questo prerequisito nella prossima milestone. Il pulsante
+**Carica ultimo backup** è disponibile quando esiste un backup locale. L’upload
+automatico segue la pianificazione locale e parte dopo che il backup è uscito
+dalla manutenzione.
+
 ## Ripristino
 
 Il ripristino non è disponibile da un’istanza Memora attiva. Il percorso
@@ -104,7 +129,6 @@ Manifest e checksum vengono verificati prima di sostituire i dati.
 
 ## Limiti noti
 
-- Upload remoto con rclone: milestone separata.
 - `tar` deve essere disponibile sull’host (pacchetto Debian `tar`).
 - Il backup non include i modelli grandi; possono essere scaricati di nuovo.
 - Una password conservata localmente per i backup automatici protegge un backup

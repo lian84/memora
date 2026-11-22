@@ -92,6 +92,31 @@ Every archive can be downloaded from the backup table. Downloads are encrypted
 files; the password is required to decrypt them. Deletion is explicit and
 requires confirmation in the UI.
 
+## Remote backup (Mega via rclone)
+
+The remote backup card in Administration configures a dedicated **Mega** remote
+through rclone. The wizard asks for:
+
+- remote name (default `memora-mega`);
+- Mega email and password;
+- optional 2FA code;
+- remote folder;
+- automatic upload after every backup.
+
+The rclone configuration is written to `config/rclone.conf` with mode `0600`;
+the Mega password is stored obscured, never returned by the API and included in
+the encrypted backup. The remote backup directory is dedicated to Memora.
+
+After each upload, only the latest local archive and manifest are copied to the
+remote folder: `rclone sync` removes older remote copies. The local retention
+still keeps the configured number of local copies.
+
+`rclone` must be installed on the host (`sudo apt install rclone` on Debian).
+The installer will handle this prerequisite in the next milestone. Manual
+**Upload latest backup** is available when a local backup exists. Automatic
+upload follows the local backup schedule and runs after the backup has left
+maintenance mode.
+
 ## Restore
 
 Restore is intentionally not available from a running Memora instance. The
@@ -104,7 +129,6 @@ The archive manifest and checksum are verified before replacing data.
 
 ## Known limits
 
-- rclone/remote upload is a separate milestone.
 - `tar` must be available on the host (Debian package `tar`).
 - The backup does not include the large model files; they can be downloaded
   again.

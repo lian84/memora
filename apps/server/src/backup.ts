@@ -178,6 +178,7 @@ export class BackupService {
   private timer: NodeJS.Timeout | null = null;
   private nextRunAt: number | undefined;
   private writeChain: Promise<void> = Promise.resolve();
+  private afterBackup?: (record: BackupRecord) => Promise<void>;
 
   constructor(options: BackupServiceOptions) {
     this.dataDir = options.dataDir;
@@ -252,7 +253,19 @@ export class BackupService {
     return { ...this.schedule };
   }
 
+  setAfterBackup(callback: (record: BackupRecord) => Promise<void>): void {
+    this.afterBackup = callback;
+  }
+
   async createBackup(trigger: BackupTrigger): Promise<BackupRecord> {
+    const record = await this.createBackupInternal(trigger);
+    if (this.afterBackup) await this.afterBackup(record).catch((error) => {
+      this.log('backup_after_callback_failed', { error: error instanceof Error ? error.message : String(error) });
+    });
+    return record;
+  }
+
+  private async createBackupInternal(trigger: BackupTrigger): Promise<BackupRecord> {
     if (this.busy || this.maintenance) throw new BackupError('backup_busy', 'È già in corso un backup', 409);
     const password = this.getPassword();
     if (!password) throw new BackupError('backup_password_missing', 'Configura la password del backup prima di continuare', 409);

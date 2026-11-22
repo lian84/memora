@@ -34,3 +34,24 @@ export interface BackupStatus {
   backups: BackupRecord[];
   lastBackup?: BackupRecord;
 }
+
+export interface BackupRemoteStatus {
+  rcloneAvailable: boolean;
+  configured: boolean;
+  remoteName?: string;
+  folder?: string;
+  autoUpload: boolean;
+  busy: boolean;
+  lastUploadAt?: number;
+  lastUploadName?: string;
+  lastError?: string;
+}
+
+export interface BackupRemoteInput {
+  remoteName: string;
+  email: string;
+  password: string;
+  twoFactor?: string;
+  folder: string;
+  autoUpload?: boolean;
+}

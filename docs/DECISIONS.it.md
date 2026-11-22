@@ -2050,3 +2050,32 @@ installazioni non gestite da sviluppatori.
   attivo.
 - Una password persa rende l’archivio non recuperabile.
 - Upload remoto e restore da installer sono milestone successive.
+
+---
+## ADR-063 — Backup remoto Mega via rclone, solo l’ultima copia
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Il backup è solo locale. Una copia remota protegge dalla perdita dell’host e i
+20 GB gratuiti di Mega bastano per snapshot cifrati se si conserva solo
+l’ultimo.
+
+### Decisione
+- Usare una configurazione rclone dedicata in `config/rclone.conf` (`0600`) e un
+  wizard UI per credenziali Mega, 2FA opzionale e cartella remota.
+- Salvare la password Mega offuscata nella configurazione rclone; non
+  restituirla mai dall’API.
+- Caricare l’ultimo archivio e manifest con `rclone sync` in una cartella remota
+  dedicata, eliminando le copie remote precedenti.
+- Eseguire l’upload automatico dopo un backup locale riuscito, seguendo la
+  pianificazione locale.
+- Mantenere la retention locale indipendente (default quattro copie).
+- Richiedere rclone sull’host; l’installer lo fornirà in una milestone
+  successiva.
+
+### Conseguenze
+- Una copia remota cifrata è disponibile senza esporre segreti all’API.
+- La cartella remota è gestita da Memora e può perdere i vecchi file di backup.
+- Se rclone manca o le credenziali scadono, il backup resta locale e l’errore
+  remoto viene mostrato in Amministrazione.

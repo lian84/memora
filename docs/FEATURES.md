@@ -170,6 +170,7 @@ Last updated: 2026-11-20.
 - [x] First-password setup and CLI-only reset.
 - [x] `HttpOnly` cookie, `SameSite=Lax`, rate limiting and `Origin` checks.
 - [x] Encrypted local backups with maintenance freeze, download, retention and optional automatic schedule.
+- [x] Mega remote backup wizard via rclone, manual upload and automatic latest-only upload.
 - [x] Secrets in environment or `config/secrets.json` with mode `0600`.
 - [x] Web configuration in `config/web.json` with mode `0600`.
 - [x] No API key returned by the API.

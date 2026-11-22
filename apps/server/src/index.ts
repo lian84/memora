@@ -18,6 +18,7 @@ import { registerAutomationRoutes } from './automation-routes.js';
 import { TelegramService, TelegramStore } from './telegram.js';
 import { BackupService } from './backup.js';
 import { registerBackupRoutes } from './backup-routes.js';
+import { RcloneService } from './rclone.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -269,8 +270,16 @@ const backupService = new BackupService({
     && (memoryWriterQueue?.getStats().running ?? 0) === 0,
 });
 await backupService.load();
+const rcloneService = new RcloneService({
+  dataDir,
+  backupDir: backupService.backupDir,
+  getBackups: () => backupService.listBackups(),
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'backup-remote'),
+});
+await rcloneService.load();
+backupService.setAfterBackup(record => rcloneService.afterBackup(record));
 
-registerBackupRoutes(app, { backups: backupService });
+registerBackupRoutes(app, { backups: backupService, remote: rcloneService });
 
 // Durante uno snapshot nessuna richiesta applicativa deve modificare i dati.
 // Le API di stato/auth e la stessa area backup restano raggiungibili.
