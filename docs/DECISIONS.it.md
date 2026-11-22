@@ -2134,3 +2134,29 @@ un aggiornamento sicuro per chi non lavora come sviluppatore.
 - I dati vanno ripristinati con il servizio fermo.
 - Un checkout senza tag Git non può usare `update.sh`.
 - Installer e updater sono operazioni shell privilegiate, non azioni web.
+
+---
+## ADR-066 — Monitoraggio locale con avvisi Telegram deduplicati
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Backup, upload remoti e automazioni possono fallire in silenzio mentre nessuno
+guarda l’amministrazione. Gli avvisi devono essere utili e non diventare rumore
+ripetuto.
+
+### Decisione
+- Eseguire un monitor locale ogni 15 minuti, con controllo manuale da Sistema.
+- Osservare spazio disco, età/fallimento backup, errore upload remoto e
+  automazioni fallite.
+- Conservare stato e impostazioni in `config/` con permessi `0600`.
+- Notificare solo i nuovi avvisi attivi e un messaggio di rientro quando
+  scompaiono.
+- Inviare al primo account Telegram attivo; mantenere gli avvisi visibili nella
+  UI se Telegram non è disponibile.
+- Non avviare modelli, backup o aggiornamenti dal monitor.
+
+### Conseguenze
+- I guasti sono visibili senza tenere aperto il browser.
+- Gli avvisi identici ripetuti vengono soppressi.
+- Un host completamente offline richiede comunque monitoraggio esterno.

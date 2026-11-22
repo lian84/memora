@@ -2284,3 +2284,28 @@ do not work as developers.
 - Data must be restored with the service stopped.
 - A source checkout without Git tags cannot use `update.sh`.
 - The installer and updater are privileged shell operations, not web actions.
+
+---
+## ADR-066 — Local monitoring with deduplicated Telegram alerts
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Backups, remote uploads and automations can fail silently while nobody is
+looking at the administration page. Alerts must be actionable and not become a
+source of repeated noise.
+
+### Decision
+- Run a local monitor every 15 minutes with a manual check from System.
+- Observe disk usage, backup age/failure, remote upload error and failed
+  automations.
+- Keep alert state and settings in `config/` with `0600` permissions.
+- Notify only newly active alerts, plus a recovery message when they clear.
+- Send to the first enabled Telegram account; keep alerts visible in the UI when
+  Telegram is unavailable.
+- Never trigger models, backups or updates from the monitor.
+
+### Consequences
+- Failures are visible without keeping a browser open.
+- Repeated identical alerts are suppressed.
+- Total host outage still requires external uptime monitoring.

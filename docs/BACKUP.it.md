@@ -138,4 +138,4 @@ directory precedente viene spostata in una directory di sicurezza con timestamp.
 - Il backup non include i modelli grandi; possono essere scaricati di nuovo.
 - Una password conservata localmente per i backup automatici protegge un backup
   rubato, non un host completamente compromesso.
-- Gli avvisi di monitoraggio sono una milestone successiva.
+- Upload remoto, restore da installer e avvisi di monitoraggio locale sono implementati.

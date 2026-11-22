@@ -33,6 +33,8 @@ export interface BackupStatus {
   nextRunAt?: number;
   backups: BackupRecord[];
   lastBackup?: BackupRecord;
+  lastFailureAt?: number;
+  lastError?: string;
 }
 
 export interface BackupRemoteStatus {

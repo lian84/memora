@@ -21,6 +21,8 @@ import { registerBackupRoutes } from './backup-routes.js';
 import { RcloneService } from './rclone.js';
 import { UpdateService } from './update-check.js';
 import { registerUpdateRoutes } from './update-routes.js';
+import { MonitorService } from './monitor.js';
+import { registerMonitorRoutes } from './monitor-routes.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -295,9 +297,25 @@ const rcloneService = new RcloneService({
 });
 await rcloneService.load();
 backupService.setAfterBackup(record => rcloneService.afterBackup(record));
+const monitorService = new MonitorService({
+  dataDir,
+  getBackupStatus: () => backupService.getStatus(),
+  getRemoteStatus: () => rcloneService.status(),
+  getJobs: () => automationStore.listJobs(),
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'monitor'),
+  notify: async alerts => {
+    const account = telegramService.resolveAccount();
+    if (!account || !account.enabled || !account.chatId || !account.tokenConfigured) return false;
+    const lines = alerts.slice(0, 8).map(alert => `${alert.severity === 'critical' ? '🚨' : '⚠️'} ${alert.title}\n${alert.detail}`);
+    await telegramService.send(`Memora monitor\n\n${lines.join('\n\n')}`, account.id);
+    return true;
+  },
+});
+await monitorService.load();
 
 registerBackupRoutes(app, { backups: backupService, remote: rcloneService });
 registerUpdateRoutes(app, { updates: updateService });
+registerMonitorRoutes(app, { monitor: monitorService });
 
 // Durante uno snapshot nessuna richiesta applicativa deve modificare i dati.
 // Le API di stato/auth e la stessa area backup restano raggiungibili.
@@ -1334,6 +1352,7 @@ const shutdown = async (signal: string) => {
   automationScheduler.stop();
   backupService.stop();
   updateService.stop();
+  monitorService.stop();
   try {
     await app.close();
   } catch (err) {
@@ -1357,6 +1376,7 @@ const start = async () => {
     automationScheduler.start();
     backupService.start();
     updateService.start();
+    monitorService.start();
   } catch (err) {
     app.log.error(err);
     process.exit(1);

@@ -32,6 +32,7 @@ import { McpAdminPanel } from './McpAdminPanel';
 import { TelegramAdminPanel } from './TelegramAdminPanel';
 import { BackupAdminPanel } from './BackupAdminPanel';
 import { UpdateAdminPanel } from './UpdateAdminPanel';
+import { MonitorAdminPanel } from './MonitorAdminPanel';
 import {
   getBrowserNotificationPermission,
   isBrowserNotificationEnabled,
@@ -783,6 +784,8 @@ export function AdminSettingsView({
         </div>
         <p className="admin-security-note">Non esporre Memora pubblicamente senza autenticazione. Le API amministrative sono centralizzate sotto <code>/api/admin/*</code>.</p>
       </section>
+
+      <MonitorAdminPanel />
 
       <UpdateAdminPanel />
       </div>

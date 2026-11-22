@@ -178,6 +178,8 @@ export class BackupService {
   private timer: NodeJS.Timeout | null = null;
   private nextRunAt: number | undefined;
   private writeChain: Promise<void> = Promise.resolve();
+  private lastFailureAt?: number;
+  private lastError?: string;
   private afterBackup?: (record: BackupRecord) => Promise<void>;
 
   constructor(options: BackupServiceOptions) {
@@ -233,6 +235,8 @@ export class BackupService {
       ...(this.nextRunAt !== undefined ? { nextRunAt: this.nextRunAt } : {}),
       backups,
       ...(backups[0] ? { lastBackup: backups[0] } : {}),
+      ...(this.lastFailureAt ? { lastFailureAt: this.lastFailureAt } : {}),
+      ...(this.lastError ? { lastError: this.lastError } : {}),
     };
   }
 
@@ -303,8 +307,14 @@ export class BackupService {
       const manifest: BackupManifest = { version: 1, record };
       await this.atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
       await this.pruneRetention();
+      this.lastError = undefined;
+      this.lastFailureAt = undefined;
       this.log('backup_completed', { trigger, id, size });
       return record;
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.message.slice(0, 800) : String(error).slice(0, 800);
+      this.lastFailureAt = Date.now();
+      throw error;
     } finally {
       await fs.unlink(tempTar).catch(() => undefined);
       this.busy = false;

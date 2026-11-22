@@ -41,6 +41,8 @@ import {
   type BackupRemoteStatus,
   type UpdateSettings,
   type UpdateStatus,
+  type MonitorSettings,
+  type MonitorStatus,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -1160,5 +1162,24 @@ export async function checkForUpdate(): Promise<UpdateStatus> {
 export async function updateUpdateSettings(settings: Partial<UpdateSettings>): Promise<UpdateStatus> {
   const res = await request('/api/admin/update', { method: 'PATCH', body: JSON.stringify(settings) });
   const data = await res.json() as { status: UpdateStatus };
+  return data.status;
+}
+
+
+export async function getMonitorStatus(): Promise<MonitorStatus> {
+  const res = await request('/api/admin/monitor');
+  const data = await res.json() as { status: MonitorStatus };
+  return data.status;
+}
+
+export async function checkMonitor(): Promise<MonitorStatus> {
+  const res = await request('/api/admin/monitor/check', { method: 'POST' });
+  const data = await res.json() as { status: MonitorStatus };
+  return data.status;
+}
+
+export async function updateMonitorSettings(settings: Partial<MonitorSettings>): Promise<MonitorStatus> {
+  const res = await request('/api/admin/monitor', { method: 'PATCH', body: JSON.stringify(settings) });
+  const data = await res.json() as { status: MonitorStatus };
   return data.status;
 }

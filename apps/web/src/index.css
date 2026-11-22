@@ -1930,3 +1930,10 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
   .admin-settings { --admin-nav-width: 0px; --admin-nav-gap: 12px; }
   .admin-layout { grid-template-columns: 1fr; gap: var(--admin-nav-gap); }
 }
+.monitor-admin { display: flex; flex-direction: column; gap: 14px; }
+.monitor-alerts { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.monitor-alert { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--warning-border); border-radius: 7px; background: var(--warning-soft); color: var(--warning-text); }
+.monitor-alert.is-critical { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
+.monitor-alert strong { font-size: 11px; }
+.monitor-alert span { font-size: 10px; line-height: 1.4; }
+.monitor-settings { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
