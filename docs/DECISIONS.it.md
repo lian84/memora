@@ -2079,3 +2079,31 @@ l’ultimo.
 - La cartella remota è gestita da Memora e può perdere i vecchi file di backup.
 - Se rclone manca o le credenziali scadono, il backup resta locale e l’errore
   remoto viene mostrato in Amministrazione.
+
+---
+## ADR-064 — Avvisi aggiornamento solo dalle release pubblicate
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+La repository è privata durante lo sviluppo. L’utente vuole una notifica quando
+esce una nuova versione, senza essere avvisato a ogni push e senza aggiornamenti
+automatici.
+
+### Decisione
+- Confrontare la versione installata con l’ultima **GitHub Release**, non con il
+  branch `main` o i singoli commit.
+- Pubblicare release solo da tag `v*.*.*` tramite un workflow GitHub Actions che
+  verifica versione, test, build e smoke prima di creare la release.
+- Controllare al massimo ogni sei ore; consentire un controllo manuale da
+  Amministrazione.
+- Supportare `MEMORA_UPDATE_REPO`, `MEMORA_UPDATE_CHECK_URL` e un token
+  read-only opzionale `MEMORA_UPDATE_CHECK_TOKEN` per la fase privata.
+- Mostrare le note e notificare il primo account Telegram attivo una volta per
+  tag. Nessun aggiornamento automatico.
+
+### Conseguenze
+- Un push su `main` non genera mai un avviso di aggiornamento.
+- Quando la repository diventa pubblica, l’endpoint GitHub predefinito funziona
+  senza token.
+- Lo script `update.sh` resta una milestone separata.

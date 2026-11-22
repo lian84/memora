@@ -19,6 +19,8 @@ import { TelegramService, TelegramStore } from './telegram.js';
 import { BackupService } from './backup.js';
 import { registerBackupRoutes } from './backup-routes.js';
 import { RcloneService } from './rclone.js';
+import { UpdateService } from './update-check.js';
+import { registerUpdateRoutes } from './update-routes.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -235,6 +237,21 @@ const agentService = new AgentService({
 const telegramStore = new TelegramStore({ dataDir, warn: message => app.log.warn(message) });
 await telegramStore.load();
 const telegramService = new TelegramService(telegramStore);
+const updateService = new UpdateService({
+  dataDir,
+  currentVersion: memoraVersion,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'update'),
+  notify: async status => {
+    const account = telegramService.resolveAccount();
+    if (!account || !account.enabled || !account.chatId || !account.tokenConfigured) return false;
+    await telegramService.send(
+      `🚀 Nuova versione Memora disponibile\nInstallata: ${status.currentVersion}\nDisponibile: ${status.latestVersion ?? '—'}${status.releaseUrl ? `\n${status.releaseUrl}` : ''}`,
+      account.id,
+    );
+    return true;
+  },
+});
+await updateService.load();
 const automationStore = new AutomationStore({ dataDir, warn: message => app.log.warn(message) });
 await automationStore.load();
 const recoveredAutomationRuns = await automationStore.recoverInterruptedRuns();
@@ -280,6 +297,7 @@ await rcloneService.load();
 backupService.setAfterBackup(record => rcloneService.afterBackup(record));
 
 registerBackupRoutes(app, { backups: backupService, remote: rcloneService });
+registerUpdateRoutes(app, { updates: updateService });
 
 // Durante uno snapshot nessuna richiesta applicativa deve modificare i dati.
 // Le API di stato/auth e la stessa area backup restano raggiungibili.
@@ -1315,6 +1333,7 @@ const shutdown = async (signal: string) => {
   app.log.info({ signal }, 'shutting down');
   automationScheduler.stop();
   backupService.stop();
+  updateService.stop();
   try {
     await app.close();
   } catch (err) {
@@ -1337,6 +1356,7 @@ const start = async () => {
     await app.listen({ host, port });
     automationScheduler.start();
     backupService.start();
+    updateService.start();
   } catch (err) {
     app.log.error(err);
     process.exit(1);

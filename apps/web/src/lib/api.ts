@@ -39,6 +39,8 @@ import {
   type BackupStatus,
   type BackupRemoteInput,
   type BackupRemoteStatus,
+  type UpdateSettings,
+  type UpdateStatus,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -1139,5 +1141,24 @@ export async function uploadLatestBackup(): Promise<BackupRemoteStatus> {
 export async function disconnectBackupRemote(): Promise<BackupRemoteStatus> {
   const res = await request('/api/admin/backup/remote?confirm=remote', { method: 'DELETE' });
   const data = await res.json() as { status: BackupRemoteStatus };
+  return data.status;
+}
+
+
+export async function getUpdateStatus(): Promise<UpdateStatus> {
+  const res = await request('/api/admin/update');
+  const data = await res.json() as { status: UpdateStatus };
+  return data.status;
+}
+
+export async function checkForUpdate(): Promise<UpdateStatus> {
+  const res = await request('/api/admin/update/check', { method: 'POST' });
+  const data = await res.json() as { status: UpdateStatus };
+  return data.status;
+}
+
+export async function updateUpdateSettings(settings: Partial<UpdateSettings>): Promise<UpdateStatus> {
+  const res = await request('/api/admin/update', { method: 'PATCH', body: JSON.stringify(settings) });
+  const data = await res.json() as { status: UpdateStatus };
   return data.status;
 }

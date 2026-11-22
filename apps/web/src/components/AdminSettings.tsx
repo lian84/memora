@@ -31,6 +31,7 @@ import { AgentsAdminPanel } from './AgentsAdminPanel';
 import { McpAdminPanel } from './McpAdminPanel';
 import { TelegramAdminPanel } from './TelegramAdminPanel';
 import { BackupAdminPanel } from './BackupAdminPanel';
+import { UpdateAdminPanel } from './UpdateAdminPanel';
 import {
   getBrowserNotificationPermission,
   isBrowserNotificationEnabled,
@@ -435,7 +436,7 @@ export function AdminSettingsView({
   const showCuratorKey = draft.curator.provider !== draft.chat.provider;
   const [activePage, setActivePage] = useState('appearance');
   const pages = [
-    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'], ['telegram', 'Telegram'], ['backup', 'Backup'],
+    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'], ['telegram', 'Telegram'], ['backup', 'Backup'], ['updates', 'Aggiornamenti'],
     ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
   ] as const;
 
@@ -566,6 +567,10 @@ export function AdminSettingsView({
 
       <div id="admin-page-backup" role="tabpanel" aria-labelledby="admin-tab-backup" className="admin-page" hidden={activePage !== 'backup'}>
         <BackupAdminPanel />
+      </div>
+
+      <div id="admin-page-updates" role="tabpanel" aria-labelledby="admin-tab-updates" className="admin-page" hidden={activePage !== 'updates'}>
+        <UpdateAdminPanel />
       </div>
 
       <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>

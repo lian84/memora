@@ -1894,3 +1894,9 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .backup-admin .admin-card-description { margin-bottom: 8px; }
 @media (max-width: 760px) { .backup-row { align-items: flex-start; flex-direction: column; } }
 .backup-remote-form, .backup-remote-configured { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.update-admin { display: flex; flex-direction: column; gap: 14px; }
+.update-settings { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+.update-notes { margin-top: 12px; }
+.update-notes summary { cursor: pointer; color: var(--text-soft); font-size: 10px; font-weight: 650; }
+.update-notes pre, .update-instructions { max-height: 320px; overflow: auto; margin: 8px 0 0; padding: 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-muted); color: var(--text-soft); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9px; line-height: 1.5; white-space: pre-wrap; }
+.update-instructions { margin-top: 8px; }

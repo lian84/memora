@@ -71,6 +71,7 @@ pnpm start
 - [Architettura](ARCHITECTURE.md)
 - [Attività pianificate](docs/AUTOMATIONS.it.md)
 - [Backup](docs/BACKUP.it.md)
+- [Aggiornamenti](docs/UPDATES.it.md)
 - [Decisioni](docs/DECISIONS.it.md)
 - [Operazioni](docs/OPERATIONS.md)
 - [Sicurezza](docs/SECURITY.md)

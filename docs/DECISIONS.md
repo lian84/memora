@@ -2229,3 +2229,30 @@ free 20 GB plan is enough for encrypted snapshots if only the latest is kept.
 - The remote folder is managed by Memora and may be emptied of old backup files.
 - If rclone is missing or credentials expire, the backup remains local and the
   remote error is shown in Administration.
+
+---
+## ADR-064 — Update awareness from published releases only
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+The repository is private during development. The user wants a notification
+when a new version is available, without being prompted on every push and
+without automatic updates.
+
+### Decision
+- Compare the installed version with the latest **GitHub Release**, not the
+  `main` branch or individual commits.
+- Publish releases only from `v*.*.*` tags through a GitHub Actions workflow
+  that verifies version, tests, build and smoke before creating the release.
+- Poll at most every six hours; allow a manual check from Administration.
+- Support `MEMORA_UPDATE_REPO`, `MEMORA_UPDATE_CHECK_URL` and an optional
+  read-only `MEMORA_UPDATE_CHECK_TOKEN` for the private phase.
+- Show release notes and notify the first enabled Telegram account once per
+  tag. No automatic update is performed.
+
+### Consequences
+- Pushing to `main` never triggers an update prompt.
+- Once the repository is public, the default GitHub endpoint works without a
+  token.
+- The actual `update.sh` remains a separate milestone.
