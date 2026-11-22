@@ -436,7 +436,7 @@ export function AdminSettingsView({
   const showCuratorKey = draft.curator.provider !== draft.chat.provider;
   const [activePage, setActivePage] = useState('appearance');
   const pages = [
-    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'], ['telegram', 'Telegram'], ['backup', 'Backup'], ['updates', 'Aggiornamenti'],
+    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'], ['telegram', 'Telegram'], ['backup', 'Backup'],
     ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
   ] as const;
 
@@ -569,9 +569,6 @@ export function AdminSettingsView({
         <BackupAdminPanel />
       </div>
 
-      <div id="admin-page-updates" role="tabpanel" aria-labelledby="admin-tab-updates" className="admin-page" hidden={activePage !== 'updates'}>
-        <UpdateAdminPanel />
-      </div>
 
       <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>
       <section id="admin-section-memory" className="admin-card">
@@ -781,9 +778,11 @@ export function AdminSettingsView({
         </div>
         <p className="admin-security-note">Non esporre Memora pubblicamente senza autenticazione. Le API amministrative sono centralizzate sotto <code>/api/admin/*</code>.</p>
       </section>
+
+      <UpdateAdminPanel />
       </div>
 
-      {activePage !== 'web' && activePage !== 'agents' && activePage !== 'mcp' && <div className="admin-savebar">
+      {activePage !== 'web' && activePage !== 'agents' && activePage !== 'mcp' && activePage !== 'telegram' && activePage !== 'backup' && <div className="admin-savebar">
         <span>{activePage === 'appearance' ? t('Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.') : `${hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · ${t('I valori gestiti dall’ambiente non vengono inviati.')}`}</span>
         <div className="admin-savebar-actions">
           <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>{t('Annulla')}</button>

@@ -48,11 +48,11 @@ https://api.github.com/repos/<repo>/releases/latest
 ```
 
 Il controllo avviene al massimo ogni sei ore. Un controllo manuale è disponibile
-in **Amministrazione → Aggiornamenti**.
+in **Amministrazione → Sistema → Aggiornamenti**.
 
 ## UI e notifiche
 
-- Il pannello Aggiornamenti mostra versione installata, ultima release, note e
+- La sezione Aggiornamenti dentro **Sistema** mostra versione installata, ultima release, note e
   link a GitHub.
 - La notifica Telegram è opzionale e viene inviata una volta per tag release al
   primo account Telegram attivo.

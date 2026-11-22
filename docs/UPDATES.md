@@ -47,11 +47,11 @@ https://api.github.com/repos/<repo>/releases/latest
 ```
 
 The check runs at most every six hours. A manual check is available in
-**Administration → Updates**.
+**Administration → System → Updates**.
 
 ## UI and notifications
 
-- The Updates panel shows current version, latest release, release notes and a
+- The Updates section under **System** shows current version, latest release, release notes and a
   link to GitHub.
 - Telegram notification is optional and is sent once per release tag to the
   first enabled Telegram account.
