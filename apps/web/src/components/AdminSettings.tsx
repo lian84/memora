@@ -434,10 +434,14 @@ export function AdminSettingsView({
   const chatStatus = providerUi.secrets?.[draft.chat.provider];
   const curatorStatus = providerUi.secrets?.[draft.curator.provider];
   const showCuratorKey = draft.curator.provider !== draft.chat.provider;
-  const [activePage, setActivePage] = useState('appearance');
-  const pages = [
-    ['appearance', 'Aspetto'], ['general', 'Generale'], ['chat', 'Chat'], ['agents', 'Agenti'], ['mcp', 'MCP'], ['telegram', 'Telegram'], ['backup', 'Backup'],
-    ['memory', 'Memoria'], ['curator', 'Curator'], ['web', 'Web'], ['system', 'Sistema'],
+  const [activePage, setActivePage] = useState('general');
+  const groups = [
+    ['general', 'Generale'],
+    ['models', 'Modelli'],
+    ['memory', 'Memoria'],
+    ['integrations', 'Integrazioni'],
+    ['agents', 'Agenti'],
+    ['system', 'Sistema'],
   ] as const;
 
   return (
@@ -458,15 +462,13 @@ export function AdminSettingsView({
         </div>
       )}
 
-      <nav id="admin-pages-nav" className="admin-page-nav" role="tablist" aria-label={t('Pagine impostazioni')}>
-        {pages.map(([id, label]) => (
+      <div className="admin-layout">
+      <nav id="admin-pages-nav" className="admin-side-nav" aria-label={t('Pagine impostazioni')}>
+        {groups.map(([id, label]) => (
           <button
             key={id}
             type="button"
-            role="tab"
-            id={`admin-tab-${id}`}
-            aria-selected={activePage === id}
-            aria-controls={`admin-page-${id}`}
+            aria-current={activePage === id ? 'page' : undefined}
             className={activePage === id ? 'is-active' : ''}
             onClick={() => {
               setActivePage(id);
@@ -478,11 +480,14 @@ export function AdminSettingsView({
         ))}
       </nav>
 
-      <div id="admin-page-appearance" role="tabpanel" aria-labelledby="admin-tab-appearance" className="admin-page" hidden={activePage !== 'appearance'}>
+      <div className="admin-content">
+
+
+      <div id="admin-page-appearance" className="admin-page" hidden={activePage !== 'general'}>
         <AppearanceSettings />
       </div>
 
-      <div id="admin-page-general" role="tabpanel" aria-labelledby="admin-tab-general" className="admin-page" hidden={activePage !== 'general'}>
+      <div id="admin-page-general" className="admin-page" hidden={activePage !== 'general'}>
       <section id="admin-section-general" className="admin-card">
         <h3>{t('Generale')}</h3>
         <p className="admin-card-description">{t('Nessun preset viene applicato senza anteprima e conferma.')}</p>
@@ -514,7 +519,7 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      <div id="admin-page-chat" role="tabpanel" aria-labelledby="admin-tab-chat" className="admin-page" hidden={activePage !== 'chat'}>
+      <div id="admin-page-chat" className="admin-page" hidden={activePage !== 'models'}>
       <section id="admin-section-chat" className="admin-card">
         <h3>{t('Chat')}</h3>
         <ModelField
@@ -553,24 +558,24 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      <div id="admin-page-agents" role="tabpanel" aria-labelledby="admin-tab-agents" className="admin-page" hidden={activePage !== 'agents'}>
+      <div id="admin-page-agents" className="admin-page" hidden={activePage !== 'agents'}>
         <AgentsAdminPanel />
       </div>
 
-      <div id="admin-page-mcp" role="tabpanel" aria-labelledby="admin-tab-mcp" className="admin-page" hidden={activePage !== 'mcp'}>
+      <div id="admin-page-mcp" className="admin-page" hidden={activePage !== 'integrations'}>
         <McpAdminPanel />
       </div>
 
-      <div id="admin-page-telegram" role="tabpanel" aria-labelledby="admin-tab-telegram" className="admin-page" hidden={activePage !== 'telegram'}>
+      <div id="admin-page-telegram" className="admin-page" hidden={activePage !== 'integrations'}>
         <TelegramAdminPanel />
       </div>
 
-      <div id="admin-page-backup" role="tabpanel" aria-labelledby="admin-tab-backup" className="admin-page" hidden={activePage !== 'backup'}>
+      <div id="admin-page-backup" className="admin-page" hidden={activePage !== 'system'}>
         <BackupAdminPanel />
       </div>
 
 
-      <div id="admin-page-memory" role="tabpanel" aria-labelledby="admin-tab-memory" className="admin-page" hidden={activePage !== 'memory'}>
+      <div id="admin-page-memory" className="admin-page" hidden={activePage !== 'memory'}>
       <section id="admin-section-memory" className="admin-card">
         <h3>{t('Memoria')}</h3>
         <div className="admin-mode-grid" role="radiogroup" aria-label="Retrieval mode">
@@ -635,7 +640,7 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      <div id="admin-page-curator" role="tabpanel" aria-labelledby="admin-tab-curator" className="admin-page" hidden={activePage !== 'curator'}>
+      <div id="admin-page-curator" className="admin-page" hidden={activePage !== 'models'}>
       <section id="admin-section-curator" className="admin-card">
         <h3>{t('Memory Curator')}</h3>
         <label className="admin-toggle">
@@ -705,11 +710,11 @@ export function AdminSettingsView({
       </section>
       </div>
 
-      <div id="admin-page-web" role="tabpanel" aria-labelledby="admin-tab-web" className="admin-page" hidden={activePage !== 'web'}>
+      <div id="admin-page-web" className="admin-page" hidden={activePage !== 'integrations'}>
         <WebSettingsPanel />
       </div>
 
-      <div id="admin-page-system" role="tabpanel" aria-labelledby="admin-tab-system" className="admin-page" hidden={activePage !== 'system'}>
+      <div id="admin-page-system" className="admin-page" hidden={activePage !== 'system'}>
       <section id="admin-section-egress" className="admin-card">
         <h3>{t('Dati e provider esterni')}</h3>
         <div className="admin-egress-grid">
@@ -782,8 +787,11 @@ export function AdminSettingsView({
       <UpdateAdminPanel />
       </div>
 
-      {activePage !== 'web' && activePage !== 'agents' && activePage !== 'mcp' && activePage !== 'telegram' && activePage !== 'backup' && <div className="admin-savebar">
-        <span>{activePage === 'appearance' ? t('Le preferenze di aspetto sono già attive e non richiedono il salvataggio del server.') : `${hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · ${t('I valori gestiti dall’ambiente non vengono inviati.')}`}</span>
+      </div>
+      </div>
+
+      {['general', 'models', 'memory'].includes(activePage) && <div className="admin-savebar">
+        <span>{hasChanges ? t('Modifiche non salvate') : t('Nessuna modifica non salvata')} · {t('I valori gestiti dall’ambiente non vengono inviati.')}</span>
         <div className="admin-savebar-actions">
           <button type="button" onClick={onResetDraft} disabled={saving || !hasChanges}>{t('Annulla')}</button>
           <button type="button" className="admin-primary" onClick={onSave} disabled={saving}>{saving ? t('Salvo…') : t('Salva impostazioni')}</button>

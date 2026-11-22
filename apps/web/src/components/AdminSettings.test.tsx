@@ -147,7 +147,9 @@ describe('AdminSettings UI', () => {
     expect(markup).toContain('admin-page-memory');
     expect(markup).toContain('admin-page-system');
     expect(markup).toContain('Osservabilità');
-    expect(markup).toContain('role="tablist"');
+    expect(markup).toContain('admin-side-nav');
+    expect(markup).toContain('Modelli');
+    expect(markup).toContain('Integrazioni');
   });
 
   test('mostra provider, API key e selettore modello Chat', () => {

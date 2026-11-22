@@ -765,4 +765,6 @@ export const en: Record<string, string> = {
   'Come aggiornare': 'How to update',
   'L’aggiornamento è manuale. Non avviene automaticamente e non parte a ogni push: solo per una release pubblicata.': 'Updating is manual. It does not run automatically or on every push: only for a published release.',
   'update.sh crea un backup, applica la nuova release, esegue le migrazioni e verifica il servizio. Se qualcosa fallisce, tenta il rollback.': 'update.sh creates a backup, applies the new release, runs migrations and verifies the service. If something fails, it attempts a rollback.',
+  'Modelli': 'Models',
+  'Integrazioni': 'Integrations',
 };
