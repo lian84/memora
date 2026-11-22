@@ -27,6 +27,7 @@ export interface RcloneServiceOptions {
   backupDir: string;
   getBackups: () => BackupRecord[];
   runner?: RcloneRunner;
+  env?: NodeJS.ProcessEnv;
   log?: (event: string, details?: Record<string, unknown>) => void;
 }
 
@@ -45,9 +46,9 @@ function safeFolder(value: unknown): string {
   return folder;
 }
 
-async function defaultRunner(args: string[], input?: string): Promise<{ stdout: string; stderr: string }> {
+async function defaultRunner(binary: string, args: string[], input?: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn('rclone', args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(binary, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk.toString(); });
@@ -72,18 +73,21 @@ export class RcloneService {
   private readonly dataDir: string;
   private readonly backupDir: string;
   private readonly getBackups: () => BackupRecord[];
-  private readonly runner: RcloneRunner;
+  private readonly runner: RcloneRunner | null;
+  private readonly env: NodeJS.ProcessEnv;
   private readonly log: (event: string, details?: Record<string, unknown>) => void;
   private metadata: RemoteMetadata | null = null;
   private busy = false;
   private available: boolean | null = null;
   private availableCheckedAt = 0;
+  private binaryPath: string | null = null;
 
   constructor(options: RcloneServiceOptions) {
     this.dataDir = options.dataDir;
     this.backupDir = options.backupDir;
     this.getBackups = options.getBackups;
-    this.runner = options.runner ?? defaultRunner;
+    this.runner = options.runner ?? null;
+    this.env = options.env ?? process.env;
     this.log = options.log ?? (() => undefined);
     this.configPath = path.join(options.dataDir, 'config', 'rclone.conf');
     this.metadataPath = path.join(options.dataDir, 'config', 'backup-remote.json');
@@ -138,7 +142,7 @@ export class RcloneService {
     this.busy = true;
     const tempConfig = path.join(this.dataDir, 'config', `.rclone.${process.pid}.${Date.now()}.conf`);
     try {
-      const obscured = (await this.runner(['obscure', '-'], `${password}\n`)).stdout.trim();
+      const obscured = (await this.run(['obscure', '-'], `${password}\n`)).stdout.trim();
       if (!obscured) throw new RcloneError('rclone_config_failed', 'Impossibile proteggere la password Mega', 502);
       const lines = [
         `[${remoteName}]`,
@@ -150,7 +154,7 @@ export class RcloneService {
       ];
       await fs.mkdir(path.dirname(tempConfig), { recursive: true, mode: 0o700 });
       await fs.writeFile(tempConfig, lines.join('\n'), { mode: 0o600, flag: 'wx' });
-      await this.runner(['mkdir', `${remoteName}:${folder}`, '--config', tempConfig]);
+      await this.run(['mkdir', `${remoteName}:${folder}`, '--config', tempConfig]);
       await fs.rename(tempConfig, this.configPath);
       await fs.chmod(this.configPath, 0o600);
       this.metadata = { version: 1, remoteName, folder, autoUpload: input.autoUpload === true };
@@ -186,7 +190,7 @@ export class RcloneService {
       const latestManifest = path.join(this.backupDir, `${latest.id}.manifest.json`);
       await fs.copyFile(latestArchive, path.join(staging, latest.archiveName));
       await fs.copyFile(latestManifest, path.join(staging, `${latest.id}.manifest.json`));
-      await this.runner(['sync', staging, `${this.metadata.remoteName}:${this.metadata.folder}`, '--config', this.configPath, '--transfers', '1', '--checkers', '1']);
+      await this.run(['sync', staging, `${this.metadata.remoteName}:${this.metadata.folder}`, '--config', this.configPath, '--transfers', '1', '--checkers', '1']);
       this.metadata = {
         ...this.metadata,
         lastUploadAt: Date.now(),
@@ -223,11 +227,35 @@ export class RcloneService {
     }
   }
 
+  private async run(args: string[], input?: string): Promise<{ stdout: string; stderr: string }> {
+    if (this.runner) return this.runner(args, input);
+    const binary = await this.resolveBinary();
+    return defaultRunner(binary, args, input);
+  }
+
+  private async resolveBinary(): Promise<string> {
+    if (this.binaryPath) return this.binaryPath;
+    const configured = this.env.MEMORA_RCLONE_PATH?.trim();
+    if (configured) {
+      this.binaryPath = configured;
+      return configured;
+    }
+    const local = path.join(this.dataDir, 'tools', 'rclone');
+    try {
+      await fs.access(local, (await import('node:fs')).constants.X_OK);
+      this.binaryPath = local;
+      return local;
+    } catch {
+      this.binaryPath = 'rclone';
+      return 'rclone';
+    }
+  }
+
   private async checkAvailable(): Promise<boolean> {
     const now = Date.now();
     if (this.available !== null && now - this.availableCheckedAt < 30_000) return this.available;
     try {
-      await this.runner(['version']);
+      await this.run(['version']);
       this.available = true;
     } catch {
       this.available = false;

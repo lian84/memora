@@ -27,6 +27,7 @@ Esclusi perché grandi o ricostruibili:
 - `browser-libs/`;
 - `searxng/`;
 - `runtime/`;
+- `tools/` (binario rclone ufficiale);
 - `.trash/`;
 - la directory dei backup stessa.
 
@@ -111,8 +112,11 @@ Dopo ogni upload vengono copiati solo l’ultimo archivio locale e il manifest:
 `rclone sync` rimuove le copie remote precedenti. La retention locale continua
 a conservare il numero di copie configurato.
 
-`rclone` deve essere installato sull’host (`sudo apt install rclone` su Debian).
-L’installer gestirà questo prerequisito nella prossima milestone. Il pulsante
+Memora preferisce un binario rclone ufficiale in `$MEMORA_DATA_DIR/tools/rclone`
+(e usa `rclone` nel `PATH` come fallback). Il pacchetto Debian di rclone può non
+includere il backend Mega: usa il binario ufficiale o imposta
+`MEMORA_RCLONE_PATH`.
+L’installer lo preparerà nella prossima milestone. Il pulsante
 **Carica ultimo backup** è disponibile quando esiste un backup locale. L’upload
 automatico segue la pianificazione locale e parte dopo che il backup è uscito
 dalla manutenzione.

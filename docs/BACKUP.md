@@ -27,6 +27,7 @@ Excluded because they are large or rebuildable:
 - `browser-libs/`;
 - `searxng/`;
 - `runtime/`;
+- `tools/` (official rclone binary);
 - `.trash/`;
 - the backup directory itself.
 
@@ -111,8 +112,10 @@ After each upload, only the latest local archive and manifest are copied to the
 remote folder: `rclone sync` removes older remote copies. The local retention
 still keeps the configured number of local copies.
 
-`rclone` must be installed on the host (`sudo apt install rclone` on Debian).
-The installer will handle this prerequisite in the next milestone. Manual
+Memora prefers an official rclone binary at `$MEMORA_DATA_DIR/tools/rclone`
+(and falls back to `rclone` in `PATH`). The Debian rclone package may not include
+the Mega backend, so use the official binary or set `MEMORA_RCLONE_PATH`.
+The installer will provision this in the next milestone. Manual
 **Upload latest backup** is available when a local backup exists. Automatic
 upload follows the local backup schedule and runs after the backup has left
 maintenance mode.

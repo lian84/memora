@@ -10,7 +10,7 @@ import { Cron } from 'croner';
 import type { BackupFrequency, BackupRecord, BackupSchedule, BackupStatus, BackupTrigger } from '@memora/shared';
 
 const PREFIX = Buffer.from('MEMORA-BACKUP\n1\n');
-const EXCLUDED_DIRS = ['models', 'browser-libs', 'searxng', 'runtime', '.trash', 'backups'];
+const EXCLUDED_DIRS = ['models', 'browser-libs', 'searxng', 'runtime', '.trash', 'backups', 'tools'];
 const ID_PATTERN = /^memora-backup-[a-zA-Z0-9-]+$/;
 const scryptAsync = promisify(scrypt);
 const DEFAULT_SCHEDULE: BackupSchedule = {
