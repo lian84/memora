@@ -80,7 +80,7 @@
 - [x] LICENSE (AGPL-3.0-only)
 - [x] CONTRIBUTING.md (DCO)
 - [x] SECURITY.md pubblico
-- [ ] install script (`install.sh`)
+- [x] install script (`install.sh`)
 - [ ] configurazione di esempio (`.env.example`, file di esempio)
 - [x] CI GitHub Actions
 - [ ] release/versioning

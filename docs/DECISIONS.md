@@ -2256,3 +2256,31 @@ without automatic updates.
 - Once the repository is public, the default GitHub endpoint works without a
   token.
 - The actual `update.sh` remains a separate milestone.
+
+---
+## ADR-065 — Installer-owned lifecycle and restore before first start
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+A backup without a tested restore is not a disaster-recovery solution. Memora
+also needs a reproducible Debian install and a safe update path for people who
+do not work as developers.
+
+### Decision
+- Ship `install.sh` for Debian 13 + systemd with a service user, `/opt/memora`,
+  `/var/lib/memora`, `/etc/memora` and an encrypted backup directory.
+- Install the official rclone binary locally because the Debian package can lack
+  the Mega backend.
+- Offer restore during installation and through an emergency CLI; never restore
+  from a running web UI.
+- Require a pre-update local backup in `update.sh`; abort or roll back if it or
+  the service health check fails.
+- Update only from Git release tags, not from every push to `main`.
+- Preserve existing environment files and never copy source secrets into the
+  installed tree.
+
+### Consequences
+- Data must be restored with the service stopped.
+- A source checkout without Git tags cannot use `update.sh`.
+- The installer and updater are privileged shell operations, not web actions.

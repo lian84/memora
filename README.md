@@ -52,8 +52,8 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ## Status
 
-Pre-release: features are usable and tested; installation, restore and
-migrations are still being completed. See [`docs/FEATURES.md`](docs/FEATURES.md)
+Pre-release: features are usable and tested. Installation, restore and update
+scripts are implemented; a clean-VM installation test is still pending. See [`docs/FEATURES.md`](docs/FEATURES.md)
 for the current registry and known limitations.
 
 ## Key features
@@ -98,10 +98,19 @@ pnpm build
 pnpm start
 ```
 
+For a Debian systemd installation with backup, restore and update support:
+
+```bash
+sudo ./install.sh
+```
+
+See [Install, restore and update](docs/INSTALL.md).
+
 ## Documentation
 
 - [Features](docs/FEATURES.md) · [Italiano](docs/FEATURES.it.md)
 - [Scheduled automations](docs/AUTOMATIONS.md) · [Italiano](docs/AUTOMATIONS.it.md)
+- [Install](docs/INSTALL.md) · [Italiano](docs/INSTALL.it.md)
 - [Backup](docs/BACKUP.md) · [Italiano](docs/BACKUP.it.md)
 - [Updates](docs/UPDATES.md) · [Italiano](docs/UPDATES.it.md)
 - [Decisions](docs/DECISIONS.md) · [Italiano](docs/DECISIONS.it.md)

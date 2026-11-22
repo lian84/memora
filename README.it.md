@@ -52,8 +52,8 @@ Il registro completo delle funzionalità, con stato e limiti noti, è in
 
 ## Stato
 
-Pre-release: le funzionalità sono utilizzabili e testate; installer, restore e
-migrazioni sono ancora in completamento. Vedi
+Pre-release: le funzionalità sono utilizzabili e testate. Installer, restore e
+aggiornamento sono implementati; manca ancora un test su VM Debian pulita. Vedi
 [`docs/FEATURES.it.md`](docs/FEATURES.it.md) per lo stato aggiornato e i limiti
 noti.
 
@@ -98,11 +98,20 @@ pnpm build
 pnpm start
 ```
 
+Per un’installazione Debian con systemd, backup, restore e aggiornamento:
+
+```bash
+sudo ./install.sh
+```
+
+Vedi [Installazione, ripristino e aggiornamento](docs/INSTALL.it.md).
+
 ## Documentazione
 
 - [Funzionalità](docs/FEATURES.it.md)
 - [Architettura](ARCHITECTURE.md)
 - [Attività pianificate](docs/AUTOMATIONS.it.md)
+- [Installazione](docs/INSTALL.it.md)
 - [Backup](docs/BACKUP.it.md)
 - [Aggiornamenti](docs/UPDATES.it.md)
 - [Decisioni](docs/DECISIONS.it.md)

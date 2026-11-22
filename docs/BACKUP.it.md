@@ -123,13 +123,14 @@ dalla manutenzione.
 
 ## Ripristino
 
-Il ripristino non è disponibile da un’istanza Memora attiva. Il percorso
-previsto è:
+Il ripristino non è disponibile da un’istanza Memora attiva.
 
-- ripristino durante un’installazione pulita;
-- restore CLI di emergenza per gli amministratori.
+- Durante un’installazione pulita, `install.sh` propone il restore.
+- Gli amministratori possono usare la CLI di emergenza
+  `scripts/restore-backup.mjs` con il servizio fermo.
 
-Manifest e checksum vengono verificati prima di sostituire i dati.
+Manifest e checksum vengono verificati prima di sostituire i dati; la data
+directory precedente viene spostata in una directory di sicurezza con timestamp.
 
 ## Limiti noti
 
@@ -137,3 +138,4 @@ Manifest e checksum vengono verificati prima di sostituire i dati.
 - Il backup non include i modelli grandi; possono essere scaricati di nuovo.
 - Una password conservata localmente per i backup automatici protegge un backup
   rubato, non un host completamente compromesso.
+- Gli avvisi di monitoraggio sono una milestone successiva.

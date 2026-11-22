@@ -188,7 +188,9 @@ Last updated: 2026-11-20.
 - [x] Build and production smoke tests.
 - [x] Scripts for embeddings, memory evaluation, integrity, consolidation,
   project migration and password reset.
-- [ ] Complete `install.sh` and `update.sh`.
+- [x] Debian/systemd `install.sh`, restore during installation and emergency CLI restore.
+- [x] `update.sh` with mandatory pre-update backup, release tags and rollback.
+- [ ] Test the installer on a clean Debian VM.
 - [x] GitHub Actions CI; `v0.1.0` release still pending.
 - [x] AGPL-3.0-only license, NOTICE, TRADEMARKS and CONTRIBUTING with DCO.
 

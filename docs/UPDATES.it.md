@@ -67,5 +67,6 @@ in background. Configura un token read-only oppure rendi pubblica la repository.
 
 ## Aggiornamento
 
-`update.sh` creerà un backup, applicherà una release pubblicata e verificherà il
-servizio. Non è implementato in questa milestone.
+`update.sh` crea un backup locale obbligatorio, applica una release pubblicata,
+verifica `/api/health` e fa rollback in caso di errore. Vedi [Installazione,
+ripristino e aggiornamento](INSTALL.it.md).

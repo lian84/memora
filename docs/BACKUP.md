@@ -122,13 +122,14 @@ maintenance mode.
 
 ## Restore
 
-Restore is intentionally not available from a running Memora instance. The
-planned path is:
+Restore is intentionally not available from a running Memora instance.
 
-- restore during a clean installation;
-- emergency CLI restore for administrators.
+- During a clean installation, `install.sh` offers a restore step.
+- Administrators can use the emergency CLI `scripts/restore-backup.mjs` with the
+  service stopped.
 
-The archive manifest and checksum are verified before replacing data.
+The archive manifest and checksum are verified before replacing data; the
+previous data directory is moved to a timestamped safety directory.
 
 ## Known limits
 

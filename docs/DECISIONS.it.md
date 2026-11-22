@@ -2107,3 +2107,30 @@ automatici.
 - Quando la repository diventa pubblica, l’endpoint GitHub predefinito funziona
   senza token.
 - Lo script `update.sh` resta una milestone separata.
+
+---
+## ADR-065 — Ciclo di vita gestito dall’installer e restore prima dell’avvio
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Un backup senza restore verificato non è una vera soluzione di disaster
+recovery. Memora ha anche bisogno di un’installazione Debian riproducibile e di
+un aggiornamento sicuro per chi non lavora come sviluppatore.
+
+### Decisione
+- Fornire `install.sh` per Debian 13 + systemd con utente di servizio,
+  `/opt/memora`, `/var/lib/memora`, `/etc/memora` e directory backup cifrata.
+- Installare localmente il binario rclone ufficiale perché il pacchetto Debian
+  può non includere il backend Mega.
+- Offrire il restore in installazione e tramite CLI di emergenza; mai dalla UI
+  attiva.
+- Richiedere un backup locale pre-aggiornamento in `update.sh`; annullare o fare
+  rollback se il backup o l’health check falliscono.
+- Aggiornare solo da tag Git di release, non da ogni push su `main`.
+- Preservare i file ambiente esistenti e non copiare segreti dal sorgente.
+
+### Conseguenze
+- I dati vanno ripristinati con il servizio fermo.
+- Un checkout senza tag Git non può usare `update.sh`.
+- Installer e updater sono operazioni shell privilegiate, non azioni web.

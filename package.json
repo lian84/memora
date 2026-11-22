@@ -31,7 +31,9 @@
     "memory:feedback": "node scripts/memory-feedback.mjs",
     "projects:migrate": "pnpm --filter @memora/server build && node scripts/projects-migrate.mjs",
     "pdf:browser:setup": "node scripts/pdf-browser-setup.mjs",
-    "memora:set-password": "pnpm --filter @memora/server build && node scripts/set-password.mjs"
+    "memora:set-password": "pnpm --filter @memora/server build && node scripts/set-password.mjs",
+    "memora:restore": "node scripts/restore-backup.mjs",
+    "memora:backup": "node scripts/backup-now.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
