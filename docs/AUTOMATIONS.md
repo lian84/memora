@@ -68,6 +68,13 @@ restart, a due job runs once; missed intervals are not replayed multiple times.
   sleeping machine is not.
 - Run history is capped per job; the newest runs are kept.
 
+## LLM model
+
+Each automation can choose an LLM provider, model and optional reasoning level.
+If left on **Project/chat default**, it inherits the project defaults or the
+runtime chat default. The model list comes from the normal provider catalog; a
+provider without a selected model is rejected by the form.
+
 ## Web search
 
 Web search is opt-in per automation. The job form shows the current web
@@ -130,5 +137,3 @@ error is recorded separately.
 - No inbound Telegram bot, slash commands or Telegram session list yet.
 - No calendar-style visual editor; the UI provides cron presets and a raw cron
   field.
-- The model/provider is inherited from the project/default chat settings, not
-  selected per job.

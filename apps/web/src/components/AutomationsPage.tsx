@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MCP_SERVER_DEFINITIONS,
+  PROVIDER_LABELS,
+  REASONING_LEVELS,
   type AutomationJob,
   type AutomationJobInput,
   type AutomationRun,
@@ -8,6 +10,9 @@ import {
   type ProjectRecord,
   type TelegramAccountView,
   type AgentProfileSummary,
+  type ProviderId,
+  type ProviderModel,
+  type ReasoningLevel,
 } from '@memora/shared';
 import {
   createAutomation,
@@ -24,6 +29,8 @@ import {
   type WebStatus,
 } from '../lib/api';
 import { useI18n } from '../i18n';
+import { useModels } from '../hooks/useModels';
+import { ModelCombobox } from './ModelCombobox';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface JobForm {
@@ -34,6 +41,9 @@ interface JobForm {
   enabled: boolean;
   projectId: string;
   agentProfileId: string;
+  provider: ProviderId | '';
+  modelId: string;
+  reasoningLevel: ReasoningLevel | '';
   mcpEnabled: McpServerId[];
   allowWrites: boolean;
   notifyTelegram: boolean;
@@ -66,6 +76,9 @@ function emptyForm(defaultProjectId?: string | null): JobForm {
     enabled: true,
     projectId: defaultProjectId ?? '',
     agentProfileId: '',
+    provider: '',
+    modelId: '',
+    reasoningLevel: '',
     mcpEnabled: [],
     allowWrites: false,
     notifyTelegram: false,
@@ -84,6 +97,9 @@ function formFromJob(job: AutomationJob): JobForm {
     enabled: job.enabled,
     projectId: job.projectId ?? '',
     agentProfileId: job.agentProfileId ?? '',
+    provider: job.provider ?? '',
+    modelId: job.modelId ?? '',
+    reasoningLevel: job.reasoningLevel ?? '',
     mcpEnabled: job.mcp.enabled,
     allowWrites: job.mcp.allowWrites === true,
     notifyTelegram: job.notifyTelegram,
@@ -132,6 +148,8 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
   const [runsLoading, setRunsLoading] = useState(false);
   const [runningIds, setRunningIds] = useState<string[]>([]);
   const initializedRef = useRef(false);
+  const modelProvider: ProviderId = form?.provider || 'openrouter';
+  const { models: availableModels, loading: modelsLoading, error: modelsError } = useModels(modelProvider);
 
 
   const notifyChanged = useCallback(() => {
@@ -219,6 +237,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
     if (!form) return;
     if (!form.name.trim()) { setError(t('Il nome dell’automazione è obbligatorio.')); return; }
     if (!form.prompt.trim()) { setError(t('Il prompt dell’automazione è obbligatorio.')); return; }
+    if (form.provider && !form.modelId.trim()) { setError(t('Scegli un modello per il provider selezionato.')); return; }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -231,6 +250,9 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
         enabled: form.enabled,
         projectId: form.projectId || null,
         agentProfileId: form.agentProfileId || null,
+        provider: form.provider || null,
+        modelId: form.modelId || null,
+        reasoningLevel: form.reasoningLevel || null,
         mcp: { enabled: form.mcpEnabled, ...(form.allowWrites ? { allowWrites: true } : {}) },
         notifyTelegram: form.notifyTelegram,
         webEnabled: form.webEnabled,
@@ -344,6 +366,7 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                     <span>{job.nextRunAt ? `${t('Prossima')}: ${new Date(job.nextRunAt).toLocaleString(undefined, { timeZone: job.timezone })}` : t('Disattivata')}</span>
                     {job.projectId && <span>{t('Progetto')}: {projectName.get(job.projectId) ?? job.projectId}</span>}
                     {job.agentProfileId && <span>{t('Agente')}: {profileName.get(job.agentProfileId) ?? job.agentProfileId}</span>}
+                    <span>{t('Modello')}: {job.provider ? `${PROVIDER_LABELS[job.provider]}${job.modelId ? ` · ${job.modelId}` : ''}` : t('default del progetto')}{job.reasoningLevel ? ` · ${job.reasoningLevel}` : ''}</span>
                     {job.webEnabled && <span>{t('Ricerca web')}</span>}
                     {job.notifyTelegram && <span>Telegram: {job.telegramAccountId ? telegramAccountName.get(job.telegramAccountId) ?? job.telegramAccountId : defaultTelegramAccount?.label ?? t('account predefinito')}</span>}
                     {job.mcp.enabled.length > 0 && <span>MCP: {job.mcp.enabled.join(', ')}{job.mcp.allowWrites ? ` · ${t('scritture')}` : ''}</span>}
@@ -394,6 +417,35 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
                 </select>
               </label>
             </div>
+            <div className="admin-grid-2">
+              <label className="admin-label">{t('Provider LLM')}
+                <select value={form.provider} onChange={event => setForm(current => current ? { ...current, provider: event.target.value as ProviderId | '', modelId: '' } : current)}>
+                  <option value="">{t('Default del progetto/chat')}</option>
+                  {(Object.keys(PROVIDER_LABELS) as ProviderId[]).map(provider => <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>)}
+                </select>
+              </label>
+              <label className="admin-label">{t('Livello reasoning')}
+                <select value={form.reasoningLevel} onChange={event => setForm(current => current ? { ...current, reasoningLevel: event.target.value as ReasoningLevel | '' } : current)}>
+                  <option value="">{t('Default del progetto/chat')}</option>
+                  {REASONING_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
+                </select>
+              </label>
+            </div>
+            {form.provider ? (
+              <div className="admin-label">
+                <span>{t('Modello LLM')}</span>
+                <ModelCombobox
+                  models={availableModels as unknown as ProviderModel[]}
+                  provider={form.provider}
+                  value={form.modelId}
+                  onChange={modelId => setForm(current => current ? { ...current, modelId } : current)}
+                  loading={modelsLoading}
+                />
+                {modelsError && <small className="model-error">{modelsError}</small>}
+              </div>
+            ) : (
+              <div className="admin-field-note">{t('Se non scegli provider e modello, l’automazione eredita il default del progetto o della chat.')}</div>
+            )}
             <div className="admin-grid-2">
               <label className="admin-label">{t('Espressione cron')}
                 <input value={form.cron} onChange={event => setForm(current => current ? { ...current, cron: event.target.value } : current)} placeholder="0 9 * * *" spellCheck={false} />

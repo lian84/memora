@@ -69,6 +69,13 @@ vengono replicate più volte.
   una macchina sospesa no.
 - La cronologia viene limitata per job, mantenendo le esecuzioni più recenti.
 
+## Modello LLM
+
+Ogni automazione può scegliere provider LLM, modello e livello di reasoning
+opzionale. Se resta su **Default del progetto/chat**, eredita i default del
+progetto o il default runtime della chat. L’elenco modelli arriva dal normale
+catalogo provider; il form rifiuta un provider senza modello selezionato.
+
 ## Ricerca web
 
 La ricerca web è opt-in per singola automazione. Il form mostra lo stato della
@@ -130,5 +137,3 @@ risultato resta nella cronologia web e l’errore viene registrato a parte.
 - Nessun bot Telegram in ingresso, comandi slash o elenco sessioni Telegram.
 - Nessun editor visuale tipo calendario; la UI offre preset cron e un campo
   cron libero.
-- Il modello/provider eredita le impostazioni del progetto/chat, non è scelto
-  per singolo job.

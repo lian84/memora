@@ -667,4 +667,10 @@ export const en: Record<string, string> = {
   'Token gestito dalla variabile MEMORA_TELEGRAM_BOT_TOKEN.': 'Token managed by the MEMORA_TELEGRAM_BOT_TOKEN environment variable.',
   'Abilita ricerca web': 'Enable web search',
   'La ricerca web non è configurata. Configurala in Amministrazione → Web prima di eseguire l’automazione.': 'Web search is not configured. Configure it in Administration → Web before running the automation.',
+  'Scegli un modello per il provider selezionato.': 'Choose a model for the selected provider.',
+  'default del progetto': 'project default',
+  'Provider LLM': 'LLM provider',
+  'Default del progetto/chat': 'Project/chat default',
+  'Modello LLM': 'LLM model',
+  'Se non scegli provider e modello, l’automazione eredita il default del progetto o della chat.': 'If you do not choose a provider and model, the automation inherits the project or chat default.',
 };

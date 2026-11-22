@@ -1992,3 +1992,30 @@ lunghe non si aggiornavano visivamente.
 - La cronologia live riflette run in coda/in corso/completate e nuove run
   pianificate.
 - Il polling è locale al pannello cronologia e si ferma allo smontaggio.
+
+---
+## ADR-061 — Scelta del modello LLM per automazione
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Le automazioni ereditavano il modello predefinito di progetto/chat. Attività
+diverse richiedono compromessi diversi tra costo, velocità, contesto e
+reasoning.
+
+### Decisione
+- Persistere `provider`, `modelId` e `reasoningLevel` opzionali su ogni job.
+- Passarli a `AgentService.createSession`; i valori omessi ereditano il default
+  del progetto o il default runtime della chat.
+- Scegliere provider e reasoning nel form e caricare i modelli dal normale
+  catalogo provider con il combobox condiviso.
+- Richiedere un modello quando viene scelto esplicitamente un provider, per
+  evitare combinazioni provider/modello ambigue.
+
+### Conseguenze
+- Un modello economico può gestire riepiloghi ordinari mentre uno più potente
+  gestisce ricerca o scrittura complessa.
+- Job e client API esistenti restano compatibili perché tutti e tre i campi sono
+  opzionali.
+- Credenziali e comportamento del catalogo restano quelli già configurati in
+  Memora.

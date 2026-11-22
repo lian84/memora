@@ -80,6 +80,16 @@ describe('AutomationRunner', () => {
     expect(agent.setSessionMcp).toHaveBeenCalledWith('session-1', ['notion'], true);
   });
 
+  it('usa provider, modello e reasoning scelti per il job', async () => {
+    const { store, job } = await setup();
+    const updated = await store.updateJob(job.id, { provider: 'opencode-go', modelId: 'deepseek-v4.1-flash', reasoningLevel: 'high' });
+    const agent = fakeAgent();
+    const runner = new AutomationRunner({ store, agentService: agent, telegram: fakeTelegram() });
+    const run = await runner.run(updated, 'manual');
+    expect(run.status).toBe('completed');
+    expect(agent.createSession).toHaveBeenCalledWith('deepseek-v4.1-flash', 'opencode-go', 'high', undefined, undefined, { autoTitle: false });
+  });
+
   it('abilita la ricerca web per il job', async () => {
     const { store, job } = await setup();
     const updated = await store.updateJob(job.id, { webEnabled: true });

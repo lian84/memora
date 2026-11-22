@@ -8,6 +8,8 @@ import {
   type AutomationJobInput,
   type AutomationMcpSettings,
   type AutomationRun,
+  type ProviderId,
+  type ReasoningLevel,
 } from '@memora/shared';
 import { nextRunAt, validateCron, validateTimezone } from './automation-schedule.js';
 
@@ -54,6 +56,30 @@ function normalizeMcp(value: unknown): AutomationMcpSettings {
   return { enabled: enabled as AutomationMcpSettings['enabled'], ...(data.allowWrites === true ? { allowWrites: true } : {}) };
 }
 
+function optionalText(value: unknown, field: string, max: number): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'string') throw new AutomationStoreError('invalid_automation', `${field} non valido`);
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > max || [...trimmed].some(char => char.charCodeAt(0) < 32)) {
+    throw new AutomationStoreError('invalid_automation', `${field} non valido`);
+  }
+  return trimmed;
+}
+
+function optionalProvider(value: unknown): ProviderId | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (value !== 'openrouter' && value !== 'opencode-go') throw new AutomationStoreError('invalid_automation', 'Provider non valido');
+  return value;
+}
+
+function optionalReasoning(value: unknown): ReasoningLevel | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (value !== 'minimal' && value !== 'low' && value !== 'medium' && value !== 'high' && value !== 'xhigh' && value !== 'max') {
+    throw new AutomationStoreError('invalid_automation', 'Livello reasoning non valido');
+  }
+  return value;
+}
+
 function boundedNumber(value: unknown, fallback: number, min: number, max: number, field: string): number {
   if (value === undefined || value === null) return fallback;
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
@@ -76,6 +102,9 @@ function normalizeJob(input: unknown, previous?: AutomationJob, now = Date.now()
   const enabled = body.enabled === undefined ? previous?.enabled ?? true : body.enabled === true;
   const projectId = body.projectId === undefined ? previous?.projectId : optionalId(body.projectId, 'Progetto');
   const agentProfileId = body.agentProfileId === undefined ? previous?.agentProfileId : optionalId(body.agentProfileId, 'Profilo agente');
+  const provider = body.provider === undefined ? previous?.provider : optionalProvider(body.provider);
+  const modelId = body.modelId === undefined ? previous?.modelId : optionalText(body.modelId, 'Modello', 200);
+  const reasoningLevel = body.reasoningLevel === undefined ? previous?.reasoningLevel : optionalReasoning(body.reasoningLevel);
   const mcp = body.mcp === undefined ? previous?.mcp ?? { enabled: [] } : normalizeMcp(body.mcp);
   const notifyTelegram = body.notifyTelegram === undefined ? previous?.notifyTelegram ?? false : body.notifyTelegram === true;
   const webEnabled = body.webEnabled === undefined ? previous?.webEnabled ?? false : body.webEnabled === true;
@@ -110,6 +139,9 @@ function normalizeJob(input: unknown, previous?: AutomationJob, now = Date.now()
     enabled,
     ...(projectId ? { projectId } : {}),
     ...(agentProfileId ? { agentProfileId } : {}),
+    ...(provider ? { provider } : {}),
+    ...(modelId ? { modelId } : {}),
+    ...(reasoningLevel ? { reasoningLevel } : {}),
     mcp,
     notifyTelegram,
     webEnabled,

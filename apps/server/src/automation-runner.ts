@@ -71,9 +71,9 @@ export class AutomationRunner {
       for (let attempt = 1; attempt <= job.maxAttempts; attempt += 1) {
         try {
           const created = await this.agentService.createSession(
-            undefined,
-            undefined,
-            undefined,
+            job.modelId,
+            job.provider,
+            job.reasoningLevel,
             job.projectId,
             job.agentProfileId,
             { autoTitle: false },

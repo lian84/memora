@@ -1,4 +1,5 @@
 import type { McpServerId } from './mcp.js';
+import type { ProviderId, ReasoningLevel } from './providers.js';
 
 export const AUTOMATION_LIMITS = {
   nameMax: 120,
@@ -32,6 +33,12 @@ export interface AutomationJob {
   enabled: boolean;
   projectId?: string;
   agentProfileId?: string;
+  /** Provider LLM; assente = default del progetto/chat. */
+  provider?: ProviderId;
+  /** Modello LLM; assente = default del progetto/chat. */
+  modelId?: string;
+  /** Livello di reasoning; assente = default. */
+  reasoningLevel?: ReasoningLevel;
   mcp: AutomationMcpSettings;
   notifyTelegram: boolean;
   /** Ricerca web attiva per questa automazione. */
@@ -73,6 +80,9 @@ export interface AutomationJobInput {
   enabled?: boolean;
   projectId?: string | null;
   agentProfileId?: string | null;
+  provider?: ProviderId | null;
+  modelId?: string | null;
+  reasoningLevel?: ReasoningLevel | null;
   mcp?: AutomationMcpSettings;
   notifyTelegram?: boolean;
   webEnabled?: boolean;

@@ -55,6 +55,7 @@ Last updated: 2026-11-20.
 - [x] Manual rename always wins over automatic title generation.
 - [x] Automation page: cron/timezone jobs, project and agent profile selection, optional MCP servers and explicit MCP writes.
 - [x] Headless scheduler with timeout, limited retries, run history and **Run now**; changing the schedule does not require a browser. Run history refreshes live while it is open.
+- [x] Per-automation LLM provider/model/reasoning selection, inherited from project/chat defaults when omitted.
 - [x] Per-automation web search flag, with a warning when web search is not configured.
 - [x] Optional Telegram delivery of automation results. Multiple accounts are managed in Administration → Telegram, tokens are kept per account in the local secret store, and one account can be reused by many automations. Generated PDF/Office artifacts are delivered as Telegram documents.
 - [x] Jobs and run history stored under `$MEMORA_DATA_DIR/automations/`.

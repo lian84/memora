@@ -2144,3 +2144,29 @@ update visibly.
 - A job can be read-only and offline even when web search is available.
 - Live history reflects queued/running/completed runs and new scheduled runs.
 - The polling is local to the open history panel and stops on unmount.
+
+---
+## ADR-061 — Per-automation LLM model selection
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Automations inherited the project/chat default model. Different scheduled tasks
+need different trade-offs between cost, speed, context and reasoning.
+
+### Decision
+- Persist optional `provider`, `modelId` and `reasoningLevel` on each job.
+- Pass them to `AgentService.createSession`; omitted values inherit the project
+  or runtime chat default.
+- Select provider and reasoning in the job form and load models from the normal
+  provider catalog with the shared model combobox.
+- Require a model when a provider is explicitly selected, avoiding ambiguous
+  provider/model combinations.
+
+### Consequences
+- A cheap model can run routine summaries while a stronger model handles
+  research or complex writing.
+- Existing jobs and API clients remain compatible because all three fields are
+  optional.
+- Model credentials and catalog behavior remain those already configured in
+  Memora.
