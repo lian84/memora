@@ -149,6 +149,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Login single-user con password e sessione di 24 ore.
 - [x] Setup della prima password e reset solo da CLI.
 - [x] Cookie `HttpOnly`, `SameSite=Lax`, rate limit e controllo `Origin`.
+- [x] Backup locali cifrati con freeze, download, retention e pianificazione automatica opzionale.
 - [x] Segreti in environment o `config/secrets.json` con mode `0600`.
 - [x] Configurazione web in `config/web.json` con mode `0600`.
 - [x] Nessuna API key restituita dalle API.

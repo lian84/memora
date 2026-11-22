@@ -76,6 +76,7 @@ async function main() {
       MEMORA_HOST: '127.0.0.1',
       MEMORA_PORT: String(port),
       MEMORA_DATA_DIR: dataDir,
+      MEMORA_BACKUP_DIR: path.join(dataDir, 'backups'),
       MEMORA_CWD: repoRoot,
       MEMORA_MEMORY_WRITER_ENABLED: 'false',
       OPENROUTER_API_KEY: '',
@@ -300,6 +301,36 @@ async function main() {
     const deletedAutomation = await authFetch(`${baseUrl}/api/admin/automations/${createdAutomationBody.job.id}?confirm=${createdAutomationBody.job.id}`, { method: 'DELETE' });
     assert.equal(deletedAutomation.status, 200, 'DELETE /api/admin/automations/:id deve funzionare');
 
+    const backupStatus = await authFetch(`${baseUrl}/api/admin/backup`);
+    assert.equal(backupStatus.status, 200, 'GET /api/admin/backup deve funzionare');
+    const backupStatusBody = await backupStatus.json();
+    assert.equal(backupStatusBody.status.passwordConfigured, false);
+    const backupPassword = await authFetch(`${baseUrl}/api/admin/backup/password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'smoke-backup-password-123' }),
+    });
+    assert.equal(backupPassword.status, 200, 'PUT password backup deve funzionare');
+    const backupPasswordBody = await backupPassword.json();
+    assert.equal(backupPasswordBody.status.passwordConfigured, true);
+    assert.doesNotMatch(JSON.stringify(backupPasswordBody), /smoke-backup-password-123/);
+    const backupSchedule = await authFetch(`${baseUrl}/api/admin/backup/schedule`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true, frequency: 'weekly', weekday: 0, time: '03:00', timezone: 'Europe/Rome', retention: 4 }),
+    });
+    assert.equal(backupSchedule.status, 200, 'PATCH pianificazione backup deve funzionare');
+    const createdBackup = await authFetch(`${baseUrl}/api/admin/backup`, { method: 'POST' });
+    assert.equal(createdBackup.status, 200, 'POST backup deve creare un archivio');
+    const createdBackupBody = await createdBackup.json();
+    assert.match(createdBackupBody.record.id, /^memora-backup-/);
+    assert.equal(createdBackupBody.record.encrypted, true);
+    const downloadedBackup = await authFetch(`${baseUrl}/api/admin/backup/${createdBackupBody.record.id}/download`);
+    assert.equal(downloadedBackup.status, 200, 'download backup deve funzionare');
+    assert.ok((await downloadedBackup.arrayBuffer()).byteLength > 0);
+    const deletedBackup = await authFetch(`${baseUrl}/api/admin/backup/${createdBackupBody.record.id}?confirm=${createdBackupBody.record.id}`, { method: 'DELETE' });
+    assert.equal(deletedBackup.status, 200, 'DELETE backup deve funzionare');
+
     const adminStatus = await authFetch(`${baseUrl}/api/admin/status`);
     assert.equal(adminStatus.status, 200, 'GET /api/admin/status deve funzionare');
     const adminStatusBody = await adminStatus.json();
@@ -339,6 +370,7 @@ async function main() {
     console.log(`- Admin settings/status + live PATCH: ok`);
     console.log(`- Admin secrets + OpenCode Go chat default: ok`);
     console.log(`- Telegram accounts + automations CRUD: ok`);
+    console.log(`- Backup cifrato, download e pianificazione: ok`);
     console.log(`- API/asset mancanti: 404 senza fallback SPA`);
     console.log(`- SIGTERM: graceful shutdown`);
   } finally {

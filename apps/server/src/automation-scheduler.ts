@@ -48,6 +48,14 @@ export class AutomationScheduler {
     return this.activeJobs.has(jobId);
   }
 
+  getActiveCount(): number {
+    return this.activeJobs.size;
+  }
+
+  isIdle(): boolean {
+    return this.activeJobs.size === 0;
+  }
+
   /** Controlla i job scaduti. Un solo job alla volta per non saturare la macchina. */
   async checkNow(): Promise<void> {
     if (this.checking) return;

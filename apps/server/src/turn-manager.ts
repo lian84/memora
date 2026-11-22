@@ -87,6 +87,15 @@ export class TurnManager {
     return this.maxConcurrent;
   }
 
+  /** Attività ancora in corso o in coda; usata dal backup per attendere l'idle. */
+  getActivity(): { active: number; queued: number } {
+    return { active: this.activeCount, queued: this.queue.length };
+  }
+
+  isIdle(): boolean {
+    return this.activeCount === 0 && this.queue.length === 0;
+  }
+
   async load(): Promise<void> {
     if (!this.persistencePath) return;
     try {

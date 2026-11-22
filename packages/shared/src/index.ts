@@ -380,3 +380,4 @@ export * from './agents.js';
 
 export * from './mcp.js';
 export * from './automations.js';
+export * from './backups.js';

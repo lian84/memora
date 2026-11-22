@@ -34,6 +34,9 @@ import {
   type TelegramChat,
   type TelegramAccountInput,
   type TelegramAccountView,
+  type BackupRecord,
+  type BackupSchedule,
+  type BackupStatus,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -1070,4 +1073,38 @@ export async function discoverTelegramChats(accountId: string): Promise<Telegram
   const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/discover`, { method: 'POST' });
   const data = await res.json() as { chats: TelegramChat[] };
   return data.chats;
+}
+
+
+export async function getBackupStatus(): Promise<BackupStatus> {
+  const res = await request('/api/admin/backup');
+  const data = await res.json() as { status: BackupStatus };
+  return data.status;
+}
+
+export async function createBackup(): Promise<BackupRecord> {
+  const res = await request('/api/admin/backup', { method: 'POST' });
+  const data = await res.json() as { record: BackupRecord };
+  return data.record;
+}
+
+export async function setBackupPassword(password: string): Promise<BackupStatus> {
+  const res = await request('/api/admin/backup/password', { method: 'PUT', body: JSON.stringify({ password }) });
+  const data = await res.json() as { status: BackupStatus };
+  return data.status;
+}
+
+export async function updateBackupSchedule(schedule: Partial<BackupSchedule>): Promise<BackupStatus> {
+  const res = await request('/api/admin/backup/schedule', { method: 'PATCH', body: JSON.stringify(schedule) });
+  const data = await res.json() as { status: BackupStatus };
+  return data.status;
+}
+
+export async function deleteBackup(id: string): Promise<{ id: string }> {
+  const res = await request(`/api/admin/backup/${encodeURIComponent(id)}?confirm=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  return res.json();
+}
+
+export function backupDownloadUrl(id: string): string {
+  return `/api/admin/backup/${encodeURIComponent(id)}/download`;
 }

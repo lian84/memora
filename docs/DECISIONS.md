@@ -2170,3 +2170,34 @@ need different trade-offs between cost, speed, context and reasoning.
   optional.
 - Model credentials and catalog behavior remain those already configured in
   Memora.
+
+---
+## ADR-062 — Encrypted local snapshots with maintenance freeze
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Memora has no disaster-recovery path. A backup must be consistent while the
+server is writing SQLite and session files, but users should not need to stop
+the service manually. A downloadable archive is also needed for non-developer
+installations.
+
+### Decision
+- Create local snapshots from the running server, excluding large rebuildable
+  assets (models, browser libraries, SearXNG data, runtime and trash).
+- Enter a maintenance state before the snapshot, block new application
+  requests and wait for existing turns/automations/writes to finish.
+- Encrypt the archive with AES-256-GCM using a password chosen by the user;
+  store the password locally with `0600` so automatic backups can run.
+- Keep a manifest and SHA-256 checksum outside the archive; the archive itself
+  contains the data and secrets.
+- Default retention is four copies. Automatic schedules are opt-in, using a
+  daily/weekly time and timezone.
+- Restore is deferred to a clean installation or emergency CLI, not the running
+  UI.
+
+### Consequences
+- A browser is not required for automatic backups, but the service must be
+  running.
+- A lost backup password means an unrecoverable archive.
+- Remote upload and installer restore are follow-up milestones.

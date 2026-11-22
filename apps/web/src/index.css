@@ -1875,3 +1875,21 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .sidebar-automations-link > span:nth-child(2) { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-automations-link-count { flex: 0 0 auto; min-width: 17px; padding: 1px 4px; border-radius: 999px; background: var(--surface-muted); color: var(--muted); font-size: 9px; text-align: center; }
 .sidebar-automations-link.is-active .sidebar-automations-link-count { background: var(--surface); color: var(--accent-strong); }
+
+/* Backup administration */
+.backup-admin { display: flex; flex-direction: column; gap: 14px; }
+.backup-stat { display: flex; flex-direction: column; gap: 3px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-muted); }
+.backup-stat span { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.backup-stat strong, .backup-stat code { min-width: 0; overflow: hidden; color: var(--text-soft); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.backup-stat code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.backup-list { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+.backup-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.backup-row-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.backup-row-main strong { color: var(--text-soft); font-size: 10px; }
+.backup-row-main span { color: var(--muted); font-size: 9px; }
+.backup-row-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.backup-row-actions button, .backup-download { height: 25px; display: inline-flex; align-items: center; padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-muted); color: var(--text-soft); font-size: 9px; text-decoration: none; cursor: pointer; }
+.backup-row-actions button:hover, .backup-download:hover { border-color: var(--border-strong); color: var(--text); }
+.backup-schedule { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.backup-admin .admin-card-description { margin-bottom: 8px; }
+@media (max-width: 760px) { .backup-row { align-items: flex-start; flex-direction: column; } }

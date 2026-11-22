@@ -2019,3 +2019,34 @@ reasoning.
   opzionali.
 - Credenziali e comportamento del catalogo restano quelli già configurati in
   Memora.
+
+---
+## ADR-062 — Snapshot locali cifrati con freeze di manutenzione
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+Memora non aveva un percorso di disaster recovery. Un backup deve essere
+coerente mentre il server scrive SQLite e i file di sessione, ma l’utente non
+deve fermare manualmente il servizio. Serve anche un archivio scaricabile per
+installazioni non gestite da sviluppatori.
+
+### Decisione
+- Creare snapshot locali dal server attivo, escludendo asset grandi e
+  ricostruibili (modelli, librerie browser, dati SearXNG, runtime e cestino).
+- Entrare in manutenzione prima dello snapshot, bloccare nuove richieste e
+  attendere la fine di turni, automazioni e scritture in corso.
+- Cifrare l’archivio con AES-256-GCM usando una password scelta dall’utente;
+  conservarla localmente con `0600` per permettere i backup automatici.
+- Mantenere manifest e checksum SHA-256 fuori dall’archivio; l’archivio contiene
+  dati e segreti.
+- Retention predefinita: quattro copie. Le pianificazioni automatiche sono
+  opt-in, con ora/frequenza/fuso.
+- Rimandare il restore a installazione pulita o CLI di emergenza, non alla UI
+  attiva.
+
+### Conseguenze
+- Il browser non serve per i backup automatici, ma il servizio deve essere
+  attivo.
+- Una password persa rende l’archivio non recuperabile.
+- Upload remoto e restore da installer sono milestone successive.

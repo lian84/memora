@@ -16,6 +16,8 @@ import { AutomationScheduler } from './automation-scheduler.js';
 import { AutomationRunner } from './automation-runner.js';
 import { registerAutomationRoutes } from './automation-routes.js';
 import { TelegramService, TelegramStore } from './telegram.js';
+import { BackupService } from './backup.js';
+import { registerBackupRoutes } from './backup-routes.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -256,6 +258,29 @@ const turnManager = new TurnManager({
 await turnManager.load();
 const turnReadStore = new TurnReadStore(dataDir);
 await turnReadStore.load();
+
+const backupService = new BackupService({
+  dataDir,
+  appVersion: memoraVersion,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'backup'),
+  isIdle: () => turnManager.isIdle()
+    && automationScheduler.isIdle()
+    && (memoryWriterQueue?.getStats().queued ?? 0) === 0
+    && (memoryWriterQueue?.getStats().running ?? 0) === 0,
+});
+await backupService.load();
+
+registerBackupRoutes(app, { backups: backupService });
+
+// Durante uno snapshot nessuna richiesta applicativa deve modificare i dati.
+// Le API di stato/auth e la stessa area backup restano raggiungibili.
+app.addHook('onRequest', async (request, reply) => {
+  if (!backupService.isMaintenance()) return;
+  const pathname = request.url.split('?')[0] ?? '';
+  if (!pathname.startsWith('/api/')) return;
+  if (pathname === '/api/health' || pathname.startsWith('/api/auth/') || pathname.startsWith('/api/admin/backup')) return;
+  return reply.status(503).send({ error: 'maintenance', message: 'Backup in corso: riprova tra poco' });
+});
 
 const catalog = new ModelCatalogService({
   getPiModels: provider => agentService.getProviderModels(provider),
@@ -1280,6 +1305,7 @@ const shutdown = async (signal: string) => {
   shuttingDown = true;
   app.log.info({ signal }, 'shutting down');
   automationScheduler.stop();
+  backupService.stop();
   try {
     await app.close();
   } catch (err) {
@@ -1301,6 +1327,7 @@ const start = async () => {
   try {
     await app.listen({ host, port });
     automationScheduler.start();
+    backupService.start();
   } catch (err) {
     app.log.error(err);
     process.exit(1);

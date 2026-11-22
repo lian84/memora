@@ -69,6 +69,7 @@ pnpm start
 
 - [Features](docs/FEATURES.md) · [Italiano](docs/FEATURES.it.md)
 - [Scheduled automations](docs/AUTOMATIONS.md) · [Italiano](docs/AUTOMATIONS.it.md)
+- [Backup](docs/BACKUP.md) · [Italiano](docs/BACKUP.it.md)
 - [Decisions](docs/DECISIONS.md) · [Italiano](docs/DECISIONS.it.md)
 - [Architecture](ARCHITECTURE.md) (Italian)
 - [Operations](docs/OPERATIONS.md) (Italian)

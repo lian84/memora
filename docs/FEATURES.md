@@ -169,6 +169,7 @@ Last updated: 2026-11-20.
 - [x] Single-user password login with a 24-hour session.
 - [x] First-password setup and CLI-only reset.
 - [x] `HttpOnly` cookie, `SameSite=Lax`, rate limiting and `Origin` checks.
+- [x] Encrypted local backups with maintenance freeze, download, retention and optional automatic schedule.
 - [x] Secrets in environment or `config/secrets.json` with mode `0600`.
 - [x] Web configuration in `config/web.json` with mode `0600`.
 - [x] No API key returned by the API.
