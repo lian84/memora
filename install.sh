@@ -15,7 +15,7 @@ MEMORA_USER="${MEMORA_USER:-memora}"
 MEMORA_DATA_DIR="${MEMORA_DATA_DIR:-/var/lib/memora}"
 MEMORA_CONFIG_DIR="${MEMORA_CONFIG_DIR:-/etc/memora}"
 MEMORA_PORT="${MEMORA_PORT:-3000}"
-MEMORA_HOST="${MEMORA_HOST:-127.0.0.1}"
+MEMORA_HOST="${MEMORA_HOST:-}"
 MEMORA_BACKUP_DIR="${MEMORA_BACKUP_DIR:-${MEMORA_DATA_DIR%/}/../memora-backups}"
 MEMORA_EXPORT_DIR="${MEMORA_EXPORT_DIR:-${MEMORA_DATA_DIR%/}/../memora-exports}"
 MEMORA_RESTORE_FILE="${MEMORA_RESTORE_FILE:-}"
@@ -23,6 +23,19 @@ MEMORA_IMPORT_FILE="${MEMORA_IMPORT_FILE:-}"
 MEMORA_VERSION="${MEMORA_VERSION:-$(git -C "$SOURCE_DIR" describe --tags --always 2>/dev/null || echo 0.0.0)}"
 
 systemctl stop memora.service >/dev/null 2>&1 || true
+
+if [[ -z "$MEMORA_HOST" ]]; then
+  if [[ -t 0 ]]; then
+    read -r -p "Rendere Memora accessibile dalla rete locale sulla porta $MEMORA_PORT? [y/N] " expose_reply
+    if [[ "$expose_reply" =~ ^[Yy] ]]; then
+      MEMORA_HOST=0.0.0.0
+    else
+      MEMORA_HOST=127.0.0.1
+    fi
+  else
+    MEMORA_HOST=127.0.0.1
+  fi
+fi
 
 echo "Memora installer"
 echo "  codice:   $MEMORA_HOME"
