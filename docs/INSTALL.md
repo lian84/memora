@@ -5,6 +5,85 @@
 The supported production target is **Debian 13 + systemd**. Docker is not
 required.
 
+## Clean Debian VM (Proxmox)
+
+Suggested starting point for a test VM:
+
+```text
+Debian 13
+2 vCPU
+3 GB RAM
+20 GB disk
+Outbound HTTPS enabled
+```
+
+A sudo-capable user is enough; the installer requests root when needed.
+
+```bash
+sudo apt update
+sudo apt install -y git
+sudo git clone https://github.com/lian84/memora.git /opt/memora
+cd /opt/memora
+sudo ./install.sh
+```
+
+The installer asks whether to restore a backup or import a readable export. For
+a first test choose neither. At the end open:
+
+```text
+http://<vm-ip>:3000
+```
+
+and create the first Memora password.
+
+### Private repository
+
+The repository is currently private. `git clone` over HTTPS will fail without
+credentials. Choose one of these options.
+
+**Option A — temporary public repository**
+
+Make the repository public only for the clone, then make it private again.
+This works, but GitHub may already have cached or forked the public state; it
+is not a guarantee of confidentiality. Only do this if the complete Git history
+is already free of secrets and personal data.
+
+**Option B — read-only deploy key (recommended)**
+
+On the VM:
+
+```bash
+ssh-keygen -t ed25519 -C memora-vm -f ~/.ssh/memora_deploy
+cat ~/.ssh/memora_deploy.pub
+```
+
+Add the public key in GitHub → repository → **Settings → Deploy keys**, with
+write access disabled. Then:
+
+```bash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/memora_deploy' \
+  git clone git@github.com:lian84/memora.git /opt/memora
+cd /opt/memora
+sudo ./install.sh
+```
+
+This keeps the repository private and lets `update.sh` fetch future tags.
+
+**Option C — local Git bundle**
+
+Create a bundle from an existing clone and copy it to the VM:
+
+```bash
+git bundle create memora.bundle --all
+# copy memora.bundle to the VM
+git clone memora.bundle /opt/memora
+cd /opt/memora
+git remote add origin git@github.com:lian84/memora.git
+sudo ./install.sh
+```
+
+Without a remote or deploy key, `update.sh` cannot fetch future releases.
+
 ## Install Memora
 
 Clone the repository where the service will live, then run the installer as a

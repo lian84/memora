@@ -5,6 +5,85 @@
 Il target production supportato è **Debian 13 + systemd**. Docker non è
 necessario.
 
+## VM Debian pulita (Proxmox)
+
+Punto di partenza consigliato per una VM di test:
+
+```text
+Debian 13
+2 vCPU
+3 GB RAM
+20 GB disco
+HTTPS in uscita abilitato
+```
+
+È sufficiente un utente con sudo; l’installer richiede root quando serve.
+
+```bash
+sudo apt update
+sudo apt install -y git
+sudo git clone https://github.com/lian84/memora.git /opt/memora
+cd /opt/memora
+sudo ./install.sh
+```
+
+L’installer chiede se ripristinare un backup o importare un export leggibile.
+Per un primo test non scegliere nessuno dei due. Alla fine apri:
+
+```text
+http://<ip-vm>:3000
+```
+
+e crea la prima password di Memora.
+
+### Repository privata
+
+La repository è attualmente privata. `git clone` via HTTPS fallisce senza
+credenziali. Scegli una di queste opzioni.
+
+**Opzione A — repository temporaneamente pubblica**
+
+Rendi pubblica la repository solo per il clone, poi rimettila privata. Funziona,
+ma GitHub potrebbe aver già memorizzato o forkato lo stato pubblico: non è una
+garanzia di riservatezza. Fallo solo se tutta la cronologia Git è già libera da
+segreti e dati personali.
+
+**Opzione B — deploy key read-only (consigliata)**
+
+Sulla VM:
+
+```bash
+ssh-keygen -t ed25519 -C memora-vm -f ~/.ssh/memora_deploy
+cat ~/.ssh/memora_deploy.pub
+```
+
+Aggiungi la chiave pubblica in GitHub → repository → **Settings → Deploy keys**,
+senza write access. Poi:
+
+```bash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/memora_deploy' \
+  git clone git@github.com:lian84/memora.git /opt/memora
+cd /opt/memora
+sudo ./install.sh
+```
+
+La repository resta privata e `update.sh` può scaricare i tag futuri.
+
+**Opzione C — bundle Git locale**
+
+Crea un bundle da un clone esistente e copialo sulla VM:
+
+```bash
+git bundle create memora.bundle --all
+# copia memora.bundle sulla VM
+git clone memora.bundle /opt/memora
+cd /opt/memora
+git remote add origin git@github.com:lian84/memora.git
+sudo ./install.sh
+```
+
+Senza remote o deploy key, `update.sh` non può scaricare le release future.
+
 ## Installare Memora
 
 Clona la repository nella posizione in cui deve vivere il servizio, poi esegui
