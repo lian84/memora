@@ -5,8 +5,8 @@ personal AI assistant built on Pi.
 
 ## Before you start
 
-- Read [`AGENTS.md`](AGENTS.md), [`ARCHITECTURE.md`](ARCHITECTURE.md) and the
-  relevant file under [`tasks/`](tasks/).
+- Read [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/FEATURES.md`](docs/FEATURES.md)
+  and the relevant documentation under [`docs/`](docs/).
 - Open an issue before a large change, so the design can be discussed first.
 - Do not include real personal data, API keys, session files, databases or
   other runtime data in issues, tests or commits.

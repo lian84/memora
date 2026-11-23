@@ -93,7 +93,7 @@ agents:
 
 - isolated CWD: `$MEMORA_DATA_DIR/runtime/assistant`
 - built-in coding/filesystem tools disabled (`noTools: "builtin"`)
-- no AGENTS.md, project skills, prompt templates, documentation or repository
+- no repository instruction files, project skills, prompt templates, documentation or repository
   source code in context
 - Second Brain memory and Memory Retrieval remain active
 - explicitly configured custom/integration tools may remain active

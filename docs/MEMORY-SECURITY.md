@@ -92,7 +92,7 @@ Messaggi di errore arbitrari del provider non vengono propagati.
   controlla.
 - Una memoria salvata localmente può contenere PII se l'utente la approva.
 - Le API admin non hanno ancora autenticazione: non esporre Memora su Internet
-  senza il completamento di `tasks/09-hardening.md`.
+  senza il completamento di [`SECURITY.md`](SECURITY.md).
 - La memoria può influenzare il modello nell'uso di strumenti consentiti, anche
   se non può cambiarne i permessi.
 

@@ -1,7 +1,6 @@
 # Roadmap
 
-> Stato: Phase 0–5 completate. Backlog canonico dettagliato in `tasks/06`–`tasks/10`:
-> Backlog canonico (Telegram, automazioni, integrazioni, hardening, release).
+> Stato: Phase 0–5 completate. Backlog dettagliato nella documentazione del progetto.
 
 ## Phase 0 — Bootstrap
 - [x] monorepo

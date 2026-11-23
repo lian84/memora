@@ -204,7 +204,7 @@ prime 10 (o 2×topK) posizioni con `sum(1 / (60 + rank))`, RRF a rank 1-based,
 deduplicando per chunk. Errori o assenza del modello comportano warning e fallback
 FTS; il log di startup riporta la modalità effettiva. Rank e vettori non
 entrano nel prompt; il provider è chiuso allo shutdown. Il benchmark è descritto
-in `tasks/05.4-hybrid-rag.md`.
+in [`docs/MEMORY-RETRIEVAL-QUALITY.md`](docs/MEMORY-RETRIEVAL-QUALITY.md).
 
 ## Admin settings
 
@@ -299,7 +299,7 @@ appendSystemPrompt: []
 ```
 
 L'inline extension Memora per Memory Retrieval continua a caricarsi tramite
-`extensionFactories`. File `AGENTS.md`, project skills, prompt template,
+`extensionFactories`. File di istruzioni del repository, project skills, prompt template,
 documentazione e source code del repository non entrano nel context.
 
 Le nuove sessioni hanno header/CWD nel runtime isolato. Le sessioni legacy

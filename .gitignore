@@ -57,3 +57,10 @@ Thumbs.db
 # Report di valutazione locali (non baseline)
 evaluation/latest-report.json
 evaluation/reports/
+
+# Internal development notes (kept local, not part of the public repository)
+AGENTS.md
+VM_SETUP.md
+PROJECT_SPEC.md
+tasks/
+prompts/

@@ -598,7 +598,7 @@ without introducing a separate database of approved memories.
 ### Context
 A personal question produced an answer contaminated by tasks, E2E tests, SQLite,
 source IDs and Memora repository details. Sessions used the repository directory
-as cwd, loaded AGENTS.md/project resources and kept built-in coding tools active.
+as cwd, loaded repository instruction files/project resources and kept built-in coding tools active.
 The application repository must not be personal-assistant knowledge.
 
 ### Decision
@@ -627,7 +627,7 @@ The application repository must not be personal-assistant knowledge.
 ### Consequences
 - A personal-assistant session cannot read files, run bash or explore the
   repository.
-- AGENTS.md, skills, prompt templates, documentation and repository source code
+- repository instruction files, skills, prompt templates, documentation and repository source code
   never enter context.
 - Memory Retrieval and Memory Writer keep working.
 - Model selection, resume, streaming, archive/delete, Memory Inbox and production

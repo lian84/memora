@@ -20,7 +20,7 @@ explicitly. A later reindex reuses unchanged vectors; if embeddings are disabled
 the model is missing or fails, the service warns and falls back to FTS. An
 invalid mode produces a warning and uses FTS even when the legacy flag is
 enabled. The startup log reports the effective mode. Loading requires
-significant RAM; see `tasks/05.4-hybrid-rag.md`.
+significant RAM; see [`MEMORY-RETRIEVAL-QUALITY.md`](MEMORY-RETRIEVAL-QUALITY.md).
 
 For diagnostics, `/api/memory/search?q=...&mode=lexical|semantic|hybrid` selects
 the engine without changing the default. `pnpm embeddings:benchmark` creates a
@@ -104,7 +104,7 @@ sessions. Sections and projects have an icon and can be opened or closed
 individually; state is remembered in the browser. Row actions are collected in
 the vertical `⋮` menu, visible only on hover or focus. Chats can be pinned locally:
 they stay at the top of their group and are remembered in the browser. The full
-model is in [`tasks/05.9-projects.md`](tasks/05.9-projects.md) (Italian).
+model is in [`ARCHITECTURE.md`](../ARCHITECTURE.md) (Italian).
 
 Sections are stored in `$MEMORA_DATA_DIR/config/project-sections.json`; each
 `project.json` may contain `sectionId` and `icon`. Projects without a section
@@ -112,7 +112,7 @@ appear under **No section** and can be moved from project settings.
 
 The plan for advanced HTML previews and lightweight Office artifacts
 (DOCX, XLSX, HTML-first PPTX) is in
-[`tasks/05.10-office-artifacts.md`](tasks/05.10-office-artifacts.md) (Italian).
+[`ARCHITECTURE.md`](../ARCHITECTURE.md) (Italian).
 
 ### Project files and chat attachments
 

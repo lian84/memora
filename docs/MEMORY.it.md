@@ -19,7 +19,7 @@ per costruire esplicitamente i vettori. Un reindex successivo riusa i vettori
 invariati; se gli embeddings sono disabilitati, il modello manca o fallisce, il
 servizio avverte e usa FTS. Una modalità non valida produce warning e usa FTS,
 anche se la flag legacy è attiva. Il log di startup riporta la modalità effettiva.
-Il caricamento richiede RAM significativa; vedere `tasks/05.4-hybrid-rag.md`.
+Il caricamento richiede RAM significativa; vedere [`MEMORY-RETRIEVAL-QUALITY.md`](MEMORY-RETRIEVAL-QUALITY.md).
 
 Per diagnostica, `/api/memory/search?q=...&mode=lexical|semantic|hybrid` seleziona
 il motore senza modificare il default. `pnpm embeddings:benchmark` crea una
@@ -109,7 +109,7 @@ chiusi singolarmente; lo stato viene ricordato nel browser. Le azioni delle
 righe sono raccolte nel menu verticale `⋮`, visibile solo su hover o focus. Le
 chat possono essere messe in evidenza localmente: restano in cima al proprio
 gruppo e sono ricordate nel browser. Il modello completo
-è in [`tasks/05.9-projects.md`](tasks/05.9-projects.md).
+è in [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 Le sezioni sono salvate in `$MEMORA_DATA_DIR/config/project-sections.json`; ogni
 `project.json` può contenere `sectionId` e `icon`. I progetti senza sezione
@@ -118,7 +118,7 @@ progetto.
 
 La pianificazione per anteprime HTML evolute e artefatti Office leggeri
 (DOCX, XLSX, PPTX HTML-first) è in
-[`tasks/05.10-office-artifacts.md`](tasks/05.10-office-artifacts.md).
+[`ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ### File progetto e allegati chat
 

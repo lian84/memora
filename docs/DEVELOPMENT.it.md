@@ -94,7 +94,7 @@ repository:
 
 - CWD isolato: `$MEMORA_DATA_DIR/runtime/assistant`
 - built-in coding/filesystem tools disattivati (`noTools: "builtin"`)
-- niente AGENTS.md, project skills, prompt template, documentazione o source
+- niente file di istruzioni del repository, project skills, prompt template, documentazione o source
   code del repository nel context
 - memoria Second Brain e Memory Retrieval restano attivi
 - custom/integration tools esplicitamente configurate possono restare attive

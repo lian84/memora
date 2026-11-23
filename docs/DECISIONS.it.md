@@ -422,7 +422,7 @@ Dopo l'approvazione, l'utente poteva creare e recuperare memorie ma non gestirle
 **Stato:** accepted
 
 ### Contesto
-Una domanda personale ha prodotto una risposta contaminata da task, test E2E, SQLite, source ID e dettagli del repository Memora. La causa era che le sessioni usavano la directory del repository come cwd, caricavano AGENTS.md/project resources e mantenevano i built-in coding tools attivi. Il repository dell'applicazione non deve essere conoscenza dell'assistente personale.
+Una domanda personale ha prodotto una risposta contaminata da task, test E2E, SQLite, source ID e dettagli del repository Memora. La causa era che le sessioni usavano la directory del repository come cwd, caricavano repository instruction files/project resources e mantenevano i built-in coding tools attivi. Il repository dell'applicazione non deve essere conoscenza dell'assistente personale.
 
 ### Decisione
 - Le sessioni personal assistant usano un CWD isolato: `$MEMORA_DATA_DIR/runtime/assistant`, sovrascrivibile con `MEMORA_ASSISTANT_CWD`.
@@ -435,7 +435,7 @@ Una domanda personale ha prodotto una risposta contaminata da task, test E2E, SQ
 
 ### Conseguenze
 - Una sessione personal assistant non può leggere file, eseguire bash o esplorare il repository.
-- AGENTS.md, skills, prompt template, documentazione e source code del repository non entrano nel context.
+- repository instruction files, skills, prompt template, documentazione e source code del repository non entrano nel context.
 - Memory Retrieval e Memory Writer restano funzionanti.
 - Model selection, resume, streaming, archive/delete, Memory Inbox e production runtime restano invariati.
 - Il Coding Mode è deliberatamente rimandato: la policy tool è centralizzata per poterlo aggiungere in futuro.
