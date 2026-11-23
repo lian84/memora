@@ -790,4 +790,8 @@ export const fr: Record<string, string> = {
   'Per importare un export usa una data directory vuota: vedi docs/INSTALL.md e scripts/import-export.mjs. Le impostazioni e i segreti non vengono esportati.': 'Pour importer un export, utilisez une data directory vide : voir docs/INSTALL.md et scripts/import-export.mjs. Les paramètres et les secrets ne sont pas exportés.',
   'Eliminare l’esportazione?': 'Supprimer l’export ?',
   'L’archivio esportato verrà eliminato dalla cartella locale.': 'L’archive exportée sera supprimée du dossier local.',
+  'Aggiornamento richiesto. Memora si riavvierà tra pochi secondi; ricarica la pagina tra un minuto.': 'Mise à jour demandée. Memora redémarrera sous peu ; rechargez la page dans une minute environ.',
+  'Aggiorna ora': 'Mettre à jour maintenant',
+  'Aggiornare Memora?': 'Mettre à jour Memora ?',
+  'Verrà creato automaticamente un backup cifrato prima dell’aggiornamento. Memora si fermerà, applicherà la release e si riavvierà.': 'Un backup local chiffré sera créé automatiquement avant la mise à jour. Memora s’arrêtera, appliquera la release et redémarrera.',
 };

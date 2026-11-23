@@ -1155,6 +1155,12 @@ export async function getUpdateStatus(): Promise<UpdateStatus> {
   return data.status;
 }
 
+export async function applyUpdate(): Promise<UpdateStatus> {
+  const res = await request('/api/admin/update/apply', { method: 'POST' });
+  const data = await res.json() as { status: UpdateStatus };
+  return data.status;
+}
+
 export async function checkForUpdate(): Promise<UpdateStatus> {
   const res = await request('/api/admin/update/check', { method: 'POST' });
   const data = await res.json() as { status: UpdateStatus };

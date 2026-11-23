@@ -58,3 +58,20 @@ describe('UpdateService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('UpdateService apply helper', () => {
+  it('scrive una richiesta solo quando helper e release sono disponibili', async () => {
+    const dir = await tempDir();
+    const helper = path.join(dir, 'memora-update.path');
+    const request = path.join(dir, 'update-request');
+    await fs.writeFile(helper, 'unit');
+    const fetchMock = vi.fn(async () => response({ tag_name: 'v1.1.0', html_url: 'https://example.test' }));
+    const service = new UpdateService({ dataDir: dir, currentVersion: '1.0.0', updateHelperPath: helper, requestPath: request, fetchImpl: fetchMock as unknown as typeof fetch });
+    await service.load();
+    const status = await service.getStatus(true);
+    expect(status).toMatchObject({ updateAvailable: true, applyAvailable: true });
+    await service.requestApply();
+    expect(JSON.parse(await fs.readFile(request, 'utf8'))).toMatchObject({ tag: 'v1.1.0' });
+    await expect(service.requestApply()).rejects.toMatchObject({ code: 'update_already_requested' });
+  });
+});

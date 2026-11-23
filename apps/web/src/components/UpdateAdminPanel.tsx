@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { UpdateStatus } from '@memora/shared';
-import { checkForUpdate, getUpdateStatus, updateUpdateSettings } from '../lib/api';
+import { applyUpdate, checkForUpdate, getUpdateStatus, updateUpdateSettings } from '../lib/api';
 import { useI18n } from '../i18n';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export function UpdateAdminPanel() {
   const { t } = useI18n();
@@ -9,6 +10,8 @@ export function UpdateAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -40,6 +43,21 @@ export function UpdateAdminPanel() {
     }
   };
 
+  const apply = async () => {
+    setApplying(true);
+    setError(null);
+    try {
+      setStatus(await applyUpdate());
+      setApplyOpen(false);
+      setMessage(t('Aggiornamento richiesto. Memora si riavvierà tra pochi secondi; ricarica la pagina tra un minuto.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setApplyOpen(false);
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const saveSettings = async (patch: { enabled?: boolean; notifyTelegram?: boolean }) => {
     setSaving(true);
     setError(null);
@@ -63,7 +81,12 @@ export function UpdateAdminPanel() {
             <h3>{t('Aggiornamenti')}</h3>
             <p className="admin-card-description">{t('Il controllo usa le release pubblicate su GitHub, non i singoli push. Non esegue aggiornamenti automatici.')}</p>
           </div>
-          <button type="button" className="admin-primary" onClick={() => void check()} disabled={checking || loading}>{checking ? t('Controllo…') : t('Controlla ora')}</button>
+          <div className="admin-actions">
+            <button type="button" className="admin-primary" onClick={() => void check()} disabled={checking || loading}>{checking ? t('Controllo…') : t('Controlla ora')}</button>
+            {status?.updateAvailable && status.applyAvailable && !status.requestedAt && (
+              <button type="button" onClick={() => setApplyOpen(true)} disabled={applying}>{applying ? t('Aggiorno…') : t('Aggiorna ora')}</button>
+            )}
+          </div>
         </div>
         {loading && <div className="admin-field-note">{t('Caricamento…')}</div>}
         {status && (
@@ -109,6 +132,20 @@ export function UpdateAdminPanel() {
 ./update.sh</pre>
         <p className="admin-field-note">{t('update.sh crea un backup, applica la nuova release, esegue le migrazioni e verifica il servizio. Se qualcosa fallisce, tenta il rollback.')}</p>
       </section>
+
+      {applyOpen && (
+        <ConfirmDialog
+          title={t('Aggiornare Memora?')}
+          confirmLabel={t('Aggiorna ora')}
+          busyLabel={t('Aggiorno…')}
+          busy={applying}
+          onClose={() => setApplyOpen(false)}
+          onConfirm={() => void apply()}
+        >
+          <p>{t('Verrà creato automaticamente un backup cifrato prima dell’aggiornamento. Memora si fermerà, applicherà la release e si riavvierà.')}</p>
+          <p><strong>{status?.latestVersion}</strong></p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

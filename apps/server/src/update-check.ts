@@ -25,6 +25,13 @@ interface UpdateStateFile {
 type FetchLike = typeof fetch;
 type UpdateNotifier = (status: UpdateStatus) => Promise<boolean>;
 
+export class UpdateError extends Error {
+  constructor(public readonly code: string, message: string, public readonly statusCode = 400) {
+    super(message);
+    this.name = 'UpdateError';
+  }
+}
+
 export interface UpdateServiceOptions {
   dataDir: string;
   currentVersion: string;
@@ -33,6 +40,8 @@ export interface UpdateServiceOptions {
   notify?: UpdateNotifier;
   log?: (event: string, details?: Record<string, unknown>) => void;
   now?: () => number;
+  updateHelperPath?: string;
+  requestPath?: string;
 }
 
 function compareVersions(a: string, b: string): number {
@@ -65,6 +74,10 @@ export class UpdateService {
   private timer: NodeJS.Timeout | null = null;
   private initialTimer: NodeJS.Timeout | null = null;
   private busy = false;
+  private helperAvailable = false;
+  private requestedAt?: number;
+  private readonly updateHelperPath: string;
+  private readonly requestPath: string;
 
   constructor(options: UpdateServiceOptions) {
     this.currentVersion = options.currentVersion;
@@ -76,6 +89,8 @@ export class UpdateService {
     this.repository = this.env.MEMORA_UPDATE_REPO?.trim() || DEFAULT_REPOSITORY;
     this.configPath = path.join(options.dataDir, 'config', 'update.json');
     this.statePath = path.join(options.dataDir, 'config', 'update-state.json');
+    this.updateHelperPath = options.updateHelperPath ?? '/etc/systemd/system/memora-update.path';
+    this.requestPath = options.requestPath ?? path.join(options.dataDir, 'update-request');
   }
 
   async load(): Promise<void> {
@@ -96,9 +111,40 @@ export class UpdateService {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.log('update_state_ignored');
     }
+    await this.refreshHelperState();
+  }
+
+  async requestApply(): Promise<UpdateStatus> {
+    const status = await this.getStatus(false);
+    if (!status.updateAvailable) throw new UpdateError('update_not_available', 'Nessuna nuova release disponibile', 409);
+    if (!this.helperAvailable) throw new UpdateError('update_helper_missing', 'Update helper systemd non installato', 409);
+    if (this.requestedAt) throw new UpdateError('update_already_requested', 'Aggiornamento già richiesto', 409);
+    await fs.mkdir(path.dirname(this.requestPath), { recursive: true, mode: 0o700 });
+    const temporary = `${this.requestPath}.tmp-${process.pid}-${Date.now()}`;
+    await fs.writeFile(temporary, `${JSON.stringify({ requestedAt: this.now(), tag: status.latestVersion }, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+    await fs.rename(temporary, this.requestPath);
+    await fs.chmod(this.requestPath, 0o600);
+    this.requestedAt = this.now();
+    this.log('update_requested', { tag: status.latestVersion });
+    return { ...status, requestedAt: this.requestedAt };
+  }
+
+  private async refreshHelperState(): Promise<void> {
+    try {
+      await fs.access(this.updateHelperPath);
+      this.helperAvailable = true;
+    } catch {
+      this.helperAvailable = false;
+    }
+    try {
+      this.requestedAt = (await fs.stat(this.requestPath)).mtimeMs;
+    } catch {
+      this.requestedAt = undefined;
+    }
   }
 
   async getStatus(force = false): Promise<UpdateStatus> {
+    await this.refreshHelperState();
     if (this.settings.enabled && (force || !this.state.checkedAt || this.now() - this.state.checkedAt > CACHE_MS)) {
       await this.check(force);
     }
@@ -203,6 +249,8 @@ export class UpdateService {
       enabled: this.settings.enabled,
       notifyTelegram: this.settings.notifyTelegram,
       updateAvailable: Boolean(latest && compareVersions(latest, this.currentVersion) > 0),
+      applyAvailable: this.helperAvailable && Boolean(latest && compareVersions(latest, this.currentVersion) > 0),
+      ...(this.requestedAt ? { requestedAt: this.requestedAt } : {}),
       ...(this.state.checkedAt ? { checkedAt: this.state.checkedAt } : {}),
       ...(latest ? { latestVersion: latest } : {}),
       ...(this.state.releaseName ? { releaseName: this.state.releaseName } : {}),

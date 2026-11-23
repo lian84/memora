@@ -198,6 +198,10 @@ fi
 systemctl daemon-reload
 systemctl enable memora.service
 
+if [[ -x "$MEMORA_HOME/scripts/install-update-helper.sh" ]]; then
+  "$MEMORA_HOME/scripts/install-update-helper.sh"
+fi
+
 if [[ -z "$MEMORA_RESTORE_FILE" && -t 0 ]]; then
   read -r -p "Vuoi ripristinare un backup? [y/N] " reply
   if [[ "$reply" =~ ^[Yy] ]]; then

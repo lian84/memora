@@ -9,6 +9,9 @@ export interface UpdateStatus {
   enabled: boolean;
   notifyTelegram: boolean;
   updateAvailable: boolean;
+  /** Il pulsante Aggiorna ora è disponibile solo se l'update helper è installato. */
+  applyAvailable: boolean;
+  requestedAt?: number;
   checkedAt?: number;
   latestVersion?: string;
   releaseName?: string;

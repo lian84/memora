@@ -65,6 +65,31 @@ GitHub restituisce `404` per una release privata senza autenticazione. Memora
 mostra “repository privata o nessuna release pubblica” e continua a controllare
 in background. Configura un token read-only oppure rendi pubblica la repository.
 
+## Aggiornamento dalla UI
+
+Il pannello Aggiornamenti può richiedere un aggiornamento quando è installato
+l’helper systemd. Il processo web non esegue mai `sudo` o comandi shell
+arbitrari:
+
+```text
+Aggiorna ora
+→ scrive $MEMORA_DATA_DIR/update-request
+→ memora-update.path avvia memora-update.service come root
+→ update.sh crea un backup, sceglie l’ultima release, compila e riavvia
+```
+
+Il pulsante crea un backup cifrato obbligatorio prima di applicare la release.
+La pagina può disconnettersi durante il riavvio: ricaricala dopo circa un
+minuto. L’helper viene installato da `install.sh` e può essere installato su un
+sistema esistente con:
+
+```bash
+sudo /opt/memora/scripts/install-update-helper.sh
+```
+
+Se l’helper non è installato, la UI continua a mostrare le istruzioni manuali
+per `update.sh`.
+
 ## Aggiornamento
 
 `update.sh` crea un backup locale obbligatorio, applica una release pubblicata,

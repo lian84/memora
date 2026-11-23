@@ -24,6 +24,8 @@ set +a
 MEMORA_DATA_DIR="${MEMORA_DATA_DIR:-/var/lib/memora}"
 MEMORA_PORT="${MEMORA_PORT:-3000}"
 MEMORA_BACKUP_DIR="${MEMORA_BACKUP_DIR:-${MEMORA_DATA_DIR%/}/../memora-backups}"
+UPDATE_REQUEST_FILE="$MEMORA_DATA_DIR/update-request"
+rm -f "$UPDATE_REQUEST_FILE" 2>/dev/null || true
 
 if [[ ! -d "$MEMORA_HOME/.git" ]]; then
   echo "La directory installata non è un repository git: aggiornamento non disponibile."
@@ -107,6 +109,10 @@ if ! runuser -u "$MEMORA_USER" -- sh -c 'cd "$1" && pnpm install --frozen-lockfi
   echo "Build fallita: rollback."
   rollback
   exit 1
+fi
+
+if [[ -x "$MEMORA_HOME/scripts/install-update-helper.sh" ]]; then
+  "$MEMORA_HOME/scripts/install-update-helper.sh" >/dev/null 2>&1 || true
 fi
 
 # Best-effort migration of legacy project metadata. It is idempotent.

@@ -208,6 +208,18 @@ Usa `--force` solo dopo aver verificato che il servizio è fermo. Leggi manifest
 checksum prima del ripristino. Conserva la copia di sicurezza finché l’istanza
 ripristinata non è stata verificata.
 
+### Abilitare il pulsante di aggiornamento su un’installazione esistente
+
+Dopo l’aggiornamento a una release che include l’helper:
+
+```bash
+sudo /opt/memora/scripts/install-update-helper.sh
+```
+
+Installa `memora-update.path` e `memora-update.service`. Il processo web può
+richiedere un aggiornamento creando un file marker; non può eseguire comandi
+shell come root.
+
 ## Aggiornare Memora
 
 Gli aggiornamenti sono manuali e basati sulle release GitHub pubblicate, non su

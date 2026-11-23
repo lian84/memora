@@ -208,6 +208,18 @@ Use `--force` only when you have verified that the service is stopped. Read the
 manifest and checksum before restoring. Keep the safety copy until the restored
 instance has been verified.
 
+### Enable the update button on an existing install
+
+After updating to a release that includes the helper:
+
+```bash
+sudo /opt/memora/scripts/install-update-helper.sh
+```
+
+This installs `memora-update.path` and `memora-update.service`. The web process
+can then request an update by creating a marker file; it cannot run shell
+commands as root.
+
 ## Update Memora
 
 Updates are manual and based on published GitHub releases, not on every push to

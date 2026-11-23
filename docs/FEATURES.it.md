@@ -171,7 +171,8 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] `install.sh` Debian/systemd, restore in installazione e restore CLI di emergenza.
 - [x] `update.sh` con backup obbligatorio pre-aggiornamento, tag release e rollback.
 - [ ] Test dell’installer su VM Debian pulita.
-- [x] CI GitHub Actions e prima release `v0.1.0`.
+- [x] CI GitHub Actions e release pubbliche.
+- [x] Aggiornamento con un clic da Amministrazione, con backup cifrato obbligatorio e helper systemd path-unit.
 - [x] Licenza AGPL-3.0-only, NOTICE, TRADEMARKS e CONTRIBUTING con DCO.
 
 ## Note

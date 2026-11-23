@@ -64,6 +64,30 @@ GitHub returns `404` for a private release without authentication. Memora shows
 “repository private or no public release” and simply keeps checking in the
 background. Configure a read-only token or make the repository public.
 
+## Update from the UI
+
+The updates panel can request an update when the systemd helper is installed.
+The web process never executes `sudo` or an arbitrary shell command:
+
+```text
+Update now
+→ writes $MEMORA_DATA_DIR/update-request
+→ memora-update.path starts memora-update.service as root
+→ update.sh creates a backup, checks out the latest release, builds, restarts
+```
+
+The button creates a mandatory encrypted backup before applying the release.
+The page may disconnect while the service restarts; reload it after about a
+minute. The helper is installed by `install.sh` and can be installed on an
+existing system with:
+
+```bash
+sudo /opt/memora/scripts/install-update-helper.sh
+```
+
+If the helper is not installed, the UI keeps the manual `update.sh` instructions
+visible.
+
 ## Updating
 
 `update.sh` creates a mandatory local backup, applies a published release,
