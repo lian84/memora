@@ -319,7 +319,11 @@ const dataExportService = new DataExportService({
   appVersion: memoraVersion,
   log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'export'),
 });
-await dataExportService.initialize();
+try {
+  await dataExportService.initialize();
+} catch (error) {
+  app.log.warn({ error: error instanceof Error ? error.message : String(error) }, 'data export directory unavailable');
+}
 
 registerBackupRoutes(app, { backups: backupService, remote: rcloneService });
 registerUpdateRoutes(app, { updates: updateService });

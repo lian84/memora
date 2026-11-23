@@ -104,6 +104,7 @@ Utente:       memora
 Dati:         /var/lib/memora
 Config:       /etc/memora/memora.env
 Backup:       /var/lib/memora-backups
+Export:       /var/lib/memora-exports
 ```
 
 Sono modificabili con `MEMORA_HOME`, `MEMORA_USER`, `MEMORA_DATA_DIR`,
