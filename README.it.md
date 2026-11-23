@@ -51,13 +51,13 @@ Il registro completo delle funzionalità, con stato e limiti noti, è in
 ## Screenshot
 
 <p align="center">
-  <a href="docs/assets/screenshots/chat.png">
-    <img src="docs/assets/screenshots/chat.png" alt="Chat di Memora con progetti, profili agente e composer" width="100%">
+  <a href="docs/assets/screenshots/chat-artifact.png">
+    <img src="docs/assets/screenshots/chat-artifact.png" alt="Risposta di Memora con artefatto Atlas Launch Brief e anteprima" width="100%">
   </a>
 </p>
 
 <p align="center">
-  <sub>Chat con contesto di progetto, profili agente e composer di Memora.</sub>
+  <sub>Risposta, artefatto generato e anteprima live nello spazio di lavoro.</sub>
 </p>
 
 <table>

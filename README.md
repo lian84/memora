@@ -51,13 +51,13 @@ in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 ## Screenshots
 
 <p align="center">
-  <a href="docs/assets/screenshots/chat.png">
-    <img src="docs/assets/screenshots/chat.png" alt="Memora chat with projects, agent profiles and composer" width="100%">
+  <a href="docs/assets/screenshots/chat-artifact.png">
+    <img src="docs/assets/screenshots/chat-artifact.png" alt="Memora chat answer with a generated Atlas launch brief artifact and preview" width="100%">
   </a>
 </p>
 
 <p align="center">
-  <sub>Chat with project context, agent profiles and the Memora composer.</sub>
+  <sub>A real answer, generated artifact and live preview in the workspace.</sub>
 </p>
 
 <table>

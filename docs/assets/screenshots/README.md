@@ -24,7 +24,8 @@ Guidelines:
 
 ## Used in the README
 
-- `chat.png` — main chat and navigation;
+- `chat-artifact.png` — main README screenshot: answer, artifact and preview;
+- `chat.png` — empty-state chat and navigation;
 - `agents.png` — agent profiles and skills editor;
 - `project.png` — project settings, sources and MCP;
 - `appearance.png` — appearance settings;
