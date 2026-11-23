@@ -16,6 +16,9 @@ MEMORA_DATA_DIR="${MEMORA_DATA_DIR:-/var/lib/memora}"
 MEMORA_CONFIG_DIR="${MEMORA_CONFIG_DIR:-/etc/memora}"
 MEMORA_PORT="${MEMORA_PORT:-3000}"
 MEMORA_HOST="${MEMORA_HOST:-}"
+MEMORA_DEPLOYMENT="${MEMORA_DEPLOYMENT:-}"
+MEMORA_DOMAIN="${MEMORA_DOMAIN:-}"
+MEMORA_COOKIE_SECURE="${MEMORA_COOKIE_SECURE:-}"
 MEMORA_BACKUP_DIR="${MEMORA_BACKUP_DIR:-${MEMORA_DATA_DIR%/}/../memora-backups}"
 MEMORA_EXPORT_DIR="${MEMORA_EXPORT_DIR:-${MEMORA_DATA_DIR%/}/../memora-exports}"
 MEMORA_RESTORE_FILE="${MEMORA_RESTORE_FILE:-}"
@@ -24,17 +27,51 @@ MEMORA_VERSION="${MEMORA_VERSION:-$(git -C "$SOURCE_DIR" describe --tags --alway
 
 systemctl stop memora.service >/dev/null 2>&1 || true
 
-if [[ -z "$MEMORA_HOST" ]]; then
+if [[ -z "$MEMORA_DEPLOYMENT" ]]; then
   if [[ -t 0 ]]; then
-    read -r -p "Rendere Memora accessibile dalla rete locale sulla porta $MEMORA_PORT? [y/N] " expose_reply
-    if [[ "$expose_reply" =~ ^[Yy] ]]; then
-      MEMORA_HOST=0.0.0.0
-    else
-      MEMORA_HOST=127.0.0.1
-    fi
+    echo
+    echo "Tipo di installazione:"
+    echo "  1) Rete locale / Proxmox  → http://IP-VM:$MEMORA_PORT"
+    echo "  2) VPS pubblica            → HTTPS con dominio"
+    read -r -p "Scelta [1]: " deployment_reply
+    case "$deployment_reply" in
+      2|vps|VPS) MEMORA_DEPLOYMENT=vps ;;
+      *) MEMORA_DEPLOYMENT=local ;;
+    esac
   else
-    MEMORA_HOST=127.0.0.1
+    MEMORA_DEPLOYMENT=local
   fi
+fi
+
+case "$MEMORA_DEPLOYMENT" in
+  vps|VPS)
+    MEMORA_DEPLOYMENT=vps
+    if [[ -z "$MEMORA_DOMAIN" ]]; then
+      if [[ ! -t 0 ]]; then
+        echo "MEMORA_DOMAIN è obbligatorio per un'installazione VPS."
+        exit 1
+      fi
+      read -r -p "Dominio pubblico (es. memora.example.com): " MEMORA_DOMAIN
+    fi
+    if [[ ! "$MEMORA_DOMAIN" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ || "$MEMORA_DOMAIN" != *.* ]]; then
+      echo "Dominio non valido: $MEMORA_DOMAIN"
+      exit 1
+    fi
+    MEMORA_HOST="${MEMORA_HOST:-127.0.0.1}"
+    MEMORA_COOKIE_SECURE="${MEMORA_COOKIE_SECURE:-true}"
+    ;;
+  local|LOCAL|*)
+    MEMORA_DEPLOYMENT=local
+    MEMORA_HOST="${MEMORA_HOST:-0.0.0.0}"
+    MEMORA_COOKIE_SECURE="${MEMORA_COOKIE_SECURE:-false}"
+    ;;
+esac
+
+if [[ "$MEMORA_DEPLOYMENT" == "local" && "$MEMORA_HOST" == "0.0.0.0" ]]; then
+  echo "Modalità locale: Memora sarà raggiungibile sulla rete locale, non su Internet."
+fi
+if [[ "$MEMORA_DEPLOYMENT" == "vps" ]]; then
+  echo "Modalità VPS: HTTPS per $MEMORA_DOMAIN; la porta $MEMORA_PORT resterà su localhost."
 fi
 
 echo "Memora installer"
@@ -111,6 +148,7 @@ if [[ ! -f "$MEMORA_CONFIG_DIR/memora.env" ]]; then
 NODE_ENV=production
 MEMORA_HOST=$MEMORA_HOST
 MEMORA_PORT=$MEMORA_PORT
+MEMORA_COOKIE_SECURE=$MEMORA_COOKIE_SECURE
 MEMORA_DATA_DIR=$MEMORA_DATA_DIR
 MEMORA_BACKUP_DIR=$MEMORA_BACKUP_DIR
 MEMORA_EXPORT_DIR=$MEMORA_EXPORT_DIR
@@ -128,6 +166,34 @@ sed \
   -e "s|^WorkingDirectory=.*|WorkingDirectory=$MEMORA_HOME|" \
   -e "s|^EnvironmentFile=.*|EnvironmentFile=$MEMORA_CONFIG_DIR/memora.env|" \
   "$MEMORA_HOME/deploy/memora.service" > /etc/systemd/system/memora.service
+if [[ "$MEMORA_DEPLOYMENT" == "vps" ]]; then
+  echo "Configurazione HTTPS con Caddy per $MEMORA_DOMAIN…"
+  apt-get install -y --no-install-recommends caddy
+  install -d -m 0755 /etc/caddy/conf.d
+  if [[ ! -f /etc/caddy/Caddyfile ]]; then
+    printf 'import /etc/caddy/conf.d/*.caddy\n' > /etc/caddy/Caddyfile
+  elif ! grep -q 'conf.d' /etc/caddy/Caddyfile; then
+    cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.before-memora.$(date +%s)"
+    printf '\nimport /etc/caddy/conf.d/*.caddy\n' >> /etc/caddy/Caddyfile
+  fi
+  cat > /etc/caddy/conf.d/memora.caddy <<CADDY
+$MEMORA_DOMAIN {
+    reverse_proxy 127.0.0.1:$MEMORA_PORT
+}
+CADDY
+  if ! caddy validate --config /etc/caddy/Caddyfile; then
+    echo "Configurazione Caddy non valida. Controlla /etc/caddy/Caddyfile e /etc/caddy/conf.d/memora.caddy."
+    exit 1
+  fi
+  systemctl enable caddy.service
+  systemctl restart caddy.service
+  if command -v ufw >/dev/null 2>&1 && ufw status | grep -q 'Status: active'; then
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+  fi
+  echo "Caddy configurato. Assicurati che $MEMORA_DOMAIN punti a questo server e che 80/443 siano raggiungibili."
+fi
+
 systemctl daemon-reload
 systemctl enable memora.service
 
@@ -158,8 +224,15 @@ fi
 
 systemctl restart memora.service
 for _ in $(seq 1 60); do
-  if curl -fsS "http://$MEMORA_HOST:$MEMORA_PORT/api/health" >/dev/null 2>&1; then
-    echo "Memora è attivo su http://$MEMORA_HOST:$MEMORA_PORT"
+  if curl -fsS "http://127.0.0.1:$MEMORA_PORT/api/health" >/dev/null 2>&1; then
+    if [[ "$MEMORA_DEPLOYMENT" == "vps" ]]; then
+      echo "Memora è attivo internamente su http://127.0.0.1:$MEMORA_PORT"
+      echo "URL pubblico: https://$MEMORA_DOMAIN"
+      echo "Il certificato può richiedere qualche minuto; controlla: journalctl -u caddy -n 100"
+    else
+      VM_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+      echo "Memora è attivo su http://${VM_IP:-IP-VM}:$MEMORA_PORT"
+    fi
     exit 0
   fi
   sleep 1

@@ -27,19 +27,47 @@ cd /opt/memora
 sudo ./install.sh
 ```
 
-L’installer chiede se rendere Memora raggiungibile sulla rete locale. Rispondi
-**No** per usare un tunnel SSH, oppure **Sì** per esporla sull’IP della VM alla
-porta 3000. Un’installazione non interattiva usa `127.0.0.1`; puoi forzare
-l’esposizione con `MEMORA_HOST=0.0.0.0`.
+L’installer chiede il tipo di installazione:
+
+```text
+1) Rete locale / Proxmox  → http://IP-VM:3000
+2) VPS pubblica            → HTTPS con dominio
+```
+
+La modalità locale espone Memora su `0.0.0.0` alla porta 3000, così gli altri
+dispositivi della LAN possono aprirla. La modalità VPS lascia la porta 3000 su
+`127.0.0.1` e installa Caddy come reverse proxy HTTPS sulle porte 80/443.
+
+Un’installazione non interattiva usa la modalità locale. Puoi forzarla con:
+
+```bash
+MEMORA_DEPLOYMENT=vps MEMORA_DOMAIN=memora.example.com ./install.sh
+# oppure
+MEMORA_DEPLOYMENT=local ./install.sh
+```
 
 L’installer chiede se ripristinare un backup o importare un export leggibile.
 Per un primo test non scegliere nessuno dei due. Alla fine apri:
 
 ```text
-http://<ip-vm>:3000
+Locale: http://<ip-vm>:3000
+VPS:    https://<dominio>
 ```
 
 e crea la prima password di Memora.
+
+### Profilo VPS pubblica
+
+La modalità VPS richiede:
+
+- un record DNS che punta il dominio alla VM;
+- TCP 80 e 443 raggiungibili da Internet;
+- un dominio, non un indirizzo IP nudo.
+
+L’installer configura Caddy con un file dedicato
+`/etc/caddy/conf.d/memora.caddy` e preserva le altre configurazioni Caddy.
+L’applicazione ascolta solo su `127.0.0.1:3000`. `MEMORA_COOKIE_SECURE=true`
+viene impostato automaticamente.
 
 ### Repository privata
 

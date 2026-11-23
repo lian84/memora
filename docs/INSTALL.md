@@ -27,19 +27,47 @@ cd /opt/memora
 sudo ./install.sh
 ```
 
-The installer asks whether to expose Memora on the local network. Answer **No**
-for an SSH tunnel, or **Yes** to bind it to the VM's LAN IP on port 3000. A
-non-interactive install defaults to `127.0.0.1`; override it explicitly with
-`MEMORA_HOST=0.0.0.0` when needed.
+The installer asks for a deployment profile:
+
+```text
+1) Local network / Proxmox  → http://VM-IP:3000
+2) Public VPS               → HTTPS with a domain
+```
+
+Local mode binds Memora to `0.0.0.0` on port 3000 so other devices on the LAN
+can open it directly. VPS mode keeps port 3000 on `127.0.0.1` and installs Caddy
+as an HTTPS reverse proxy on ports 80/443.
+
+For a non-interactive install the default is local mode. Override it with:
+
+```bash
+MEMORA_DEPLOYMENT=vps MEMORA_DOMAIN=memora.example.com ./install.sh
+# or
+MEMORA_DEPLOYMENT=local ./install.sh
+```
 
 The installer asks whether to restore a backup or import a readable export. For
 a first test choose neither. At the end open:
 
 ```text
-http://<vm-ip>:3000
+Local: http://<vm-ip>:3000
+VPS:   https://<domain>
 ```
 
 and create the first Memora password.
+
+### Public VPS profile
+
+VPS mode requires:
+
+- a DNS record pointing the domain to the VM;
+- inbound TCP 80 and 443 reachable from the Internet;
+- a domain name, not a raw IP address.
+
+The installer configures Caddy with a dedicated `/etc/caddy/conf.d/memora.caddy`
+entry and leaves any existing Caddy configuration in place. The application
+listens only on `127.0.0.1:3000`. `MEMORA_COOKIE_SECURE=true` is set
+automatically.
 
 ### Private repository
 
