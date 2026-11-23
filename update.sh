@@ -29,6 +29,7 @@ if [[ ! -d "$MEMORA_HOME/.git" ]]; then
   echo "La directory installata non è un repository git: aggiornamento non disponibile."
   exit 1
 fi
+git config --system --add safe.directory "$MEMORA_HOME" 2>/dev/null || true
 
 TARGET_TAG="${MEMORA_UPDATE_TAG:-}"
 PREVIOUS_COMMIT="$(git -C "$MEMORA_HOME" rev-parse HEAD)"

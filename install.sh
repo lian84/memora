@@ -127,6 +127,7 @@ if [[ "$SOURCE_DIR" != "$MEMORA_HOME" ]]; then
     -cf - . | tar -C "$MEMORA_HOME" -xf -
 fi
 chown -R "$MEMORA_USER:$MEMORA_USER" "$MEMORA_HOME"
+git config --system --add safe.directory "$MEMORA_HOME" 2>/dev/null || true
 
 # The Debian rclone package can lack the Mega backend. Prefer the official
 # static binary in the data directory.
