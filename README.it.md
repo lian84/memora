@@ -44,16 +44,50 @@ Memora è un assistente personale self-hosted costruito sopra
 Brain in Markdown, memoria con approvazione umana, progetti, artefatti, ricerca
 web e automazioni pianificate in un'unica interfaccia.
 
-<!-- Gli screenshot verranno aggiunti prima della prima release pubblica. -->
-
 Il registro completo delle funzionalità, con stato e limiti noti, è in
 [`docs/FEATURES.it.md`](docs/FEATURES.it.md). Le decisioni architetturali sono in
 [`docs/DECISIONS.it.md`](docs/DECISIONS.it.md).
 
+## Screenshot
+
+<p align="center">
+  <a href="docs/assets/screenshots/chat.png">
+    <img src="docs/assets/screenshots/chat.png" alt="Chat di Memora con progetti, profili agente e composer" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <sub>Chat con contesto di progetto, profili agente e composer di Memora.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/assets/screenshots/agents.png"><img src="docs/assets/screenshots/agents.png" alt="Profili agente e editor competenze di Memora" width="100%"></a>
+      <sub><strong>Profili agente</strong><br>Prompt, competenze, icone e colori personalizzati.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/assets/screenshots/project.png"><img src="docs/assets/screenshots/project.png" alt="Impostazioni progetto di Memora con fonti e account MCP" width="100%"></a>
+      <sub><strong>Progetti</strong><br>Prompt, fonti, file e account MCP separati.</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <a href="docs/assets/screenshots/appearance.png">
+    <img src="docs/assets/screenshots/appearance.png" alt="Impostazioni aspetto di Memora" width="72%">
+  </a>
+</p>
+
+<p align="center">
+  <sub><strong>Aspetto</strong><br>Tema, densità, dimensione testo e accessibilità.</sub>
+</p>
+
 ## Stato
 
-Pre-release: le funzionalità sono utilizzabili e testate. Installer, restore e
-aggiornamento sono implementati; manca ancora un test su VM Debian pulita. Vedi
+Pre-release: le funzionalità sono utilizzabili e testate. L’installazione è stata
+verificata su una VM Debian 13; restano da verificare restore, aggiornamento e
+rollback. Vedi
 [`docs/FEATURES.it.md`](docs/FEATURES.it.md) per lo stato aggiornato e i limiti
 noti.
 

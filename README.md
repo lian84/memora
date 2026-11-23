@@ -44,17 +44,51 @@ Memora is a self-hosted personal assistant built on
 Markdown-based Second Brain, human-reviewed memory, projects, artifacts, web
 research and scheduled automations into one interface.
 
-<!-- Screenshots will be added before the first public release. -->
-
 The complete feature registry, with status and known limitations, is in
 [`docs/FEATURES.md`](docs/FEATURES.md). Architectural decisions are documented
 in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
+## Screenshots
+
+<p align="center">
+  <a href="docs/assets/screenshots/chat.png">
+    <img src="docs/assets/screenshots/chat.png" alt="Memora chat with projects, agent profiles and composer" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <sub>Chat with project context, agent profiles and the Memora composer.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/assets/screenshots/agents.png"><img src="docs/assets/screenshots/agents.png" alt="Memora agent profiles and skills editor" width="100%"></a>
+      <sub><strong>Agent profiles</strong><br>Custom prompts, skills, icons and colors.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/assets/screenshots/project.png"><img src="docs/assets/screenshots/project.png" alt="Memora project settings with sources and MCP accounts" width="100%"></a>
+      <sub><strong>Projects</strong><br>Scoped prompt, sources, files and MCP accounts.</sub>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <a href="docs/assets/screenshots/appearance.png">
+    <img src="docs/assets/screenshots/appearance.png" alt="Memora appearance settings" width="72%">
+  </a>
+</p>
+
+<p align="center">
+  <sub><strong>Appearance</strong><br>Theme, density, text size and accessibility.</sub>
+</p>
+
 ## Status
 
-Pre-release: features are usable and tested. Installation, restore and update
-scripts are implemented; a clean-VM installation test is still pending. See [`docs/FEATURES.md`](docs/FEATURES.md)
-for the current registry and known limitations.
+Pre-release: features are usable and tested. Installation has been verified on a
+Debian 13 VM; restore, update and rollback verification is still pending. See
+[`docs/FEATURES.md`](docs/FEATURES.md) for the current registry and known
+limitations.
 
 ## Key features
 

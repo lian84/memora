@@ -20,3 +20,15 @@ Guidelines:
 - prefer PNG, 1400–1800 px wide;
 - keep the UI copy in the language you want to show;
 - show the relevant content without excessive empty space.
+
+
+## Used in the README
+
+- `chat.png` — main chat and navigation;
+- `agents.png` — agent profiles and skills editor;
+- `project.png` — project settings, sources and MCP;
+- `appearance.png` — appearance settings;
+- `settings-memory.png` — kept for a future memory/admin screenshot.
+
+The remaining images are kept as additional material for future docs or the
+website.
