@@ -27,6 +27,11 @@ cd /opt/memora
 sudo ./install.sh
 ```
 
+L’installer chiede se rendere Memora raggiungibile sulla rete locale. Rispondi
+**No** per usare un tunnel SSH, oppure **Sì** per esporla sull’IP della VM alla
+porta 3000. Un’installazione non interattiva usa `127.0.0.1`; puoi forzare
+l’esposizione con `MEMORA_HOST=0.0.0.0`.
+
 L’installer chiede se ripristinare un backup o importare un export leggibile.
 Per un primo test non scegliere nessuno dei due. Alla fine apri:
 

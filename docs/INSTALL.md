@@ -27,6 +27,11 @@ cd /opt/memora
 sudo ./install.sh
 ```
 
+The installer asks whether to expose Memora on the local network. Answer **No**
+for an SSH tunnel, or **Yes** to bind it to the VM's LAN IP on port 3000. A
+non-interactive install defaults to `127.0.0.1`; override it explicitly with
+`MEMORA_HOST=0.0.0.0` when needed.
+
 The installer asks whether to restore a backup or import a readable export. For
 a first test choose neither. At the end open:
 
