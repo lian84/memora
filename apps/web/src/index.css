@@ -1937,3 +1937,5 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .monitor-alert strong { font-size: 11px; }
 .monitor-alert span { font-size: 10px; line-height: 1.4; }
 .monitor-settings { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+.export-admin { display: flex; flex-direction: column; gap: 14px; }
+.export-admin .admin-field-note { margin-top: 10px; line-height: 1.45; }

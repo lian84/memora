@@ -132,6 +132,8 @@ Il ripristino non è disponibile da un’istanza Memora attiva.
 Manifest e checksum vengono verificati prima di sostituire i dati; la data
 directory precedente viene spostata in una directory di sicurezza con timestamp.
 
+Per un export leggibile senza segreti vedi [Esportazione dati](EXPORT.it.md).
+
 ## Limiti noti
 
 - `tar` deve essere disponibile sull’host (pacchetto Debian `tar`).

@@ -18,6 +18,7 @@ MEMORA_PORT="${MEMORA_PORT:-3000}"
 MEMORA_HOST="${MEMORA_HOST:-127.0.0.1}"
 MEMORA_BACKUP_DIR="${MEMORA_BACKUP_DIR:-${MEMORA_DATA_DIR%/}/../memora-backups}"
 MEMORA_RESTORE_FILE="${MEMORA_RESTORE_FILE:-}"
+MEMORA_IMPORT_FILE="${MEMORA_IMPORT_FILE:-}"
 MEMORA_VERSION="${MEMORA_VERSION:-$(git -C "$SOURCE_DIR" describe --tags --always 2>/dev/null || echo 0.0.0)}"
 
 systemctl stop memora.service >/dev/null 2>&1 || true
@@ -127,6 +128,16 @@ if [[ -n "$MEMORA_RESTORE_FILE" ]]; then
   echo "Ripristino in corso…"
   MEMORA_BACKUP_PASSWORD="${MEMORA_BACKUP_PASSWORD:?MEMORA_BACKUP_PASSWORD richiesta per il restore}" \
     node "$MEMORA_HOME/scripts/restore-backup.mjs" --file "$MEMORA_RESTORE_FILE" --data-dir "$MEMORA_DATA_DIR" --yes --force
+  chown -R "$MEMORA_USER:$MEMORA_USER" "$MEMORA_DATA_DIR"
+elif [[ -z "$MEMORA_IMPORT_FILE" && -t 0 ]]; then
+  read -r -p "Vuoi importare un export leggibile? [y/N] " reply
+  if [[ "$reply" =~ ^[Yy] ]]; then
+    read -r -p "Percorso archivio export (.tar.gz): " MEMORA_IMPORT_FILE
+  fi
+fi
+if [[ -n "$MEMORA_IMPORT_FILE" ]]; then
+  echo "Importazione export in corso…"
+  node "$MEMORA_HOME/scripts/import-export.mjs" --file "$MEMORA_IMPORT_FILE" --data-dir "$MEMORA_DATA_DIR" --yes --force
   chown -R "$MEMORA_USER:$MEMORA_USER" "$MEMORA_DATA_DIR"
 fi
 

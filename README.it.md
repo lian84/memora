@@ -115,6 +115,7 @@ Vedi [Installazione, ripristino e aggiornamento](docs/INSTALL.it.md).
 - [Backup](docs/BACKUP.it.md)
 - [Aggiornamenti](docs/UPDATES.it.md)
 - [Monitoraggio](docs/MONITORING.it.md)
+- [Esportazione dati](docs/EXPORT.it.md)
 - [Decisioni](docs/DECISIONS.it.md)
 - [Operazioni](docs/OPERATIONS.md)
 - [Sicurezza](docs/SECURITY.md)

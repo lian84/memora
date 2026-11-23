@@ -43,6 +43,8 @@ import {
   type UpdateStatus,
   type MonitorSettings,
   type MonitorStatus,
+  type DataExportRecord,
+  type DataExportStatus,
 } from '@memora/shared';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
@@ -1182,4 +1184,26 @@ export async function updateMonitorSettings(settings: Partial<MonitorSettings>):
   const res = await request('/api/admin/monitor', { method: 'PATCH', body: JSON.stringify(settings) });
   const data = await res.json() as { status: MonitorStatus };
   return data.status;
+}
+
+
+export async function getDataExportStatus(): Promise<DataExportStatus> {
+  const res = await request('/api/admin/export');
+  const data = await res.json() as { status: DataExportStatus };
+  return data.status;
+}
+
+export async function createDataExport(): Promise<DataExportRecord> {
+  const res = await request('/api/admin/export', { method: 'POST' });
+  const data = await res.json() as { record: DataExportRecord };
+  return data.record;
+}
+
+export async function deleteDataExport(id: string): Promise<{ id: string }> {
+  const res = await request(`/api/admin/export/${encodeURIComponent(id)}?confirm=${encodeURIComponent(id)}`, { method: 'DELETE' });
+  return res.json();
+}
+
+export function dataExportDownloadUrl(id: string): string {
+  return `/api/admin/export/${encodeURIComponent(id)}/download`;
 }

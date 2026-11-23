@@ -131,6 +131,8 @@ Restore is intentionally not available from a running Memora instance.
 The archive manifest and checksum are verified before replacing data; the
 previous data directory is moved to a timestamped safety directory.
 
+For a readable, non-secret data export see [Readable export](EXPORT.md).
+
 ## Known limits
 
 - `tar` must be available on the host (Debian package `tar`).

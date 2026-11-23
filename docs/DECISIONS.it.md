@@ -2160,3 +2160,28 @@ ripetuto.
 - I guasti sono visibili senza tenere aperto il browser.
 - Gli avvisi identici ripetuti vengono soppressi.
 - Un host completamente offline richiede comunque monitoraggio esterno.
+
+---
+## ADR-067 — Export leggibile separato dal backup cifrato
+**Data:** 2026-11-20
+**Stato:** accepted
+
+### Contesto
+L’utente ha bisogno di portabilità e dati ispezionabili, mentre il backup resta
+il meccanismo di disaster recovery con configurazione e segreti.
+
+### Decisione
+- Aggiungere un export `.tar.gz` con memoria Markdown, progetti, sessioni,
+  agenti, automazioni, artefatti e allegati.
+- Escludere configurazione, auth, credenziali provider, token MCP/Telegram e
+  indice ricostruibile.
+- Conservare gli ultimi cinque export ed esporre creazione/download/eliminazione
+  in Sistema.
+- Importare solo in una data directory vuota o durante l’installazione; mai unire
+  dati in un’istanza attiva.
+- Richiedere la riconfigurazione di provider e integrazioni dopo l’import.
+
+### Conseguenze
+- Gli export si possono ispezionare con strumenti standard.
+- Non sono cifrati e contengono dati personali: l’operatore deve proteggerli.
+- Il disaster recovery esatto resta il percorso backup/restore cifrato.

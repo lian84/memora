@@ -2309,3 +2309,28 @@ source of repeated noise.
 - Failures are visible without keeping a browser open.
 - Repeated identical alerts are suppressed.
 - Total host outage still requires external uptime monitoring.
+
+---
+## ADR-067 — Readable export is separate from encrypted backup
+**Date:** 2026-11-20
+**Status:** accepted
+
+### Context
+Users need portability and inspectable data, while backup remains the
+disaster-recovery mechanism with configuration and secrets.
+
+### Decision
+- Add a `.tar.gz` export containing Markdown memory, projects, sessions,
+  agents, automations, artifacts and attachments.
+- Exclude configuration, auth, provider credentials, MCP/Telegram tokens and
+  the rebuildable index.
+- Keep the newest five exports and expose creation/download/deletion in System.
+- Import only into a clean data directory or during installation; never merge
+  into a running instance.
+- Require the user to reconfigure providers and integrations after import.
+
+### Consequences
+- Exports can be inspected with standard tools.
+- They are not encrypted and contain personal data, so operators must protect
+  them.
+- Exact disaster recovery remains the encrypted backup/restore path.

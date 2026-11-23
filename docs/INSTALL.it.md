@@ -47,6 +47,19 @@ Telegram/MCP si configurano dopo il primo accesso.
 Apri `http://127.0.0.1:3000` e crea la prima password. Per l’accesso remoto usa
 HTTPS o un tunnel cifrato; non esporre pubblicamente la porta HTTP.
 
+## Importare un export leggibile
+
+L’installer può anche importare un export `.tar.gz` creato da Memora. Non è un
+backup cifrato: contiene dati personali ma nessuna configurazione o segreto.
+Usalo solo su una data directory pulita. Dopo l’import completa il primo accesso
+e riconfigura provider e integrazioni.
+
+```bash
+sudo MEMORA_IMPORT_FILE=/percorso/memora-export-....tar.gz ./install.sh
+```
+
+La CLI equivalente è `scripts/import-export.mjs`.
+
 ## Ripristino durante l’installazione
 
 L’installer chiede se ripristinare un backup. Servono:

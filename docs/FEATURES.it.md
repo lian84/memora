@@ -151,6 +151,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Cookie `HttpOnly`, `SameSite=Lax`, rate limit e controllo `Origin`.
 - [x] Backup locali cifrati con freeze, download, retention e pianificazione automatica opzionale.
 - [x] Monitoraggio di disco, backup, upload remoti e automazioni fallite, con avvisi Telegram deduplicati.
+- [x] Export dati leggibile senza segreti, download da Sistema e import in installazione/CLI.
 - [x] Wizard backup remoto Mega via rclone, upload manuale e automatico della sola copia più recente.
 - [x] Segreti in environment o `config/secrets.json` con mode `0600`.
 - [x] Configurazione web in `config/web.json` con mode `0600`.

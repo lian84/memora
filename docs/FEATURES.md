@@ -171,6 +171,7 @@ Last updated: 2026-11-20.
 - [x] `HttpOnly` cookie, `SameSite=Lax`, rate limiting and `Origin` checks.
 - [x] Encrypted local backups with maintenance freeze, download, retention and optional automatic schedule.
 - [x] Monitoring for disk, backups, remote uploads and failed automations, with deduplicated Telegram alerts.
+- [x] Readable data export without secrets, download from System and clean-install/CLI import.
 - [x] Mega remote backup wizard via rclone, manual upload and automatic latest-only upload.
 - [x] Secrets in environment or `config/secrets.json` with mode `0600`.
 - [x] Web configuration in `config/web.json` with mode `0600`.

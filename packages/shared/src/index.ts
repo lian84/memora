@@ -383,3 +383,4 @@ export * from './automations.js';
 export * from './backups.js';
 export * from './updates.js';
 export * from './monitor.js';
+export * from './exports.js';

@@ -47,6 +47,19 @@ tokens are configured after the first login.
 Open `http://127.0.0.1:3000` and create the first password. For remote access use
 HTTPS or an encrypted tunnel; do not expose the plain HTTP port publicly.
 
+## Import a readable export
+
+The installer can also import a `.tar.gz` export created by Memora. This is not
+an encrypted backup; it contains personal data but no configuration or secrets.
+Use it only on a clean data directory. After import, complete the first login
+and reconfigure providers and integrations.
+
+```bash
+sudo MEMORA_IMPORT_FILE=/path/to/memora-export-....tar.gz ./install.sh
+```
+
+The equivalent CLI is `scripts/import-export.mjs`.
+
 ## Restore during installation
 
 The installer asks whether to restore a backup. It needs:

@@ -33,7 +33,8 @@
     "pdf:browser:setup": "node scripts/pdf-browser-setup.mjs",
     "memora:set-password": "pnpm --filter @memora/server build && node scripts/set-password.mjs",
     "memora:restore": "node scripts/restore-backup.mjs",
-    "memora:backup": "node scripts/backup-now.mjs"
+    "memora:backup": "node scripts/backup-now.mjs",
+    "memora:import-export": "node scripts/import-export.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

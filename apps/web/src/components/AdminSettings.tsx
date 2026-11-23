@@ -33,6 +33,7 @@ import { TelegramAdminPanel } from './TelegramAdminPanel';
 import { BackupAdminPanel } from './BackupAdminPanel';
 import { UpdateAdminPanel } from './UpdateAdminPanel';
 import { MonitorAdminPanel } from './MonitorAdminPanel';
+import { ExportAdminPanel } from './ExportAdminPanel';
 import {
   getBrowserNotificationPermission,
   isBrowserNotificationEnabled,
@@ -786,6 +787,8 @@ export function AdminSettingsView({
       </section>
 
       <MonitorAdminPanel />
+
+      <ExportAdminPanel />
 
       <UpdateAdminPanel />
       </div>

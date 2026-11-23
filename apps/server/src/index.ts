@@ -23,6 +23,8 @@ import { UpdateService } from './update-check.js';
 import { registerUpdateRoutes } from './update-routes.js';
 import { MonitorService } from './monitor.js';
 import { registerMonitorRoutes } from './monitor-routes.js';
+import { DataExportService } from './export-data.js';
+import { registerExportRoutes } from './export-routes.js';
 import { ProjectSectionStore, registerProjectSectionRoutes } from './project-sections.js';
 import { registerProjectSourceRoutes } from './project-sources.js';
 import { registerProjectFileRoutes } from './project-files.js';
@@ -312,10 +314,17 @@ const monitorService = new MonitorService({
   },
 });
 await monitorService.load();
+const dataExportService = new DataExportService({
+  dataDir,
+  appVersion: memoraVersion,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'export'),
+});
+await dataExportService.initialize();
 
 registerBackupRoutes(app, { backups: backupService, remote: rcloneService });
 registerUpdateRoutes(app, { updates: updateService });
 registerMonitorRoutes(app, { monitor: monitorService });
+registerExportRoutes(app, { exports: dataExportService });
 
 // Durante uno snapshot nessuna richiesta applicativa deve modificare i dati.
 // Le API di stato/auth e la stessa area backup restano raggiungibili.
