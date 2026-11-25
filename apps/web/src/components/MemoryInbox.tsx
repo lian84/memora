@@ -194,8 +194,8 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
           return (
             <article className={`memory-candidate is-${candidate.status}`} key={candidate.id}>
               <div className="memory-candidate-top">
-                {candidate.action && <span className="memory-candidate-category">{{ new: 'Nuovo', update: 'Aggiornamento', duplicate: 'Duplicato', conflict: 'Conflitto' }[candidate.action]}</span>}
-                <span className="memory-candidate-category">{categoryLabels[candidate.category] ?? candidate.category}</span>
+                {candidate.action && <span className="memory-candidate-category">{t({ new: 'Nuovo', update: 'Aggiornamento', duplicate: 'Duplicato', conflict: 'Conflitto' }[candidate.action]!)}</span>}
+                <span className="memory-candidate-category">{t(categoryLabels[candidate.category] ?? candidate.category)}</span>
                 {candidate.project && <span className="memory-candidate-project">{candidate.project}</span>}
                 <span className={`memory-candidate-status is-${candidate.status}`}>
                   {t(candidate.status === 'conflict' ? 'Conflitto' : 'Da rivedere')}
@@ -207,11 +207,11 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
               {isEditing ? (
                 <div className="memory-candidate-edit">
                   <label>
-                    Testo proposto
+                    {t('Testo proposto')}
                     <textarea value={editText} onChange={(event) => setEditText(event.target.value)} rows={3} />
                   </label>
                   <label>
-                    Destinazione Markdown
+                    {t('Destinazione Markdown')}
                     <input value={editTarget} onChange={(event) => setEditTarget(event.target.value)} />
                   </label>
                 </div>
@@ -222,10 +222,10 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
               <div className="memory-candidate-meta">
                 <span>{t('Destinazione:')} <code>{isEditing ? editTarget : candidate.targetPath}</code></span>
                 {candidate.heading && <span>{t('Sezione:')} <code>## {candidate.heading}</code></span>}
-                <span>Origine: {t(candidate.origin === 'explicit' ? 'richiesta esplicita' : 'estrazione automatica')}</span>
-                {candidate.updateIntent && <span>Tipo aggiornamento: {{ augment: 'aggiunta', replace: 'sostituzione', remove: 'rimozione', correct: 'correzione' }[candidate.updateIntent]}</span>}
-                {candidate.salienceScore !== undefined && <span>Rilevanza: {candidate.salienceScore >= 0.8 ? 'alta' : candidate.salienceScore >= 0.5 ? 'media' : 'bassa'}</span>}
-                {candidate.confidenceScore !== undefined && <span>Confidenza: {Math.round(candidate.confidenceScore * 100)}%</span>}
+                <span>{t('Origine:')} {t(candidate.origin === 'explicit' ? 'richiesta esplicita' : 'estrazione automatica')}</span>
+                {candidate.updateIntent && <span>{t('Tipo aggiornamento:')} {t({ augment: 'aggiunta', replace: 'sostituzione', remove: 'rimozione', correct: 'correzione' }[candidate.updateIntent]!)}</span>}
+                {candidate.salienceScore !== undefined && <span>{t('Rilevanza:')} {t(candidate.salienceScore >= 0.8 ? 'alta' : candidate.salienceScore >= 0.5 ? 'media' : 'bassa')}</span>}
+                {candidate.confidenceScore !== undefined && <span>{t('Confidenza:')} {Math.round(candidate.confidenceScore * 100)}%</span>}
               </div>
 
               <MemoryCandidateProvenance candidate={candidate} />
@@ -234,15 +234,15 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
 
               {candidate.duplicateOf && (
                 <div className="memory-candidate-match">
-                  <strong>{t('Possibile duplicato')}</strong> in <code>{candidate.duplicateOf.relativePath}</code>
+                  <strong>{t('Possibile duplicato')}</strong> {t('in')} <code>{candidate.duplicateOf.relativePath}</code>
                   <div>{candidate.duplicateOf.content}</div>
                 </div>
               )}
               {candidate.conflictsWith && (
                 <div className="memory-candidate-match is-conflict">
-                  <strong>{t('Possibile informazione esistente da confrontare')}</strong> in <code>{candidate.conflictsWith.relativePath}</code>
+                  <strong>{t('Possibile informazione esistente da confrontare')}</strong> {t('in')} <code>{candidate.conflictsWith.relativePath}</code>
                   <div>{candidate.conflictsWith.content}</div>
-                  <small>L’approvazione aggiunge il nuovo contenuto; il vecchio non viene cancellato automaticamente.</small>
+                  <small>{t('L’approvazione aggiunge il nuovo contenuto; il vecchio non viene cancellato automaticamente.')}</small>
                 </div>
               )}
 
@@ -277,7 +277,7 @@ export function MemoryInbox({ refreshKey = 0, projectId = null, onChanged, onCou
             {autoApproved.map(candidate => (
               <article className="memory-auto-saved-item" key={candidate.id}>
                 <div className="memory-auto-saved-head">
-                  <span className="memory-candidate-category">{categoryLabels[candidate.category] ?? candidate.category}</span>
+                  <span className="memory-candidate-category">{t(categoryLabels[candidate.category] ?? candidate.category)}</span>
                   <span>{formatTimestamp(candidate.autoApprovedAt ?? candidate.updatedAt, language) ?? '—'}</span>
                 </div>
                 <p>{candidate.proposedText}</p>

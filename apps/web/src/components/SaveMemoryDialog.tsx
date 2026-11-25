@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AssistantMemoryProposal, MemoryCandidate, ProjectRecord } from '@memora/shared';
 import { extractMemoryProposals, saveResponseAsMemory, searchMemory } from '../lib/api';
+import { useI18n } from '../i18n';
 
 interface SaveMemoryDialogProps {
   sessionId: string;
@@ -28,15 +29,15 @@ interface RelatedMemory {
   content: string;
 }
 
-function fallbackProposal(content: string): EditableProposal {
+function fallbackProposal(content: string, t: (source: string) => string): EditableProposal {
   return {
     key: 'original',
     text: content,
     proposedText: content,
     category: 'fact',
-    heading: 'Fatti',
+    heading: t('Fatti'),
     action: 'new',
-    rationale: 'Testo originale della risposta, senza estrazione automatica.',
+    rationale: t('Testo originale della risposta, senza estrazione automatica.'),
     enabled: true,
   };
 }
@@ -53,6 +54,7 @@ export function SaveMemoryDialog({
   onClose,
   onSaved,
 }: SaveMemoryDialogProps) {
+  const { t } = useI18n();
   const [scope, setScope] = useState(defaultProjectId ?? 'global');
   const [items, setItems] = useState<EditableProposal[]>([]);
   const [extracting, setExtracting] = useState(true);
@@ -71,8 +73,8 @@ export function SaveMemoryDialog({
       .then(result => {
         if (cancelled) return;
         if (result.proposals === null) {
-          setItems([fallbackProposal(content)]);
-          setExtractError(result.warning === 'curator_unavailable' ? 'Curator temporaneamente non disponibile: uso il testo originale, modificabile.' : 'Estrazione non disponibile: uso il testo originale, modificabile.');
+          setItems([fallbackProposal(content, t)]);
+          setExtractError(result.warning === 'curator_unavailable' ? t('Curator temporaneamente non disponibile: uso il testo originale, modificabile.') : t('Estrazione non disponibile: uso il testo originale, modificabile.'));
         } else {
           setItems(result.proposals.map((proposal, index) => ({
             ...proposal,
@@ -84,12 +86,12 @@ export function SaveMemoryDialog({
       })
       .catch(err => {
         if (cancelled) return;
-        setItems([fallbackProposal(content)]);
-        setExtractError(`Estrazione non riuscita: ${err instanceof Error ? err.message : String(err)}. Puoi correggere il testo originale.`);
+        setItems([fallbackProposal(content, t)]);
+        setExtractError(t('Estrazione non riuscita: {error}. Puoi correggere il testo originale.', { error: err instanceof Error ? err.message : String(err) }));
       })
       .finally(() => { if (!cancelled) setExtracting(false); });
     return () => { cancelled = true; };
-  }, [sessionId, content, question]);
+  }, [sessionId, content, question, t]);
 
   useEffect(() => {
     const query = [question, ...items.filter(item => item.enabled).map(item => item.text)].filter(Boolean).join(' ').trim();
@@ -145,27 +147,27 @@ export function SaveMemoryDialog({
         <header>
           <div>
             <span className="admin-eyebrow">Memory Inbox</span>
-            <h2 id="save-memory-title">Salva come memoria</h2>
+            <h2 id="save-memory-title">{t('Salva come memoria')}</h2>
           </div>
-          <button type="button" className="project-files-icon" onClick={onClose} disabled={saving} aria-label="Chiudi">×</button>
+          <button type="button" className="project-files-icon" onClick={onClose} disabled={saving} aria-label={t('Chiudi')}>×</button>
         </header>
 
         {question && (
           <div className="memory-save-context">
-            <span>Domanda collegata</span>
+            <span>{t('Domanda collegata')}</span>
             <p>{question}</p>
-            {context.length > 0 && <details><summary>Contesto recente ({context.length})</summary>{context.map((item, index) => <p key={index}>{item}</p>)}</details>}
+            {context.length > 0 && <details><summary>{t('Contesto recente ({count})', { count: context.length })}</summary>{context.map((item, index) => <p key={index}>{item}</p>)}</details>}
           </div>
         )}
 
         <div className="memory-save-extraction-status">
-          {extracting ? 'Il Curator sta analizzando risposta, contesto e memoria esistente…' : extractError ?? `${items.length} fatt${items.length === 1 ? 'o' : 'i'} propost${items.length === 1 ? 'o' : 'i'} dal Curator.`}
+          {extracting ? t('Il Curator sta analizzando risposta, contesto e memoria esistente…') : extractError ?? (items.length === 1 ? t('1 fatto proposto dal Curator.') : t('{count} fatti proposti dal Curator.', { count: items.length }))}
         </div>
 
         {!extracting && items.length === 0 && (
           <div className="memory-save-empty">
-            Nessun fatto durevole individuato.
-            <button type="button" onClick={() => setItems([fallbackProposal(content)])}>Usa il testo originale</button>
+            {t('Nessun fatto durevole individuato.')}
+            <button type="button" onClick={() => setItems([fallbackProposal(content, t)])}>{t('Usa il testo originale')}</button>
           </div>
         )}
 
@@ -175,25 +177,25 @@ export function SaveMemoryDialog({
               <label className="memory-save-proposal-head">
                 <input type="checkbox" checked={item.enabled} onChange={event => updateItem(item.key, { enabled: event.target.checked })} disabled={saving} />
                 <strong>{item.category}</strong>
-                <span>{item.action === 'update' ? 'aggiornamento' : 'nuovo fatto'}</span>
+                <span>{item.action === 'update' ? t('aggiornamento') : t('nuovo fatto')}</span>
               </label>
               <textarea value={item.text} onChange={event => updateItem(item.key, { text: event.target.value })} rows={4} disabled={saving || !item.enabled} />
-              {item.currentText && <div className="memory-save-current"><span>Memoria attuale</span><p>{item.currentText}</p></div>}
+              {item.currentText && <div className="memory-save-current"><span>{t('Memoria attuale')}</span><p>{item.currentText}</p></div>}
               {item.rationale && <p className="memory-save-rationale">{item.rationale}</p>}
             </article>
           ))}
         </div>
 
-        <label className="memory-save-field">Dove salvarla
+        <label className="memory-save-field">{t('Dove salvarla')}
           <select value={scope} onChange={event => setScope(event.target.value)} disabled={saving || extracting}>
-            <option value="global">Globale — tutte le chat</option>
-            {projects.map(project => <option key={project.id} value={project.id}>Progetto: {project.name}</option>)}
+            <option value="global">{t('Globale — tutte le chat')}</option>
+            {projects.map(project => <option key={project.id} value={project.id}>{t('Progetto:')} {project.name}</option>)}
           </select>
         </label>
 
         <div className="memory-save-related">
-          <div className="memory-save-related-title">Memorie correlate {loadingRelated ? '· cerco…' : related.length > 0 ? `(${related.length})` : ''}</div>
-          {related.length === 0 && !loadingRelated && <div className="memory-save-related-empty">Nessuna memoria correlata trovata.</div>}
+          <div className="memory-save-related-title">{t('Memorie correlate')} {loadingRelated ? t('· cerco…') : related.length > 0 ? `(${related.length})` : ''}</div>
+          {related.length === 0 && !loadingRelated && <div className="memory-save-related-empty">{t('Nessuna memoria correlata trovata.')}</div>}
           {related.map(memory => (
             <div className="memory-save-related-item" key={`${memory.sourceId}-${memory.relativePath}-${memory.heading ?? ''}`}>
               <strong>{memory.relativePath}{memory.heading ? ` · ${memory.heading}` : ''}</strong>
@@ -205,9 +207,9 @@ export function SaveMemoryDialog({
         {error && <div className="memory-save-error" role="alert">{error}</div>}
 
         <footer>
-          <button type="button" onClick={onClose} disabled={saving}>Annulla</button>
+          <button type="button" onClick={onClose} disabled={saving}>{t('Annulla')}</button>
           <button type="button" className="is-primary" onClick={() => void save()} disabled={saving || extracting || enabledCount === 0}>
-            {saving ? 'Salvo…' : `Metti in Memory Inbox${enabledCount > 1 ? ` (${enabledCount})` : ''}`}
+            {saving ? t('Salvo…') : enabledCount > 1 ? t('Metti in Memory Inbox ({count})', { count: enabledCount }) : t('Metti in Memory Inbox')}
           </button>
         </footer>
       </div>

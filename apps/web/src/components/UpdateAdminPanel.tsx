@@ -100,7 +100,9 @@ export function UpdateAdminPanel() {
         {status?.updateAvailable && (
           <div className="admin-alert is-warning">
             <strong>{t('Aggiornamento disponibile: {version}', { version: status.latestVersion ?? '' })}</strong>
-            <p>{t('Scarica la nuova release e usa update.sh. Prima dell’aggiornamento viene creato automaticamente un backup.')}</p>
+                        <p>{status.applyAvailable
+              ? t('Puoi applicare l’aggiornamento da qui con il pulsante Aggiorna ora. Prima dell’aggiornamento viene creato automaticamente un backup cifrato.')
+              : t('Scarica la nuova release e usa update.sh. Prima dell’aggiornamento viene creato automaticamente un backup.')}</p>
             {status.releaseUrl && <a href={status.releaseUrl} target="_blank" rel="noopener noreferrer">{t('Apri la release')} ↗</a>}
           </div>
         )}
@@ -127,7 +129,8 @@ export function UpdateAdminPanel() {
 
       <section className="admin-card">
         <h3>{t('Come aggiornare')}</h3>
-        <p className="admin-card-description">{t('L’aggiornamento è manuale. Non avviene automaticamente e non parte a ogni push: solo per una release pubblicata.')}</p>
+        <p className="admin-card-description">{t('L’aggiornamento non avviene automaticamente e non parte a ogni push: solo per una release pubblicata.')}</p>
+                {status?.applyAvailable ? <p className="admin-field-note">{t('Puoi usare il pulsante Aggiorna ora. In alternativa, da terminale:')}</p> : null}
         <pre className="update-instructions">cd /opt/memora
 ./update.sh</pre>
         <p className="admin-field-note">{t('update.sh crea un backup, applica la nuova release, esegue le migrazioni e verifica il servizio. Se qualcosa fallisce, tenta il rollback.')}</p>

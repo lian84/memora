@@ -42,11 +42,11 @@ export function NewProjectDialog({ onClose, onCreated, sections = [], initialSec
         <p>{t('Verranno creati <code>project.json</code> e <code>memory.md</code> nella directory del progetto.')}</p>
         {error && <p role="alert" className="delete-dialog-error">{error}</p>}
         <label className="admin-label">{t('ID progetto')}
-          <input value={id} onChange={event => setId(event.target.value.toLowerCase())} placeholder="orione" autoFocus />
+          <input value={id} onChange={event => setId(event.target.value.toLowerCase())} placeholder={t('orione')} autoFocus />
           <small>{t('Solo lettere minuscole, numeri e trattini. Non modificabile.')}</small>
         </label>
         <label className="admin-label">{t('Nome')}
-          <input value={name} onChange={event => setName(event.target.value)} placeholder="Orione" />
+          <input value={name} onChange={event => setName(event.target.value)} placeholder={t('Orione')} />
         </label>
         <label className="admin-label">{t('Descrizione')}
           <textarea rows={2} value={description} onChange={event => setDescription(event.target.value)} />

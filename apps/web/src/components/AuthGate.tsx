@@ -70,7 +70,7 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
             : 'Inserisci la password per accedere a Memora e alla memoria di Memo.')}
         </p>
         <form onSubmit={event => void submit(event)}>
-          <label className="admin-label">Password
+          <label className="admin-label">{t('Password')}
             <input
               type="password"
               autoFocus
@@ -83,7 +83,7 @@ function AuthScreen({ mode, onAuthenticated }: { mode: 'login' | 'setup'; onAuth
             />
           </label>
           {isSetup && (
-            <label className="admin-label">Conferma password
+            <label className="admin-label">{t('Conferma password')}
               <input
                 type="password"
                 autoComplete="new-password"

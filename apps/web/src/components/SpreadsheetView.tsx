@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SpreadsheetCell, SpreadsheetPreview } from '@memora/shared';
+import { useI18n } from '../i18n';
 
 interface SpreadsheetViewProps {
   data: SpreadsheetPreview;
@@ -39,8 +40,9 @@ function cellStyle(cell: SpreadsheetCell): React.CSSProperties {
 }
 
 export function SpreadsheetView({ data, title }: SpreadsheetViewProps) {
+  const { t } = useI18n();
   const [activeSheet, setActiveSheet] = useState(0);
-  if (!data || data.sheets.length === 0) return <div className="project-file-preview-empty">Nessun foglio disponibile.</div>;
+  if (!data || data.sheets.length === 0) return <div className="project-file-preview-empty">{t('Nessun foglio disponibile.')}</div>;
 
   const sheet = data.sheets[Math.min(activeSheet, data.sheets.length - 1)]!;
   const merges = (sheet.merges ?? []).map(parseRange).filter((range): range is MergeRange => Boolean(range));
@@ -59,10 +61,10 @@ export function SpreadsheetView({ data, title }: SpreadsheetViewProps) {
     <div className="spreadsheet-preview">
       <div className="spreadsheet-preview-head">
         <span>{title}</span>
-        <span className="spreadsheet-preview-meta">{data.sheets.length} fogli{data.truncated ? ' · anteprima limitata' : ''}</span>
+        <span className="spreadsheet-preview-meta">{data.sheets.length === 1 ? t('1 foglio') : t('{count} fogli', { count: data.sheets.length })}{data.truncated ? ` · ${t('anteprima limitata')}` : ''}</span>
       </div>
       {data.sheets.length > 1 && (
-        <div className="spreadsheet-tabs" role="tablist" aria-label="Fogli Excel">
+        <div className="spreadsheet-tabs" role="tablist" aria-label={t('Fogli Excel')}>
           {data.sheets.map((item, index) => (
             <button
               type="button"

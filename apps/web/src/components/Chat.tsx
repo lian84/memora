@@ -217,8 +217,8 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     if (event.type === 'memory_sources') setMemorySources(getMemorySources(event.payload));
     if (event.type === 'session_title') onSessionTitle?.();
     if (event.type === 'tool_execution_end') handleToolExecutionEnd(event.payload);
-    if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : 'Errore durante il turno.');
-  }, [handleToolExecutionEnd, onSessionTitle]);
+    if (event.type === 'error') setAttachmentError(typeof event.payload === 'string' ? event.payload : t('Errore durante il turno.'));
+  }, [handleToolExecutionEnd, onSessionTitle, t]);
   streamEventHandlerRef.current = handleStreamEvent;
 
   const refreshWeb = useCallback(async (options: { autoOpen?: boolean } = {}): Promise<WebSource[]> => {
@@ -341,7 +341,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     const selected = Array.from(files);
     if (selected.length === 0) return;
     if (attachments.length + selected.length > 8) {
-      setAttachmentError('Massimo 8 allegati per messaggio.');
+      setAttachmentError(t('Massimo 8 allegati per messaggio.'));
       return;
     }
     setAttachmentError(null);
@@ -359,7 +359,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
         try {
           const newSessionId = await onSessionUnavailable();
           await uploadTo(newSessionId);
-          setAttachmentError('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato gli allegati.');
+          setAttachmentError(t('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato gli allegati.'));
         } catch (recoveryError) {
           setAttachmentError(recoveryError instanceof Error ? recoveryError.message : String(recoveryError));
         }
@@ -369,11 +369,11 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     } finally {
       setAttachmentBusy(false);
     }
-  }, [sessionId, attachments.length, addUploadedAttachment, onSessionUnavailable]);
+  }, [sessionId, attachments.length, addUploadedAttachment, onSessionUnavailable, t]);
 
   const handleAttachProjectFile = useCallback(async (file: ProjectFileInfo) => {
     if (!sessionId || !project) return;
-    if (attachments.length >= 8) throw new Error('Massimo 8 allegati per messaggio.');
+    if (attachments.length >= 8) throw new Error(t('Massimo 8 allegati per messaggio.'));
     setAttachmentBusy(true);
     setAttachmentError(null);
     try {
@@ -384,7 +384,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
         const newSessionId = await onSessionUnavailable();
         const attachment = await attachProjectFileToSession(newSessionId, project.id, file.path);
         addUploadedAttachment(attachment);
-        setAttachmentError('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato l’allegato.');
+        setAttachmentError(t('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato l’allegato.'));
       } else {
         const message = err instanceof Error ? err.message : String(err);
         setAttachmentError(message);
@@ -393,11 +393,11 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     } finally {
       setAttachmentBusy(false);
     }
-  }, [sessionId, project, attachments.length, addUploadedAttachment, onSessionUnavailable]);
+  }, [sessionId, project, attachments.length, addUploadedAttachment, onSessionUnavailable, t]);
 
   const handleAttachArtifact = useCallback(async (artifact: ChatArtifact) => {
-    if (!sessionId) throw new Error('Nessuna chat attiva.');
-    if (attachments.length >= 8) throw new Error('Massimo 8 allegati per messaggio.');
+    if (!sessionId) throw new Error(t('Nessuna chat attiva.'));
+    if (attachments.length >= 8) throw new Error(t('Massimo 8 allegati per messaggio.'));
     setAttachmentBusy(true);
     setAttachmentError(null);
     const attachTo = async (targetSessionId: string) => {
@@ -411,7 +411,7 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
       if (isSessionNotFoundError(err) && onSessionUnavailable) {
         const newSessionId = await onSessionUnavailable();
         await attachTo(newSessionId);
-        setAttachmentError('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato l’allegato.');
+        setAttachmentError(t('La chat precedente non era più disponibile: ho aperto una nuova chat e ricaricato l’allegato.'));
         setComposerFocus(value => value + 1);
       } else {
         const message = err instanceof Error ? err.message : String(err);
@@ -421,10 +421,10 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
     } finally {
       setAttachmentBusy(false);
     }
-  }, [sessionId, attachments.length, addUploadedAttachment, onSessionUnavailable]);
+  }, [sessionId, attachments.length, addUploadedAttachment, onSessionUnavailable, t]);
 
   const handleAddArtifactToProject = useCallback(async (artifact: ChatArtifact) => {
-    if (!project || !sessionId) throw new Error('Nessun progetto attivo per questa chat.');
+    if (!project || !sessionId) throw new Error(t('Nessun progetto attivo per questa chat.'));
     const result = await importArtifactIntoProject(project.id, sessionId, artifact.id);
     setProjectFilesRevision(revision => revision + 1);
     return result;
@@ -436,27 +436,27 @@ function extractHtmlFromMessage(content: string): string | null {
   return /<\s*(?:!doctype|html|body|style|div|h[1-6]|table|section)\b/i.test(candidate) ? candidate : null;
 }
 
-function messageTitle(content: string, html: string | null): string {
+function messageTitle(content: string, html: string | null, t: (source: string) => string): string {
   if (html) {
     const heading = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>/g, '').trim();
     if (heading) return heading.slice(0, 120);
-    return 'Documento PDF';
+    return t('Documento PDF');
   }
-  const firstLine = content.split('\n').map(line => line.replace(/^#+\s*/, '').trim()).find(Boolean) ?? 'Risposta Memo';
+  const firstLine = content.split('\n').map(line => line.replace(/^#+\s*/, '').trim()).find(Boolean) ?? t('Risposta Memo');
   return firstLine.slice(0, 120);
 }
 
   const handleExportPdf = useCallback(async (message: DisplayChatMessage) => {
     if (!sessionId || message.role !== 'assistant' || !message.content.trim()) return;
     const html = extractHtmlFromMessage(message.content);
-    const title = messageTitle(message.content, html);
+    const title = messageTitle(message.content, html, t);
     setPdfExportingId(message.id);
     setPdfNotice(null);
     try {
       const artifact = await createSessionPdf(sessionId, html
         ? { title, format: 'html', html, filename: 'risposta-pi.pdf' }
         : { title, format: 'markdown', markdown: message.content, filename: 'risposta-pi.pdf' });
-      setPdfNotice({ text: `PDF creato: ${artifact.name}`, error: false });
+      setPdfNotice({ text: t('PDF creato: {name}', { name: artifact.name }), error: false });
       await refreshArtifacts();
     } catch (err) {
       setPdfNotice({ text: err instanceof Error ? err.message : String(err), error: true });
@@ -551,8 +551,8 @@ function messageTitle(content: string, html: string | null): string {
 
   const handleRegenerate = useCallback((message: DisplayChatMessage) => {
     if (!sessionId || !message.content.trim()) return;
-    void handleSend('Riformula la risposta precedente in modo più chiaro, completo e ben organizzato, mantenendo lo stesso contenuto e gli stessi fatti.');
-  }, [sessionId, handleSend]);
+    void handleSend(t('Riformula la risposta precedente in modo più chiaro, completo e ben organizzato, mantenendo lo stesso contenuto e gli stessi fatti.'));
+  }, [sessionId, handleSend, t]);
 
   const handleReviewArtifact = useCallback(async (artifact: ChatArtifact) => {
     if (!sessionId || reviewingArtifactId) return;

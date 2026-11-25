@@ -27,12 +27,13 @@ function formatSize(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+function formatDate(timestamp: number, language: 'it' | 'en' | 'fr'): string {
+  const locale = language === 'it' ? 'it-IT' : language === 'fr' ? 'fr-FR' : 'en-GB';
+  return new Date(timestamp).toLocaleString(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = null, onRefresh, onAttachArtifact, onAddArtifactToProject, focusArtifactId = null, onFocusHandled }: ArtifactsPanelProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [selected, setSelected] = useState<ChatArtifact | null>(null);
   const handledFocusRef = useRef<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
     setPreviewError(null);
     fetch(selectedUrl)
       .then(async response => {
-        if (!response.ok) throw new Error(`Impossibile leggere l’artefatto (${response.status})`);
+        if (!response.ok) throw new Error(t('Impossibile leggere l’artefatto ({status})', { status: response.status }));
         return response.text();
       })
       .then(text => { if (!cancelled) setContent(text); })
@@ -99,7 +100,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
     setArtifactNotice(null);
     try {
       await onAttachArtifact(artifact);
-      setArtifactNotice({ text: `${artifact.name} allegato al messaggio.`, error: false });
+      setArtifactNotice({ text: t('{name} allegato al messaggio.', { name: artifact.name }), error: false });
     } catch (err) {
       setArtifactNotice({ text: err instanceof Error ? err.message : String(err), error: true });
     } finally {
@@ -115,8 +116,8 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
       const result = await onAddArtifactToProject(artifact);
       setArtifactNotice({
         text: result.indexed
-          ? `${artifact.name} aggiunto alle fonti del progetto (${result.relativePath}).`
-          : `${artifact.name} aggiunto ai file del progetto (${result.relativePath}).`,
+          ? t('{name} aggiunto alle fonti del progetto ({path}).', { name: artifact.name, path: result.relativePath })
+          : t('{name} aggiunto ai file del progetto ({path}).', { name: artifact.name, path: result.relativePath }),
         error: false,
       });
     } catch (err) {
@@ -133,7 +134,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
     try {
       await deleteArtifact(sessionId, deleteTarget.id);
       if (selected?.id === deleteTarget.id) setSelected(null);
-      setArtifactNotice({ text: `${deleteTarget.name} eliminato.`, error: false });
+      setArtifactNotice({ text: t('{name} eliminato.', { name: deleteTarget.name }), error: false });
       setDeleteTarget(null);
       onRefresh?.();
     } catch (err) {
@@ -149,7 +150,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
     setPdfNotice(null);
     try {
       const created = await createArtifactPdf(sessionId, artifact.id);
-      setPdfNotice(`PDF creato: ${created.name}`);
+      setPdfNotice(t('PDF creato: {name}', { name: created.name }));
       onRefresh?.();
     } catch (err) {
       setPdfNotice(err instanceof Error ? err.message : String(err));
@@ -167,31 +168,31 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
       {selected ? (
         <div className="artifact-detail">
           <div className="artifact-detail-head">
-            <button type="button" className="project-file-back" onClick={() => setSelected(null)}>← Artefatti</button>
+            <button type="button" className="project-file-back" onClick={() => setSelected(null)}>← {t('Artefatti')}</button>
           </div>
           <div className="artifact-detail-title">
             <strong title={selected.name}>{selected.name}</strong>
             {versions.length > 1 && (
-              <label className="artifact-version-select artifact-version-inline" title="Seleziona variante">
+              <label className="artifact-version-select artifact-version-inline" title={t('Seleziona variante')}>
                 <span>{t('Variante')}</span>
-                <select aria-label="Seleziona variante" value={selectedVersion} onChange={event => setSelectedVersion(Number(event.target.value))}>
-                  {versions.map(item => <option key={item.version} value={item.version}>v{item.version}{item.current ? ' · corrente' : ''}</option>)}
+                <select aria-label={t('Seleziona variante')} value={selectedVersion} onChange={event => setSelectedVersion(Number(event.target.value))}>
+                  {versions.map(item => <option key={item.version} value={item.version}>v{item.version}{item.current ? ` · ${t('corrente')}` : ''}</option>)}
                 </select>
               </label>
             )}
           </div>
           <div className="artifact-detail-actions">
             {selectedUrl && <a className="project-file-download" href={selectedUrl} target="_blank" rel="noreferrer">{t('Apri')}</a>}
-            <button type="button" className="artifact-action is-danger" onClick={() => { setDeleteError(null); setDeleteTarget(selected); }} title={`Elimina ${selected.name}`} aria-label={`Elimina ${selected.name}`}>
+            <button type="button" className="artifact-action is-danger" onClick={() => { setDeleteError(null); setDeleteTarget(selected); }} title={`${t('Elimina')} ${selected.name}`} aria-label={`${t('Elimina')} ${selected.name}`}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" /></svg>
             </button>
             {onAttachArtifact && (
-              <button type="button" className="artifact-action" onClick={() => void attachArtifact(selected)} disabled={attachingId === selected.id} title={`Allega ${selected.name} al messaggio`} aria-label={`Allega ${selected.name} al messaggio`}>
+              <button type="button" className="artifact-action" onClick={() => void attachArtifact(selected)} disabled={attachingId === selected.id} title={t('Allega {name} al messaggio', { name: selected.name })} aria-label={t('Allega {name} al messaggio', { name: selected.name })}>
                 {attachingId === selected.id ? <span className="artifact-action-loading">…</span> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m20 11-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 6" /></svg>}
               </button>
             )}
             {onAddArtifactToProject && (
-              <button type="button" className="artifact-action" onClick={() => void addArtifactToProject(selected)} disabled={addingToProjectId === selected.id} title={`Aggiungi ${selected.name} al contesto del progetto`} aria-label={`Aggiungi ${selected.name} al contesto del progetto`}>
+              <button type="button" className="artifact-action" onClick={() => void addArtifactToProject(selected)} disabled={addingToProjectId === selected.id} title={t('Aggiungi {name} al contesto del progetto', { name: selected.name })} aria-label={t('Aggiungi {name} al contesto del progetto', { name: selected.name })}>
                 {addingToProjectId === selected.id ? <span className="artifact-action-loading">…</span> : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v10H3z" /><path d="M12 13v5M9.5 15.5h5" /></svg>}
               </button>
             )}
@@ -199,7 +200,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
           <div className="artifact-detail-meta">
             <span>{selected.kind} · v{selectedVersion} · {formatSize(versions.find(item => item.version === selectedVersion)?.size ?? selected.size)}</span>
             {selectedVersion === selected.version && selected.kind !== 'pdf' && (selected.kind === 'html' || selected.kind === 'markdown' || selected.kind === 'text') && (
-              <button type="button" className="project-file-attach" onClick={() => void exportPdf(selected)} disabled={pdfBusy}>{pdfBusy ? 'Converto…' : 'Esporta PDF'}</button>
+              <button type="button" className="project-file-attach" onClick={() => void exportPdf(selected)} disabled={pdfBusy}>{pdfBusy ? t('Converto…') : t('Esporta PDF')}</button>
             )}
           </div>
           {artifactNotice && <div className={`artifact-notice${artifactNotice.error ? ' is-error' : ''}`} role="status">{artifactNotice.text}</div>}
@@ -274,7 +275,7 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
                   <span className={`project-file-badge is-${artifact.kind}`}>{artifact.name.split('.').pop()?.toUpperCase() ?? 'FILE'}</span>
                   <span className="artifact-row-main">
                     <strong>{artifact.name}</strong>
-                    <small>v{artifact.version} · {formatDate(artifact.updatedAt)} · {formatSize(artifact.size)}</small>
+                    <small>v{artifact.version} · {formatDate(artifact.updatedAt, language)} · {formatSize(artifact.size)}</small>
                   </span>
                 </button>
                 <div className="artifact-row-actions">
@@ -297,15 +298,15 @@ export function ArtifactsPanel({ sessionId, artifacts, loading = false, error = 
       )}
       {deleteTarget && (
         <ConfirmDialog
-          title={`Eliminare “${deleteTarget.name}”?`}
-          confirmLabel="Elimina artefatto"
-          busyLabel="Eliminazione…"
+          title={t('Eliminare “{name}”?', { name: deleteTarget.name })}
+          confirmLabel={t('Elimina artefatto')}
+          busyLabel={t('Eliminazione…')}
           busy={deletingId === deleteTarget.id}
           error={deleteError}
           onClose={() => { setDeleteTarget(null); setDeleteError(null); }}
           onConfirm={() => void removeArtifact()}
         >
-          <p>Verranno eliminate anche tutte le versioni archiviate. L’operazione non può essere annullata.</p>
+          <p>{t('Verranno eliminate anche tutte le versioni archiviate. L’operazione non può essere annullata.')}</p>
         </ConfirmDialog>
       )}
     </div>

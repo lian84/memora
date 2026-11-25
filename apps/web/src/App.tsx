@@ -224,7 +224,7 @@ export default function App() {
       : selectedSession
         ? selectedSession.draft
           ? t('Nuova chat')
-          : selectedSession.name ?? selectedSession.firstMessage ?? '(nessun messaggio)'
+          : selectedSession.name ?? selectedSession.firstMessage ?? t('(nessun messaggio)')
         : selectedProject ? selectedProject.name : t('Memora');
 
   const markRead = useCallback((sessionId: string, turnId: string) => {
@@ -685,9 +685,9 @@ export default function App() {
           <button
             type="button"
             className="sidebar-toggle"
-            aria-label={appearance.sidebarCollapsed ? 'Apri la barra chat' : 'Comprimi la barra chat'}
+            aria-label={appearance.sidebarCollapsed ? t('Apri la barra chat') : t('Comprimi la barra chat')}
             aria-expanded={sidebarOpen || !appearance.sidebarCollapsed}
-            title={`${appearance.sidebarCollapsed ? 'Apri' : 'Comprimi'} barra chat (Ctrl+B)`}
+            title={appearance.sidebarCollapsed ? t('Apri barra chat (Ctrl+B)') : t('Comprimi barra chat (Ctrl+B)')}
             onClick={handleToggleSidebar}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
@@ -776,7 +776,7 @@ export default function App() {
                   : t('Scegli una conversazione dalla sidebar oppure iniziane una nuova.')}
               </p>
               <button type="button" className="empty-state-action" onClick={() => void handleNewSession()} disabled={loading}>
-                Nuova chat
+                {t('Nuova chat')}
               </button>
             </section>
           )}

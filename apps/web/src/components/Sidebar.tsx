@@ -185,7 +185,7 @@ export function Sidebar({
   }, []);
 
   const displayTitle = (session: SessionInfo) =>
-    session.draft ? 'Nuova chat' : session.name ?? session.firstMessage ?? '(nessun messaggio)';
+    session.draft ? t('Nuova chat') : session.name ?? session.firstMessage ?? t('(nessun messaggio)');
 
   const renderSessionRows = (rows: SessionInfo[]): ReactNode => rows.map(session => {
     const isSelected = selectedSessionId === session.sessionId;

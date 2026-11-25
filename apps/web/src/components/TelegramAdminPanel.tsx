@@ -226,7 +226,7 @@ export function TelegramAdminPanel() {
             <h4>{editingId ? t('Modifica account Telegram') : t('Nuovo account Telegram')}</h4>
             <div className="admin-grid-2">
               <label className="admin-label">{t('Nome account')}
-                <input value={form.label} onChange={event => setForm(current => current ? { ...current, label: event.target.value } : current)} maxLength={80} placeholder="Personale" />
+                <input value={form.label} onChange={event => setForm(current => current ? { ...current, label: event.target.value } : current)} maxLength={80} placeholder={t('Personale')} />
               </label>
               <label className="admin-label">{t('Chat ID')}
                 <input value={form.chatId} onChange={event => setForm(current => current ? { ...current, chatId: event.target.value } : current)} placeholder="-1001234567890" inputMode="numeric" />

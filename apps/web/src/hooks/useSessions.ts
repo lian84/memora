@@ -11,12 +11,14 @@ import {
   type SessionInfo,
   type ChatMessage,
 } from '../lib/api';
+import { useI18n } from '../i18n';
 
 function asError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
 }
 
 export function useSessions() {
+  const { t } = useI18n();
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export function useSessions() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, t]);
 
   const create = useCallback(async (modelId?: string, provider?: import('@memora/shared').ProviderId, reasoningLevel?: import('@memora/shared').ReasoningLevel, projectId?: string) => {
     setError(null);
@@ -124,7 +126,7 @@ export function useSessions() {
         // aperto: la UI non può fingere che la sessione sia stata eliminata.
         const result = await deleteSession(sessionId);
         if (result.sessionId !== sessionId || !result.deleted) {
-          throw new Error('La cancellazione della sessione non è stata confermata dal server');
+          throw new Error(t('La cancellazione della sessione non è stata confermata dal server'));
         }
 
         const refreshed = await load();

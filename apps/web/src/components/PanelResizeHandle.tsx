@@ -1,5 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { PANEL_DEFAULT_WIDTH, PANEL_MIN_WIDTH } from '../lib/panel-width';
+import { useI18n } from '../i18n';
 
 interface PanelResizeHandleProps {
   width: number;
@@ -8,16 +9,17 @@ interface PanelResizeHandleProps {
 }
 
 export function PanelResizeHandle({ width, onStartResize, onResize }: PanelResizeHandleProps) {
+  const { t } = useI18n();
   return (
     <div
       className="panel-resize-handle"
       role="separator"
-      aria-label="Ridimensiona pannello"
+      aria-label={t('Ridimensiona pannello')}
       aria-orientation="vertical"
       aria-valuemin={PANEL_MIN_WIDTH}
       aria-valuenow={width}
       tabIndex={0}
-      title="Trascina per ridimensionare il pannello"
+      title={t('Trascina per ridimensionare il pannello')}
       onPointerDown={onStartResize}
       onKeyDown={event => {
         const step = event.shiftKey ? 64 : 16;

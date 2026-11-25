@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { useI18n } from '../i18n';
 
 interface PdfPreviewProps {
   url: string;
@@ -8,6 +9,7 @@ interface PdfPreviewProps {
 }
 
 export function PdfPreview({ url, title, zoom = 1 }: PdfPreviewProps) {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
@@ -57,7 +59,7 @@ export function PdfPreview({ url, title, zoom = 1 }: PdfPreviewProps) {
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       const context = canvas.getContext('2d');
-      if (!context) throw new Error('Canvas non disponibile');
+      if (!context) throw new Error(t('Canvas non disponibile'));
       await pdfPage.render({ canvas, canvasContext: context, viewport }).promise;
       if (!cancelled) setLoading(false);
     }).catch(err => {
@@ -77,11 +79,11 @@ export function PdfPreview({ url, title, zoom = 1 }: PdfPreviewProps) {
             <button type="button" onClick={() => setPage(value => Math.min(pages, value + 1))} disabled={page >= pages}>›</button>
           </span>
         )}
-        <a href={url} target="_blank" rel="noreferrer">Apri</a>
+        <a href={url} target="_blank" rel="noreferrer">{t('Apri')}</a>
       </div>
-      {error && <div className="pdf-preview-error">{error}<a href={url} target="_blank" rel="noreferrer">Apri il PDF</a></div>}
-      {!error && <canvas ref={canvasRef} className="pdf-preview-canvas" style={{ maxWidth: zoom > 1 ? 'none' : '100%' }} aria-label={`Anteprima ${title}`} />}
-      {loading && !error && <div className="pdf-preview-loading">Caricamento anteprima PDF…</div>}
+      {error && <div className="pdf-preview-error">{error}<a href={url} target="_blank" rel="noreferrer">{t('Apri il PDF')}</a></div>}
+      {!error && <canvas ref={canvasRef} className="pdf-preview-canvas" style={{ maxWidth: zoom > 1 ? 'none' : '100%' }} aria-label={t('Anteprima {title}', { title })} />}
+      {loading && !error && <div className="pdf-preview-loading">{t('Caricamento anteprima PDF…')}</div>}
     </div>
   );
 }

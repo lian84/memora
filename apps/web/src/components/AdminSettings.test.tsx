@@ -119,7 +119,7 @@ describe('AdminSettings UI', () => {
     const markup = renderToStaticMarkup(<AdminSettingsView {...baseProps} />);
     expect(markup).toContain('Impostazioni');
     expect(markup).toContain('Salva impostazioni');
-    expect(markup).toContain('Reindex Second Brain');
+    expect(markup).toContain('Reindicizza il Second Brain');
     expect(markup).toContain('Turni simultanei');
     expect(markup).toContain('Notifiche browser a risposta pronta');
     expect(markup).toContain('Salvataggio automatico dei nuovi ricordi');

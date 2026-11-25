@@ -196,43 +196,47 @@ export function switchProvider(draft: RuntimeSettings, role: ModelRole, provider
   return { ...draft, curator: { ...draft.curator, provider, model: '' } };
 }
 
-export function validateSettingsDraft(draft: RuntimeSettings): string | null {
-  if (!Number.isInteger(draft.memory.topK) || draft.memory.topK < 1 || draft.memory.topK > 50) return 'topK deve essere un intero tra 1 e 50.';
-  if (!Number.isInteger(draft.memory.maxChars) || draft.memory.maxChars < 500 || draft.memory.maxChars > 50000) return 'maxChars deve essere un intero tra 500 e 50000.';
-  if (!Number.isInteger(draft.memory.maxTokens) || draft.memory.maxTokens < 50 || draft.memory.maxTokens > 50000) return 'maxTokens deve essere un intero tra 50 e 50000.';
-  if (!Number.isFinite(draft.memory.diversity) || draft.memory.diversity < 0 || draft.memory.diversity > 1) return 'diversity deve essere tra 0 e 1.';
-  if (!Number.isFinite(draft.curator.minConfidence) || draft.curator.minConfidence < 0 || draft.curator.minConfidence > 1) return 'Minimum confidence deve essere tra 0 e 1.';
-  if (!Number.isFinite(draft.curator.minSalience) || draft.curator.minSalience < 0 || draft.curator.minSalience > 1) return 'Minimum salience deve essere tra 0 e 1.';
-  if (!Number.isFinite(draft.curator.autoApproveMinConfidence ?? 0.9) || (draft.curator.autoApproveMinConfidence ?? 0.9) < 0 || (draft.curator.autoApproveMinConfidence ?? 0.9) > 1) return 'La confidenza minima di auto-approvazione deve essere tra 0 e 1.';
-  if (!Number.isFinite(draft.curator.autoApproveMinSalience ?? 0.85) || (draft.curator.autoApproveMinSalience ?? 0.85) < 0 || (draft.curator.autoApproveMinSalience ?? 0.85) > 1) return 'La rilevanza minima di auto-approvazione deve essere tra 0 e 1.';
-  if (!draft.embeddings.model.trim()) return 'Il modello embedding non può essere vuoto.';
-  if (!draft.chat.defaultModel.trim()) return 'Il modello chat predefinito non può essere vuoto.';
-  if (draft.curator.enabled && !draft.curator.model.trim()) return 'Seleziona un modello per il Memory Curator.';
-  if (!Number.isInteger(draft.chat.maxConcurrentTurns ?? 2) || (draft.chat.maxConcurrentTurns ?? 2) < 1 || (draft.chat.maxConcurrentTurns ?? 2) > 4) return 'La concorrenza dei turni deve essere un intero tra 1 e 4.';
+type Translate = (source: string) => string;
+const identityTranslate: Translate = source => source;
+
+export function validateSettingsDraft(draft: RuntimeSettings, t: Translate = identityTranslate): string | null {
+  if (!Number.isInteger(draft.memory.topK) || draft.memory.topK < 1 || draft.memory.topK > 50) return t('topK deve essere un intero tra 1 e 50.');
+  if (!Number.isInteger(draft.memory.maxChars) || draft.memory.maxChars < 500 || draft.memory.maxChars > 50000) return t('maxChars deve essere un intero tra 500 e 50000.');
+  if (!Number.isInteger(draft.memory.maxTokens) || draft.memory.maxTokens < 50 || draft.memory.maxTokens > 50000) return t('maxTokens deve essere un intero tra 50 e 50000.');
+  if (!Number.isFinite(draft.memory.diversity) || draft.memory.diversity < 0 || draft.memory.diversity > 1) return t('diversity deve essere tra 0 e 1.');
+  if (!Number.isFinite(draft.curator.minConfidence) || draft.curator.minConfidence < 0 || draft.curator.minConfidence > 1) return t('Minimum confidence deve essere tra 0 e 1.');
+  if (!Number.isFinite(draft.curator.minSalience) || draft.curator.minSalience < 0 || draft.curator.minSalience > 1) return t('Minimum salience deve essere tra 0 e 1.');
+  if (!Number.isFinite(draft.curator.autoApproveMinConfidence ?? 0.9) || (draft.curator.autoApproveMinConfidence ?? 0.9) < 0 || (draft.curator.autoApproveMinConfidence ?? 0.9) > 1) return t('La confidenza minima di auto-approvazione deve essere tra 0 e 1.');
+  if (!Number.isFinite(draft.curator.autoApproveMinSalience ?? 0.85) || (draft.curator.autoApproveMinSalience ?? 0.85) < 0 || (draft.curator.autoApproveMinSalience ?? 0.85) > 1) return t('La rilevanza minima di auto-approvazione deve essere tra 0 e 1.');
+  if (!draft.embeddings.model.trim()) return t('Il modello embedding non può essere vuoto.');
+  if (!draft.chat.defaultModel.trim()) return t('Il modello chat predefinito non può essere vuoto.');
+  if (draft.curator.enabled && !draft.curator.model.trim()) return t('Seleziona un modello per il Memory Curator.');
+  if (!Number.isInteger(draft.chat.maxConcurrentTurns ?? 2) || (draft.chat.maxConcurrentTurns ?? 2) < 1 || (draft.chat.maxConcurrentTurns ?? 2) > 4) return t('La concorrenza dei turni deve essere un intero tra 1 e 4.');
   return null;
 }
 
 export function validateModelSelections(
   draft: RuntimeSettings,
   catalogs: Partial<Record<ProviderId, ProviderCatalog>>,
+  t: Translate = identityTranslate,
 ): string | null {
   const chatModels = catalogs[draft.chat.provider]?.models;
-  if (chatModels && !chatModels.some(model => model.id === draft.chat.defaultModel)) return 'Il modello chat non appartiene al provider selezionato.';
+  if (chatModels && !chatModels.some(model => model.id === draft.chat.defaultModel)) return t('Il modello chat non appartiene al provider selezionato.');
   const curatorModels = catalogs[draft.curator.provider]?.models;
-  if (draft.curator.enabled && curatorModels && !curatorModels.some(model => model.id === draft.curator.model)) return 'Il modello Curator non appartiene al provider selezionato.';
+  if (draft.curator.enabled && curatorModels && !curatorModels.some(model => model.id === draft.curator.model)) return t('Il modello Curator non appartiene al provider selezionato.');
   return null;
 }
 
-export function presetPreview(preset: Preset, settings: AdminSettingsData): PresetPreview[] {
+export function presetPreview(preset: Preset, settings: AdminSettingsData, t: Translate = identityTranslate): PresetPreview[] {
   if (preset === 'custom') return [];
   const changes: Array<{ category: Category; field: 'enabled' | 'searchMode'; label: string; value: unknown; display: string }> = preset === 'lite'
     ? [
         { category: 'embeddings', field: 'enabled', label: 'Embeddings', value: false, display: 'OFF' },
-        { category: 'memory', field: 'searchMode', label: 'Retrieval mode', value: 'lexical', display: 'Lexical' },
+        { category: 'memory', field: 'searchMode', label: t('Modalità di recupero'), value: 'lexical', display: 'Lexical' },
       ]
     : [
         { category: 'embeddings', field: 'enabled', label: 'Embeddings', value: true, display: 'ON' },
-        { category: 'memory', field: 'searchMode', label: 'Retrieval mode', value: 'semantic', display: 'Semantic' },
+        { category: 'memory', field: 'searchMode', label: t('Modalità di recupero'), value: 'semantic', display: 'Semantic' },
       ];
   return changes.map((change) => {
     const metadata = fieldMetadata(settings, change.category, change.field);
@@ -240,8 +244,8 @@ export function presetPreview(preset: Preset, settings: AdminSettingsData): Pres
     return {
       field: `${change.category}.${change.field}`,
       label: change.label,
-      from: metadata.source === 'environment' ? 'Gestito dall’ambiente' : current,
-      to: metadata.source === 'environment' ? 'Gestito dall’ambiente' : change.display,
+      from: metadata.source === 'environment' ? t('Gestito dall’ambiente') : current,
+      to: metadata.source === 'environment' ? t('Gestito dall’ambiente') : change.display,
       editable: metadata.editable,
     };
   });
@@ -373,7 +377,7 @@ function ModelField({ role, provider, value, reasoningLevel, state, settings, on
       {error && <div className="admin-inline-warning">{error}</div>}
       {!modelMeta.editable && (
         <div className="admin-inline-warning">
-          Il modello è forzato dall’ambiente. Rimuovi <code>{role === 'chat' ? 'OPENROUTER_MODEL' : 'MEMORA_MEMORY_CURATOR_MODEL'}</code> dal deployment per gestirlo dalla UI.
+          {t('Il modello è forzato dall’ambiente. Rimuovi')} <code>{role === 'chat' ? 'OPENROUTER_MODEL' : 'MEMORA_MEMORY_CURATOR_MODEL'}</code> {t('dal deployment per gestirlo dalla UI.')}
         </div>
       )}
       {catalog?.warning && <div className="admin-inline-warning">{catalog.warning}</div>}
@@ -447,7 +451,7 @@ export function AdminSettingsView({
   ] as const;
 
   return (
-    <section className="admin-settings" aria-label="Impostazioni amministrazione">
+    <section className="admin-settings" aria-label={t('Impostazioni amministrazione')}>
       <div className="admin-settings-header">
         <div>
           <h2>{t('Impostazioni')}</h2>
@@ -460,7 +464,7 @@ export function AdminSettingsView({
       {message && <div className="admin-alert is-success">{message}</div>}
       {restartRequired.length > 0 && (
         <div className="admin-alert is-warning">
-          Riavvio Memora necessario per: {restartRequired.join(', ')}. Nessun riavvio automatico viene eseguito.
+          {t('Riavvio Memora necessario per: {fields}. Nessun riavvio automatico viene eseguito.', { fields: restartRequired.join(', ') })}
         </div>
       )}
 
@@ -506,10 +510,10 @@ export function AdminSettingsView({
         </div>
         {preset && preset !== 'custom' && (
           <div className="admin-preset-preview">
-            <strong>Modifiche del preset {preset}:</strong>
+            <strong>{t('Modifiche del preset {preset}:', { preset })}</strong>
             <ul>
               {preview.map((change) => (
-                <li key={change.field}>{change.label}: <code>{change.from}</code> → <code>{change.to}</code>{!change.editable && ' (bloccato dall’ambiente)'}</li>
+                <li key={change.field}>{change.label}: <code>{change.from}</code> → <code>{change.to}</code>{!change.editable && ` ${t('(bloccato dall’ambiente)')}`}</li>
               ))}
             </ul>
             <div className="admin-actions">
@@ -556,7 +560,7 @@ export function AdminSettingsView({
           <FieldLock field={field('chat', 'maxConcurrentTurns')} />
         </label>
         <BrowserNotificationsSetting />
-        <p className="admin-card-description">Il modello Chat viene usato solo dalle nuove sessioni; quelle esistenti mantengono il modello già persistito. I titoli automatici usano solo il primo messaggio della nuova chat; il titolo manuale non viene sovrascritto.</p>
+        <p className="admin-card-description">{t('Il modello Chat viene usato solo dalle nuove sessioni; quelle esistenti mantengono il modello già persistito. I titoli automatici usano solo il primo messaggio della nuova chat; il titolo manuale non viene sovrascritto.')}</p>
       </section>
       </div>
 
@@ -580,7 +584,7 @@ export function AdminSettingsView({
       <div id="admin-page-memory" className="admin-page" hidden={activePage !== 'memory'}>
       <section id="admin-section-memory" className="admin-card">
         <h3>{t('Memoria')}</h3>
-        <div className="admin-mode-grid" role="radiogroup" aria-label="Retrieval mode">
+        <div className="admin-mode-grid" role="radiogroup" aria-label={t('Modalità di recupero')}>
           {(['lexical', 'semantic', 'hybrid'] as const).map((mode) => (
             <label key={mode} className={`admin-mode${draft.memory.searchMode === mode ? ' is-selected' : ''}${mode !== 'lexical' && semanticUnavailable ? ' is-unavailable' : ''}`}>
               <input
@@ -592,29 +596,29 @@ export function AdminSettingsView({
                 onChange={() => onDraftChange('memory', 'searchMode', mode)}
               />
               <strong>{mode[0]!.toUpperCase() + mode.slice(1)}</strong>
-              <span>{modeDescriptions[mode]}</span>
+              <span>{t(modeDescriptions[mode])}</span>
             </label>
           ))}
         </div>
         <FieldLock field={field('memory', 'searchMode')} />
-        {semanticUnavailable && <div className="admin-inline-warning">Semantic/Hybrid richiede un modello embedding locale disponibile; senza di esso il runtime usa Lexical.</div>}
+        {semanticUnavailable && <div className="admin-inline-warning">{t('Semantic/Hybrid richiede un modello embedding locale disponibile; senza di esso il runtime usa Lexical.')}</div>}
         <div className="admin-grid-2">
-          <label className="admin-label">Top K
+          <label className="admin-label">{t('Top K')}
             <input type="number" min={1} max={50} value={draft.memory.topK} disabled={disabled('memory', 'topK')} onChange={(event) => onDraftChange('memory', 'topK', Number(event.target.value))} />
             <FieldLock field={field('memory', 'topK')} />
           </label>
-          <label className="admin-label">Max characters
+          <label className="admin-label">{t('Max characters')}
             <input type="number" min={500} max={50000} value={draft.memory.maxChars} disabled={disabled('memory', 'maxChars')} onChange={(event) => onDraftChange('memory', 'maxChars', Number(event.target.value))} />
             <FieldLock field={field('memory', 'maxChars')} />
           </label>
-          <label className="admin-label">Token budget (stimati)
+          <label className="admin-label">{t('Token budget (stimati)')}
             <input type="number" min={50} max={50000} value={draft.memory.maxTokens} disabled={disabled('memory', 'maxTokens')} onChange={(event) => onDraftChange('memory', 'maxTokens', Number(event.target.value))} />
-            <small>Limite del contesto dopo filtri e diversità. Stima: caratteri / 4.</small>
+            <small>{t('Limite del contesto dopo filtri e diversità. Stima: caratteri / 4.')}</small>
             <FieldLock field={field('memory', 'maxTokens')} />
           </label>
-          <label className="admin-label">Diversità: {draft.memory.diversity.toFixed(2)}
+          <label className="admin-label">{t('Diversità:')} {draft.memory.diversity.toFixed(2)}
             <input type="range" min={0} max={1} step={0.05} value={draft.memory.diversity} disabled={disabled('memory', 'diversity')} onChange={(event) => onDraftChange('memory', 'diversity', Number(event.target.value))} />
-            <small>Penalizza chunk ridondanti. 0 = disabilitata.</small>
+            <small>{t('Penalizza chunk ridondanti. 0 = disabilitata.')}</small>
             <FieldLock field={field('memory', 'diversity')} />
           </label>
         </div>
@@ -624,20 +628,20 @@ export function AdminSettingsView({
         <h3>{t('Embeddings')}</h3>
         <label className="admin-toggle">
           <input type="checkbox" checked={draft.embeddings.enabled} disabled={disabled('embeddings', 'enabled')} onChange={(event) => onDraftChange('embeddings', 'enabled', event.target.checked)} />
-          <span>Enable semantic embeddings</span>
+          <span>{t('Abilita embedding semantici')}</span>
         </label>
         <FieldLock field={field('embeddings', 'enabled')} />
-        <label className="admin-label">Embedding model
+        <label className="admin-label">{t('Modello embedding')}
           <input value={draft.embeddings.model} disabled={disabled('embeddings', 'model')} onChange={(event) => onDraftChange('embeddings', 'model', event.target.value)} />
           <FieldLock field={field('embeddings', 'model')} />
         </label>
-        <p className="admin-card-description">Il modello viene preparato con <code>pnpm embeddings:setup</code>. Nessun download viene avviato da questa pagina.</p>
+        <p className="admin-card-description">{t('Il modello viene preparato con')} <code>pnpm embeddings:setup</code>. {t('Nessun download viene avviato da questa pagina.')}</p>
         <div className="admin-status-inline">
-          <span>Status: <strong>{status?.embeddings.loaded ? 'Loaded' : status?.embeddings.available ? 'Available' : 'Non disponibile'}</strong></span>
-          <span>Dimensions: <strong>{status?.embeddings.dimensions ?? '—'}</strong></span>
+          <span>{t('Stato:')} <strong>{status?.embeddings.loaded ? t('Caricato') : status?.embeddings.available ? t('Disponibile') : t('Non disponibile')}</strong></span>
+          <span>{t('Dimensioni:')} <strong>{status?.embeddings.dimensions ?? '—'}</strong></span>
         </div>
         <div className="admin-actions">
-          <button type="button" onClick={onReindex} disabled={reindexing || saving}>{reindexing ? 'Reindicizzo…' : 'Reindex Second Brain'}</button>
+          <button type="button" onClick={onReindex} disabled={reindexing || saving}>{reindexing ? t('Reindicizzo…') : t('Reindicizza il Second Brain')}</button>
         </div>
       </section>
       </div>
@@ -647,12 +651,12 @@ export function AdminSettingsView({
         <h3>{t('Memory Curator')}</h3>
         <label className="admin-toggle">
           <input type="checkbox" checked={draft.curator.enabled} disabled={disabled('curator', 'enabled')} onChange={(event) => onDraftChange('curator', 'enabled', event.target.checked)} />
-          <span>Automatic Memory Curator</span>
+          <span>{t('Memory Curator automatico')}</span>
         </label>
         <FieldLock field={field('curator', 'enabled')} />
         <label className="admin-toggle">
           <input type="checkbox" checked={draft.curator.auto} disabled={disabled('curator', 'auto')} onChange={(event) => onDraftChange('curator', 'auto', event.target.checked)} />
-          <span>Automatic detection</span>
+          <span>{t('Rilevamento automatico')}</span>
         </label>
         <FieldLock field={field('curator', 'auto')} />
         <ModelField
@@ -677,13 +681,13 @@ export function AdminSettingsView({
           onTestKey={onTestKey}
         />
         <div className="admin-grid-2">
-          <label className="admin-label">Minimum confidence: {draft.curator.minConfidence.toFixed(2)}
+          <label className="admin-label">{t('Confidenza minima:')} {draft.curator.minConfidence.toFixed(2)}
             <input type="range" min={0} max={1} step={0.05} value={draft.curator.minConfidence} disabled={disabled('curator', 'minConfidence')} onChange={(event) => onDraftChange('curator', 'minConfidence', Number(event.target.value))} />
-            <small>Quanto il Curator è sicuro della propria interpretazione.</small>
+            <small>{t('Quanto il Curator è sicuro della propria interpretazione.')}</small>
           </label>
-          <label className="admin-label">Minimum salience: {draft.curator.minSalience.toFixed(2)}
+          <label className="admin-label">{t('Rilevanza minima:')} {draft.curator.minSalience.toFixed(2)}
             <input type="range" min={0} max={1} step={0.05} value={draft.curator.minSalience} disabled={disabled('curator', 'minSalience')} onChange={(event) => onDraftChange('curator', 'minSalience', Number(event.target.value))} />
-            <small>Quanto l’informazione è considerata importante e durevole.</small>
+            <small>{t('Quanto l’informazione è considerata importante e durevole.')}</small>
           </label>
         </div>
         <div className="admin-auto-approve">
@@ -708,7 +712,7 @@ export function AdminSettingsView({
             </div>
           )}
         </div>
-        <p className="admin-card-description">Provider e modello Curator vengono ricaricati a caldo se il Curator è già attivo; abilitarlo/disabilitarlo richiede un riavvio. Il livello reasoning è applicato subito e gli errori del provider non bloccano la chat.</p>
+        <p className="admin-card-description">{t('Provider e modello Curator vengono ricaricati a caldo se il Curator è già attivo; abilitarlo/disabilitarlo richiede un riavvio. Il livello reasoning è applicato subito e gli errori del provider non bloccano la chat.')}</p>
       </section>
       </div>
 
@@ -723,27 +727,27 @@ export function AdminSettingsView({
           <div>
             <span>Chat</span>
             <strong>{PROVIDER_LABELS[draft.chat.provider]}</strong>
-            <p>Riceve i messaggi e le risposte della conversazione per generare il turno.</p>
+            <p>{t('Riceve i messaggi e le risposte della conversazione per generare il turno.')}</p>
           </div>
           <div>
             <span>Memory Curator</span>
-            <strong>{draft.curator.enabled ? PROVIDER_LABELS[draft.curator.provider] : 'Disabilitato'}</strong>
+            <strong>{draft.curator.enabled ? PROVIDER_LABELS[draft.curator.provider] : t('Disabilitato')}</strong>
             <p>{draft.curator.enabled
-              ? 'Riceve il turno corrente, fino a 3 messaggi utente recenti e fino a 5 estratti di memoria pertinenti.'
-              : 'Nessun contenuto viene inviato al Curator finché non viene abilitato.'}</p>
+              ? t('Riceve il turno corrente, fino a 3 messaggi utente recenti e fino a 5 estratti di memoria pertinenti.')
+              : t('Nessun contenuto viene inviato al Curator finché non viene abilitato.')}</p>
           </div>
           <div>
             <span>Embeddings</span>
-            <strong>Locali</strong>
-            <p>Calcolati sul dispositivo; i documenti della memoria non vengono inviati per l’indicizzazione.</p>
+            <strong>{t('Locali')}</strong>
+            <p>{t('Calcolati sul dispositivo; i documenti della memoria non vengono inviati per l’indicizzazione.')}</p>
           </div>
           <div>
             <span>Log</span>
-            <strong>Solo metadata</strong>
-            <p>Provider, esito, latenza e token; nessun messaggio, prompt o contenuto di memoria.</p>
+            <strong>{t('Solo metadata')}</strong>
+            <p>{t('Provider, esito, latenza e token; nessun messaggio, prompt o contenuto di memoria.')}</p>
           </div>
         </div>
-        <p className="admin-egress-warning">Prima dell’invio al Curator i segreti bloccano l’analisi; email, telefoni, IBAN, carte e codici fiscali vengono rimossi. Nomi, indirizzi e altre PII non riconoscibili possono ancora essere inviati: non inserire dati che non vuoi condividere con il provider.</p>
+        <p className="admin-egress-warning">{t('Prima dell’invio al Curator i segreti bloccano l’analisi; email, telefoni, IBAN, carte e codici fiscali vengono rimossi. Nomi, indirizzi e altre PII non riconoscibili possono ancora essere inviati: non inserire dati che non vuoi condividere con il provider.')}</p>
       </section>
 
       <section className="admin-card">
@@ -754,14 +758,14 @@ export function AdminSettingsView({
           </div>
         )}
         <div className="admin-system-grid">
-          <div><span>Ricerche</span><strong>{status?.metrics.retrieval.searches ?? '—'}</strong></div>
-          <div><span>Errori retrieval</span><strong>{status?.metrics.retrieval.errors ?? '—'}</strong></div>
-          <div><span>Latenza media / max</span><strong>{status ? `${status.metrics.retrieval.averageLatencyMs.toFixed(1)} / ${status.metrics.retrieval.maxLatencyMs.toFixed(1)} ms` : '—'}</strong></div>
-          <div><span>Token stimati recuperati</span><strong>{status?.metrics.retrieval.estimatedTokens ?? '—'}</strong></div>
-          <div><span>Curator completati / falliti</span><strong>{status ? `${status.metrics.curator.completed} / ${status.metrics.curator.failed}` : '—'}</strong></div>
-          <div><span>Curator declinati</span><strong>{status?.metrics.curator.declined ?? '—'}</strong></div>
-          <div><span>Inbox pending / conflict</span><strong>{status ? `${status.memoryInbox.pending} / ${status.memoryInbox.conflict}` : '—'}</strong></div>
-          <div><span>Tasso approvazione</span><strong>{status?.memoryInbox.approvalRate === null || status?.memoryInbox.approvalRate === undefined ? '—' : `${Math.round(status.memoryInbox.approvalRate * 100)}%`}</strong></div>
+          <div><span>{t('Ricerche')}</span><strong>{status?.metrics.retrieval.searches ?? '—'}</strong></div>
+          <div><span>{t('Errori retrieval')}</span><strong>{status?.metrics.retrieval.errors ?? '—'}</strong></div>
+          <div><span>{t('Latenza media / max')}</span><strong>{status ? `${status.metrics.retrieval.averageLatencyMs.toFixed(1)} / ${status.metrics.retrieval.maxLatencyMs.toFixed(1)} ms` : '—'}</strong></div>
+          <div><span>{t('Token stimati recuperati')}</span><strong>{status?.metrics.retrieval.estimatedTokens ?? '—'}</strong></div>
+          <div><span>{t('Curator completati / falliti')}</span><strong>{status ? `${status.metrics.curator.completed} / ${status.metrics.curator.failed}` : '—'}</strong></div>
+          <div><span>{t('Curator declinati')}</span><strong>{status?.metrics.curator.declined ?? '—'}</strong></div>
+          <div><span>{t('Inbox pending / conflict')}</span><strong>{status ? `${status.memoryInbox.pending} / ${status.memoryInbox.conflict}` : '—'}</strong></div>
+          <div><span>{t('Tasso approvazione')}</span><strong>{status?.memoryInbox.approvalRate === null || status?.memoryInbox.approvalRate === undefined ? '—' : `${Math.round(status.memoryInbox.approvalRate * 100)}%`}</strong></div>
         </div>
       </section>
 
@@ -772,18 +776,18 @@ export function AdminSettingsView({
           <div><span>Node</span><strong>{status?.nodeVersion ?? '—'}</strong></div>
           <div><span>Uptime</span><strong>{status ? `${status.uptimeSeconds}s` : '—'}</strong></div>
           <div><span>Data dir</span><strong title={status?.dataDir}>{status?.dataDir ?? '—'}</strong></div>
-          <div><span>Retrieval effettivo</span><strong>{status?.memory.effectiveMode ?? '—'}</strong></div>
-          <div><span>Token budget / diversità</span><strong>{status ? `${status.memory.maxTokens} / ${status.memory.diversity.toFixed(2)}` : '—'}</strong></div>
-          <div><span>Chat attuale</span><strong>{status ? `${PROVIDER_LABELS[status.chat.provider]} / ${status.chat.model}` : '—'}</strong></div>
-          <div><span>Chat credential</span><strong>{status ? (status.chat.credential.configured ? 'configured' : 'missing') : '—'}</strong></div>
-          <div><span>Turni simultanei</span><strong>{status?.chat.maxConcurrentTurns ?? '—'}</strong></div>
+          <div><span>{t('Retrieval effettivo')}</span><strong>{status?.memory.effectiveMode ?? '—'}</strong></div>
+          <div><span>{t('Token budget / diversità')}</span><strong>{status ? `${status.memory.maxTokens} / ${status.memory.diversity.toFixed(2)}` : '—'}</strong></div>
+          <div><span>{t('Chat attuale')}</span><strong>{status ? `${PROVIDER_LABELS[status.chat.provider]} / ${status.chat.model}` : '—'}</strong></div>
+          <div><span>{t('Chat credential')}</span><strong>{status ? (status.chat.credential.configured ? t('configurata') : t('mancante')) : '—'}</strong></div>
+          <div><span>{t('Turni simultanei')}</span><strong>{status?.chat.maxConcurrentTurns ?? '—'}</strong></div>
           <div><span>Curator</span><strong>{status ? `${PROVIDER_LABELS[status.curator.provider]} / ${status.curator.model || '—'}` : '—'}</strong></div>
-          <div><span>Curator credential</span><strong>{status ? (status.curator.credential.configured ? 'configured' : 'missing') : '—'}</strong></div>
-          <div><span>Curator queue</span><strong>{status ? `${status.curator.queueLength ?? 0} in coda · ${status.curator.queueFailed} failed · ${status.curator.queueAttempts} tentativi` : '—'}</strong></div>
-          <div><span>Sources / chunks</span><strong>{status ? `${status.secondBrain.sourceCount} / ${status.secondBrain.chunkCount}` : '—'}</strong></div>
-          <div><span>Vectors</span><strong>{status?.secondBrain.vectorCount ?? '—'}</strong></div>
+          <div><span>{t('Curator credential')}</span><strong>{status ? (status.curator.credential.configured ? t('configurata') : t('mancante')) : '—'}</strong></div>
+          <div><span>{t('Curator queue')}</span><strong>{status ? `${status.curator.queueLength ?? 0} ${t('in coda')} · ${status.curator.queueFailed} ${t('falliti')} · ${status.curator.queueAttempts} ${t('tentativi')}` : '—'}</strong></div>
+          <div><span>{t('Sources / chunks')}</span><strong>{status ? `${status.secondBrain.sourceCount} / ${status.secondBrain.chunkCount}` : '—'}</strong></div>
+          <div><span>{t('Vectors')}</span><strong>{status?.secondBrain.vectorCount ?? '—'}</strong></div>
         </div>
-        <p className="admin-security-note">Non esporre Memora pubblicamente senza autenticazione. Le API amministrative sono centralizzate sotto <code>/api/admin/*</code>.</p>
+        <p className="admin-security-note">{t('Non esporre Memora pubblicamente senza autenticazione. Le API amministrative sono centralizzate sotto')} <code>/api/admin/*</code>.</p>
       </section>
 
       <MonitorAdminPanel />
@@ -860,7 +864,7 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const preview = useMemo(() => settings && preset ? presetPreview(preset, settings) : [], [settings, preset]);
+  const preview = useMemo(() => settings && preset ? presetPreview(preset, settings, t) : [], [settings, preset, t]);
 
   const handleDraftChange = useCallback((category: Category, field: string, value: unknown) => {
     setDraft((current) => {
@@ -923,7 +927,7 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
     } finally {
       setKeySaving(null);
     }
-  }, [keyDrafts]);
+  }, [keyDrafts, t]);
 
   const handleTestKey = useCallback(async (provider: ProviderId) => {
     setKeyTesting(provider);
@@ -933,23 +937,23 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
       setKeyMessages(current => ({
         ...current,
         [provider]: result.ok
-          ? { ok: true, text: 'Connessione riuscita' }
-          : { ok: false, text: result.error === 'invalid_credentials' ? 'Credenziale non valida' : 'Connessione non riuscita' },
+          ? { ok: true, text: t('Connessione riuscita') }
+          : { ok: false, text: result.error === 'invalid_credentials' ? t('Credenziale non valida') : t('Connessione non riuscita') },
       }));
     } catch (err) {
       setKeyMessages(current => ({ ...current, [provider]: { ok: false, text: err instanceof Error ? err.message : String(err) } }));
     } finally {
       setKeyTesting(null);
     }
-  }, [keyDrafts]);
+  }, [keyDrafts, t]);
 
   const handleSave = useCallback(async () => {
     if (!settings || !draft) return;
-    const validation = validateSettingsDraft(draft) ?? validateModelSelections(draft, catalogs);
+    const validation = validateSettingsDraft(draft, t) ?? validateModelSelections(draft, catalogs, t);
     if (validation) { setError(validation); return; }
     const patch = buildSettingsPatch(draft, settings);
     if (!Object.keys(patch).length) {
-      setMessage('Nessuna modifica da salvare.');
+      setMessage(t('Nessuna modifica da salvare.'));
       setError(null);
       return;
     }
@@ -971,28 +975,28 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
           },
         }));
       }
-      setMessage(result.changed.length === 0 ? 'Nessuna modifica effettiva.' : 'Impostazioni salvate.');
+      setMessage(result.changed.length === 0 ? t('Nessuna modifica effettiva.') : t('Impostazioni salvate.'));
       setPreset(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
-  }, [catalogs, draft, settings]);
+  }, [catalogs, draft, settings, t]);
 
   const handleReset = useCallback(() => {
     if (!settings) return;
     setDraft(settingsValues(settings));
     setKeyDrafts({ ...emptyKeys });
     setError(null);
-    setMessage('Modifiche non salvate annullate.');
-  }, [settings]);
+    setMessage(t('Modifiche non salvate annullate.'));
+  }, [settings, t]);
 
   const applyPreset = useCallback(async () => {
     if (!settings || !preset) return;
     const patch = presetPatch(preset, settings);
     if (!Object.keys(patch).length) {
-      setMessage('Nessuna modifica applicabile: i campi del preset sono gestiti dall’ambiente.');
+      setMessage(t('Nessuna modifica applicabile: i campi del preset sono gestiti dall’ambiente.'));
       setError(null);
       return;
     }
@@ -1005,23 +1009,23 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
       setDraft(settingsValues(result));
       setStatus(await getAdminStatus());
       setRestartRequired(result.restartRequired);
-      setMessage(`Preset ${preset} applicato.`);
+      setMessage(t('Preset {preset} applicato.', { preset }));
       setPreset(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
-  }, [preset, settings]);
+  }, [preset, settings, t]);
 
   const handleReindex = useCallback(async () => {
-    if (typeof window !== 'undefined' && !window.confirm('Reindicizzare il Second Brain? L’operazione può richiedere tempo.')) return;
+    if (typeof window !== 'undefined' && !window.confirm(t('Reindicizzare il Second Brain? L’operazione può richiedere tempo.'))) return;
     setReindexing(true);
     setError(null);
     try {
       await reindexMemory();
       setStatus(await getAdminStatus());
-      setMessage('Reindex completato.');
+      setMessage(t('Reindex completato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -1032,7 +1036,7 @@ export function AdminSettings({ onClose }: { onClose: () => void }) {
   if (!settings || !draft) {
     return (
       <section className="admin-settings">
-        <div className="admin-settings-header"><div><h2>{t('Impostazioni')}</h2><p>Caricamento configurazione…</p></div><button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button></div>
+        <div className="admin-settings-header"><div><h2>{t('Impostazioni')}</h2><p>{t('Caricamento configurazione…')}</p></div><button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button></div>
         {error && <div role="alert" className="admin-alert is-error">{error}</div>}
       </section>
     );

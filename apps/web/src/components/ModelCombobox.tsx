@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProviderId, ProviderModel } from '@memora/shared';
+import { useI18n } from '../i18n';
 
 export function filterModels(models: ProviderModel[], query: string, freeOnly = false): ProviderModel[] {
   const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
@@ -45,6 +46,7 @@ interface ModelComboboxProps {
 }
 
 export function ModelCombobox({ models, provider, value, onChange, disabled = false, loading = false, onRefresh }: ModelComboboxProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [freeOnly, setFreeOnly] = useState(false);
@@ -70,7 +72,7 @@ export function ModelCombobox({ models, provider, value, onChange, disabled = fa
           aria-expanded={open}
           aria-controls={`model-list-${provider}`}
           aria-autocomplete="list"
-          placeholder={selected ? `${selected.name} — ${selected.id}` : '🔎 Cerca modello per nome o id…'}
+          placeholder={selected ? `${selected.name} — ${selected.id}` : t('🔎 Cerca modello per nome o id…')}
           value={query}
           disabled={disabled}
           onFocus={() => {
@@ -86,12 +88,12 @@ export function ModelCombobox({ models, provider, value, onChange, disabled = fa
             else if (event.key === 'Escape') { setOpen(false); setQuery(''); }
           }}
         />
-        {onRefresh && <button type="button" className="model-refresh" onClick={onRefresh} disabled={disabled || loading}>{loading ? 'Aggiorno…' : 'Aggiorna elenco'}</button>}
+        {onRefresh && <button type="button" className="model-refresh" onClick={onRefresh} disabled={disabled || loading}>{loading ? t('Aggiorno…') : t('Aggiorna elenco')}</button>}
       </div>
       {provider === 'openrouter' && (
         <label className="model-free-filter">
           <input type="checkbox" checked={freeOnly} disabled={disabled} onChange={(event) => setFreeOnly(event.target.checked)} />
-          Solo Free
+          {t('Solo Free')}
         </label>
       )}
       {selected && !open && (
@@ -104,9 +106,9 @@ export function ModelCombobox({ models, provider, value, onChange, disabled = fa
       {open && (
         <div className="model-combobox-popover">
           <div className="model-result-count">
-            {loading ? 'Caricamento modelli…' : query || freeOnly ? `${filtered.length} modelli trovati` : `${models.length} modelli disponibili`}
+            {loading ? t('Caricamento modelli…') : query || freeOnly ? t('{count} modelli trovati', { count: filtered.length }) : t('{count} modelli disponibili', { count: models.length })}
           </div>
-          {!loading && filtered.length === 0 && <div className="model-no-results">Nessun modello corrispondente</div>}
+          {!loading && filtered.length === 0 && <div className="model-no-results">{t('Nessun modello corrispondente')}</div>}
           {!loading && filtered.length > 0 && (
             <ul id={`model-list-${provider}`} role="listbox" className="model-result-list">
               {filtered.map((model, index) => (

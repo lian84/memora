@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ZoomControls } from './ZoomControls';
+import { useI18n } from '../i18n';
 
 type HtmlViewport = 'auto' | 'desktop' | 'tablet' | 'mobile';
 
@@ -37,6 +38,7 @@ function ExternalIcon() {
 }
 
 export function HtmlPreview({ title, html, url, openUrl }: HtmlPreviewProps) {
+  const { t } = useI18n();
   const [viewport, setViewport] = useState<HtmlViewport>('auto');
   const [zoom, setZoom] = useState(1);
   const [refresh, setRefresh] = useState(0);
@@ -59,7 +61,7 @@ export function HtmlPreview({ title, html, url, openUrl }: HtmlPreviewProps) {
   return (
     <div className="html-preview">
       <div className="html-preview-toolbar">
-        <div className="html-preview-viewports" role="group" aria-label="Larghezza anteprima">
+        <div className="html-preview-viewports" role="group" aria-label={t('Larghezza anteprima')}>
           {VIEWPORTS.map(item => (
             <button
               type="button"
@@ -74,21 +76,21 @@ export function HtmlPreview({ title, html, url, openUrl }: HtmlPreviewProps) {
         </div>
         <div className="html-preview-actions">
           <ZoomControls zoom={zoom} onChange={setZoom} />
-          <button type="button" className="html-preview-icon" onClick={() => setRefresh(value => value + 1)} title="Ricarica anteprima" aria-label="Ricarica anteprima"><RefreshIcon /></button>
-          {fileUrl && <a className="html-preview-icon" href={fileUrl} target="_blank" rel="noreferrer" title="Apri file originale" aria-label="Apri file originale"><ExternalIcon /></a>}
+          <button type="button" className="html-preview-icon" onClick={() => setRefresh(value => value + 1)} title={t('Ricarica anteprima')} aria-label={t('Ricarica anteprima')}><RefreshIcon /></button>
+          {fileUrl && <a className="html-preview-icon" href={fileUrl} target="_blank" rel="noreferrer" title={t('Apri file originale')} aria-label={t('Apri file originale')}><ExternalIcon /></a>}
         </div>
       </div>
       <div className="html-preview-scroll">
         {source ? (
           <div className="html-preview-canvas" style={canvasStyle}>
-            <iframe className="html-preview-frame" title={`Anteprima ${title}`} sandbox="" srcDoc={source} />
+            <iframe className="html-preview-frame" title={t('Anteprima {title}', { title })} sandbox="" srcDoc={source} />
           </div>
         ) : url ? (
           <div className="html-preview-canvas" style={canvasStyle}>
-            <iframe className="html-preview-frame" title={`Anteprima ${title}`} sandbox="" src={frameSrc} />
+            <iframe className="html-preview-frame" title={t('Anteprima {title}', { title })} sandbox="" src={frameSrc} />
           </div>
         ) : (
-          <div className="project-file-preview-empty">Anteprima HTML non disponibile.</div>
+          <div className="project-file-preview-empty">{t('Anteprima HTML non disponibile.')}</div>
         )}
       </div>
     </div>

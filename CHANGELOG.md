@@ -2,6 +2,13 @@
 
 All notable changes to Memora are documented here.
 
+## [0.1.3] - 2026-11-25
+
+### Fixed
+
+- Completed the Italian, English and French UI audit: remaining hardcoded labels, dialogs, previews, memory views and administration text now use the translation dictionaries.
+- The update panel now explains that the button can be used when the systemd helper is installed, while keeping the manual fallback.
+
 ## [0.1.2] - 2026-11-23
 
 ### Fixed
@@ -41,3 +48,5 @@ All notable changes to Memora are documented here.
 [0.1.1]: https://github.com/lian84/memora/releases/tag/v0.1.1
 
 [0.1.2]: https://github.com/lian84/memora/releases/tag/v0.1.2
+
+[0.1.3]: https://github.com/lian84/memora/releases/tag/v0.1.3

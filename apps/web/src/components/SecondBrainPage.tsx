@@ -121,8 +121,8 @@ export function SecondBrainPage({ projects, refreshKey = 0, initialScope = 'all'
               type="search"
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Cerca per file, titolo o categoria…"
-              aria-label="Cerca nella memoria"
+              placeholder={t('Cerca per file, titolo o categoria…')}
+              aria-label={t('Cerca nella memoria')}
             />
             <select value={scope} onChange={event => setScope(event.target.value)} aria-label={t('Filtro memoria')}>
               <option value="all">{t('Tutte le memorie')}</option>

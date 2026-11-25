@@ -46,7 +46,7 @@ export function ChatMemoryPanel({ refreshKey = 0, projectId = null, projectName,
             </button>
           )}
           <button type="button" className="chat-memory-open" onClick={() => onOpenSecondBrain?.()}>
-            Apri Second Brain →
+            {t('Apri Second Brain →')}
           </button>
         </div>
         <MemoryInbox refreshKey={refreshKey} onChanged={() => void loadSources()} onCountChange={setInboxCount} />

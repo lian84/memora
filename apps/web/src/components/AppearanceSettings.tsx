@@ -27,7 +27,7 @@ export function AppearanceSettings() {
           <p className="admin-card-description">{t('Le preferenze sono salvate solo in questo browser e si applicano subito.')}</p>
         </div>
         <button type="button" className="appearance-reset" onClick={() => resetAppearance()}>
-          Ripristina
+          {t('Ripristina')}
         </button>
       </div>
 
@@ -81,11 +81,11 @@ export function AppearanceSettings() {
           <div className="appearance-segmented" role="radiogroup" aria-label={t('Densità')}>
             <label className={appearance.density === 'comfortable' ? 'is-selected' : ''}>
               <input type="radio" name="appearance-density" checked={appearance.density === 'comfortable'} onChange={() => updateAppearance({ density: 'comfortable' })} />
-              Comoda
+              {t('Comoda')}
             </label>
             <label className={appearance.density === 'compact' ? 'is-selected' : ''}>
               <input type="radio" name="appearance-density" checked={appearance.density === 'compact'} onChange={() => updateAppearance({ density: 'compact' })} />
-              Compatta
+              {t('Compatta')}
             </label>
           </div>
         </fieldset>
@@ -107,7 +107,7 @@ export function AppearanceSettings() {
         </fieldset>
       </div>
 
-      <div className="appearance-preview" aria-label="Anteprima aspetto">
+      <div className="appearance-preview" aria-label={t('Anteprima aspetto')}>
         <span className="appearance-preview-eyebrow">{t('Anteprima')}</span>
         <p>{t('Memora si adatta alla tua postazione. La memoria resta locale e il contesto resta sotto controllo.')}</p>
         <div className="appearance-preview-message">{t('Questo è un esempio di messaggio della chat.')}</div>

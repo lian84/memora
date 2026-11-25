@@ -53,7 +53,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
   const [sourceDeleteOpen, setSourceDeleteOpen] = useState(false);
   const [sourceDeleteError, setSourceDeleteError] = useState<string | null>(null);
   const [newPath, setNewPath] = useState(`projects/${project.id}/sources/`);
-  const [newContent, setNewContent] = useState('# Nuova fonte\n\n');
+  const [newContent, setNewContent] = useState(() => `# ${t('Nuova fonte')}\n\n`);
 
   const loadSources = useCallback(async () => {
     try {
@@ -85,7 +85,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
         retrieval: { ...project.retrieval, includeGlobal },
       });
       onSaved(updated);
-      setMessage('Progetto salvato.');
+      setMessage(t('Progetto salvato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -99,7 +99,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
     try {
       const updated = await updateProject(project.id, { status: project.status === 'active' ? 'archived' : 'active' });
       onSaved(updated);
-      setMessage(updated.status === 'archived' ? 'Progetto archiviato.' : 'Progetto riattivato.');
+      setMessage(updated.status === 'archived' ? t('Progetto archiviato.') : t('Progetto riattivato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -119,7 +119,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
       anchor.download = `${project.id}-export.json`;
       anchor.click();
       URL.revokeObjectURL(url);
-      setMessage('Export pronto.');
+      setMessage(t('Export pronto.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -146,7 +146,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
       await updateProjectSource(project.id, source.id, sourceContent);
       await loadSources();
       onSourcesChanged();
-      setMessage('Fonte aggiornata.');
+      setMessage(t('Fonte aggiornata.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -159,7 +159,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
     event.target.value = '';
     if (!file) return;
     if (!/\.(md|txt)$/i.test(file.name)) {
-      setError('Sono supportati solo file .md e .txt.');
+      setError(t('Sono supportati solo file .md e .txt.'));
       return;
     }
     setFileLoading(true);
@@ -168,7 +168,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
       const text = await file.text();
       setNewPath(`projects/${project.id}/sources/${file.name}`);
       setNewContent(text);
-      setMessage(`File ${file.name} caricato: controlla e crea la fonte.`);
+      setMessage(t('File {name} caricato: controlla e crea la fonte.', { name: file.name }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -186,8 +186,8 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
       setSource(created);
       setSourceContent(created.content);
       setNewPath(`projects/${project.id}/sources/`);
-      setNewContent('# Nuova fonte\n\n');
-      setMessage('Fonte creata.');
+      setNewContent(`# ${t('Nuova fonte')}\n\n`);
+      setMessage(t('Fonte creata.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -207,7 +207,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
       setSourceContent('');
       await loadSources();
       onSourcesChanged();
-      setMessage('Fonte eliminata.');
+      setMessage(t('Fonte eliminata.'));
     } catch (err) {
       setSourceDeleteError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -350,7 +350,7 @@ export function ProjectSettings({ project, onClose, onSaved, onSourcesChanged, o
             <h4>{t('Nuovo account progetto per {server}', { server: MCP_SERVER_DEFINITIONS.find(server => server.id === mcpAccountForm.serverId)?.label ?? '' })}</h4>
             <div className="project-mcp-form-grid">
               <label className="admin-label">{t('Nome account')}
-                <input value={mcpAccountForm.label} onChange={event => setMcpAccountForm(current => ({ ...current, label: event.target.value }))} placeholder="Orione lavoro" maxLength={120} />
+                <input value={mcpAccountForm.label} onChange={event => setMcpAccountForm(current => ({ ...current, label: event.target.value }))} placeholder={t('Esempio account')} maxLength={120} />
               </label>
               <label className="admin-label">{t('Token')}
                 <input type="password" value={mcpAccountForm.token} onChange={event => setMcpAccountForm(current => ({ ...current, token: event.target.value }))} placeholder="ntn_..." autoComplete="new-password" spellCheck={false} />

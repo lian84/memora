@@ -19,7 +19,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
-  busyLabel = 'Eliminazione…',
+  busyLabel,
   busy = false,
   error = null,
   confirmDisabled = false,
@@ -28,6 +28,7 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const { t } = useI18n();
+  const effectiveBusyLabel = busyLabel ?? t('Eliminazione…');
   const titleId = useId();
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !busy) onClose(); };
@@ -44,7 +45,7 @@ export function ConfirmDialog({
         <div className="dialog-actions">
           <button type="button" autoFocus={cancelAutoFocus} onClick={onClose} disabled={busy}>{t('Annulla')}</button>
           <button type="button" className="delete-confirm-button" onClick={onConfirm} disabled={busy || confirmDisabled}>
-            {busy ? busyLabel : confirmLabel}
+            {busy ? effectiveBusyLabel : confirmLabel}
           </button>
         </div>
       </div>

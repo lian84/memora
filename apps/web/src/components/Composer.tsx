@@ -137,7 +137,7 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
       <div className="composer-actions">
         {isStreaming && (
           <button type="button" className="stop-button" onClick={onAbort}>
-            Stop
+            {t('Stop')}
           </button>
         )}
         <button type="button" className="send-button" onClick={handleSend} disabled={sendDisabled}>

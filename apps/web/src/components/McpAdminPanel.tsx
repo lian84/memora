@@ -147,7 +147,7 @@ export function McpAdminPanel() {
             </select>
           </label>
           <label className="admin-label">{t('Nome account')}
-            <input value={form.label} onChange={event => setForm(current => ({ ...current, label: event.target.value }))} placeholder="Lavoro" maxLength={120} />
+            <input value={form.label} onChange={event => setForm(current => ({ ...current, label: event.target.value }))} placeholder={t('Lavoro')} maxLength={120} />
           </label>
           <label className="admin-label">{t('Token')}
             <input type="password" value={form.token} onChange={event => setForm(current => ({ ...current, token: event.target.value }))} placeholder={editingId ? t('Lascia vuoto per mantenere il token attuale') : 'ntn_...'} autoComplete="new-password" spellCheck={false} />

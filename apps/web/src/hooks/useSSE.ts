@@ -4,8 +4,10 @@ import {
   editMessage as editMessageAPI,
   abortSession,
 } from '../lib/api';
+import { useI18n } from '../i18n';
 
 export function useSSE(sessionId: string | null) {
+  const { t } = useI18n();
   const [isStreaming, setIsStreaming] = useState(false);
   const controllerRef = useRef<AbortController | null>(null);
 
@@ -40,7 +42,7 @@ export function useSSE(sessionId: string | null) {
       }) => void,
       attachmentIds: string[] = [],
     ): Promise<void> => {
-      if (!sessionId) throw new Error('Nessuna sessione selezionata');
+      if (!sessionId) throw new Error(t('Nessuna sessione selezionata'));
 
       const controller = new AbortController();
       controllerRef.current = controller;
@@ -60,7 +62,7 @@ export function useSSE(sessionId: string | null) {
         }
       }
     },
-    [sessionId],
+    [sessionId, t],
   );
 
   const editMessage = useCallback(
@@ -69,7 +71,7 @@ export function useSSE(sessionId: string | null) {
       text: string,
       onEvent: (event: { type: string; sessionId: string; timestamp: number; payload: unknown }) => void,
     ): Promise<void> => {
-      if (!sessionId) throw new Error('Nessuna sessione selezionata');
+      if (!sessionId) throw new Error(t('Nessuna sessione selezionata'));
       const controller = new AbortController();
       controllerRef.current = controller;
       setIsStreaming(true);
@@ -85,7 +87,7 @@ export function useSSE(sessionId: string | null) {
         }
       }
     },
-    [sessionId],
+    [sessionId, t],
   );
 
   return { sendMessage, editMessage, abort, isStreaming };

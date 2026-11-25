@@ -9,6 +9,7 @@ import {
   type TurnInfo,
   type TurnStatus,
 } from '../lib/api';
+import { useI18n } from '../i18n';
 
 interface TurnEvent {
   type: string;
@@ -51,6 +52,7 @@ interface UseSessionTurnOptions {
 }
 
 export function useSessionTurn(sessionId: string | null, options: UseSessionTurnOptions = {}) {
+  const { t } = useI18n();
   const [turn, setTurn] = useState<TurnInfo | null>(null);
   const [content, setContent] = useState('');
   const [reasoning, setReasoning] = useState('');
@@ -165,10 +167,10 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     turnRef.current = latest;
     setTurn(latest);
     if (latest.status === 'running' || latest.status === 'queued') attach(latest, seqRef.current);
-  }, [attach, sessionId]);
+  }, [attach, sessionId, t]);
 
   const start = useCallback(async (text: string, attachmentIds: string[] = []) => {
-    if (!sessionId) throw new Error('Nessuna chat attiva');
+    if (!sessionId) throw new Error(t('Nessuna chat attiva'));
     const next = await startTurnApi(sessionId, text, attachmentIds);
     turnRef.current = next;
     seqRef.current = 0;
@@ -177,10 +179,10 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     setTurn(next);
     attach(next, 0);
     return next;
-  }, [attach, sessionId]);
+  }, [attach, sessionId, t]);
 
   const startEdit = useCallback(async (entryId: string, text: string, attachmentIds: string[] = []) => {
-    if (!sessionId) throw new Error('Nessuna chat attiva');
+    if (!sessionId) throw new Error(t('Nessuna chat attiva'));
     const next = await startEditTurn(sessionId, entryId, text, attachmentIds);
     turnRef.current = next;
     seqRef.current = 0;
@@ -189,7 +191,7 @@ export function useSessionTurn(sessionId: string | null, options: UseSessionTurn
     setTurn(next);
     attach(next, 0);
     return next;
-  }, [attach, sessionId]);
+  }, [attach, sessionId, t]);
 
   const abort = useCallback(async () => {
     const current = turnRef.current;

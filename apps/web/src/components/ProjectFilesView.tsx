@@ -105,7 +105,7 @@ export function ProjectFilesView({ project, onAttach, refreshKey = 0 }: ProjectF
           setPreview({ kind: 'word', html: result.html ?? '' });
         } else if (file.kind === 'xlsx') {
           const result = await getProjectFilePreview(project.id, file.path);
-          if (!result.spreadsheet) throw new Error('Anteprima Excel non disponibile');
+          if (!result.spreadsheet) throw new Error(t('Anteprima Excel non disponibile'));
           setPreview({ kind: 'xlsx', data: result.spreadsheet });
         } else {
           setPreview({ kind: file.kind, url: projectFileUrl(project.id, file.path) });

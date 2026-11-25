@@ -306,7 +306,7 @@ export function AgentsAdminPanel() {
                   <input value={form.name} onChange={event => updateForm('name', event.target.value)} maxLength={120} />
                 </label>
                 <label className="admin-label">{t('ID agente')}
-                  <input value={form.id} disabled={Boolean(editingId)} onChange={event => updateForm('id', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} placeholder="commercialista" maxLength={64} />
+                  <input value={form.id} disabled={Boolean(editingId)} onChange={event => updateForm('id', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} placeholder={t('commercialista')} maxLength={64} />
                   <small>{t('Solo lettere minuscole, numeri e trattini. Non modificabile dopo la creazione.')}</small>
                 </label>
               </div>
@@ -390,7 +390,7 @@ export function AgentsAdminPanel() {
                     <div className="agents-admin-skill-editor">
                       <h4>{editingSkillName ? t('Modifica competenza') : t('Aggiungi competenza')}</h4>
                       <label className="admin-label">{t('Nome competenza')}
-                        <input value={skillForm.name} disabled={Boolean(editingSkillName)} onChange={event => updateSkillForm('name', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} placeholder="iva" maxLength={64} />
+                        <input value={skillForm.name} disabled={Boolean(editingSkillName)} onChange={event => updateSkillForm('name', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))} placeholder={t('iva')} maxLength={64} />
                       </label>
                       <label className="admin-label">{t('Descrizione competenza')}
                         <input value={skillForm.description} onChange={event => updateSkillForm('description', event.target.value)} maxLength={1024} />
