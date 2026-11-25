@@ -2,6 +2,12 @@
 
 All notable changes to Memora are documented here.
 
+## [0.1.2] - 2026-11-23
+
+### Fixed
+
+- The installed version now falls back to `package.json` when `MEMORA_VERSION` is not set, instead of reporting `0.0.0` and showing a false update.
+
 ## [0.1.1] - 2026-11-23
 
 ### Added
@@ -33,3 +39,5 @@ All notable changes to Memora are documented here.
 [0.1.0]: https://github.com/lian84/memora/releases/tag/v0.1.0
 
 [0.1.1]: https://github.com/lian84/memora/releases/tag/v0.1.1
+
+[0.1.2]: https://github.com/lian84/memora/releases/tag/v0.1.2

@@ -31,7 +31,7 @@ di aggiornamento.
 
 ```bash
 MEMORA_UPDATE_REPO=lian84/memora
-MEMORA_VERSION=0.1.0
+MEMORA_VERSION=0.1.2
 # Opzionali per repository privata o proxy:
 MEMORA_UPDATE_CHECK_URL=https://api.github.com/repos/lian84/memora/releases/latest
 MEMORA_UPDATE_CHECK_TOKEN=github_read_only_token

@@ -22,7 +22,7 @@
 
 <p align="center">
   <a href="https://github.com/lian84/memora/actions/workflows/ci.yml"><img src="https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/status-v0.1.1-blue" alt="v0.1.1">
+  <img src="https://img.shields.io/badge/status-v0.1.2-blue" alt="v0.1.2">
   <img src="https://img.shields.io/badge/node-24-5FA04E" alt="Node.js 24">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg" alt="Licenza: AGPL-3.0-only"></a>
 </p>
@@ -34,7 +34,7 @@
 ---
 
 > [!WARNING]
-> Memora **v0.1.1** è la release pubblica corrente. Il nucleo è utilizzabile e
+> Memora **v0.1.2** è la release pubblica corrente. Il nucleo è utilizzabile e
 > testato; la verifica di restore/update/rollback è ancora in corso. Non esporre
 > il servizio su Internet senza HTTPS, reverse proxy e una revisione della
 > configurazione.
@@ -85,7 +85,7 @@ Il registro completo delle funzionalità, con stato e limiti noti, è in
 
 ## Stato
 
-v0.1.1: le funzionalità sono utilizzabili e testate. L’installazione è stata
+v0.1.2: le funzionalità sono utilizzabili e testate. L’installazione è stata
 verificata su una VM Debian 13; restano da verificare restore, aggiornamento e
 rollback. Vedi
 [`docs/FEATURES.it.md`](docs/FEATURES.it.md) per lo stato aggiornato e i limiti
