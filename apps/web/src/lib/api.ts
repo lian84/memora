@@ -46,12 +46,13 @@ import {
   type DataExportRecord,
   type DataExportStatus,
 } from '@memora/shared';
+import { localizeServerMessage } from './server-messages';
 
 const API_BASE = (import.meta as { env?: { VITE_API_BASE_URL?: string } }).env?.VITE_API_BASE_URL ?? '';
 
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly code?: string) {
-    super(message);
+    super(`${status}: ${localizeServerMessage(code, message, status)}`);
     this.name = 'ApiError';
   }
 }
@@ -197,11 +198,11 @@ async function request(path: string, options: RequestInit = {}): Promise<Respons
       const parsed = JSON.parse(body) as { error?: string; message?: string };
       code = parsed.error;
       const apiDetail = parsed.message ?? parsed.error;
-      if (apiDetail) detail = apiDetail.replaceAll('_', ' ');
+      if (apiDetail) detail = apiDetail;
     } catch {
       // Mantieni il testo HTTP se non è JSON.
     }
-    throw new ApiError(res.status, `${res.status}: ${detail || res.statusText}`, code);
+    throw new ApiError(res.status, detail || res.statusText, code);
   }
   return res;
 }

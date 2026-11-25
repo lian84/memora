@@ -2,6 +2,13 @@
 
 All notable changes to Memora are documented here.
 
+## [0.1.4] - 2026-11-25
+
+### Changed
+
+- Removed the manual update instructions from the updates panel; the primary action is the **Update now** button when the systemd helper is installed.
+- Localized dynamic backend messages: API errors, monitor alerts and observability warnings.
+
 ## [0.1.3] - 2026-11-25
 
 ### Fixed
@@ -50,3 +57,5 @@ All notable changes to Memora are documented here.
 [0.1.2]: https://github.com/lian84/memora/releases/tag/v0.1.2
 
 [0.1.3]: https://github.com/lian84/memora/releases/tag/v0.1.3
+
+[0.1.4]: https://github.com/lian84/memora/releases/tag/v0.1.4

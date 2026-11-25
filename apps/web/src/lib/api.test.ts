@@ -224,7 +224,7 @@ test('deleteSession espone un errore leggibile per un 404 controllato', async ()
   let caught: unknown;
   try { await deleteSession('missing-session'); } catch (error) { caught = error; }
   expect(isSessionNotFoundError(caught)).toBe(true);
-  expect((caught as Error).message).toBe('404: session not found');
+  expect((caught as Error).message).toBe('404: Sessione non trovata.');
 });
 
 

@@ -127,15 +127,6 @@ export function UpdateAdminPanel() {
         )}
       </section>
 
-      <section className="admin-card">
-        <h3>{t('Come aggiornare')}</h3>
-        <p className="admin-card-description">{t('L’aggiornamento non avviene automaticamente e non parte a ogni push: solo per una release pubblicata.')}</p>
-                {status?.applyAvailable ? <p className="admin-field-note">{t('Puoi usare il pulsante Aggiorna ora. In alternativa, da terminale:')}</p> : null}
-        <pre className="update-instructions">cd /opt/memora
-./update.sh</pre>
-        <p className="admin-field-note">{t('update.sh crea un backup, applica la nuova release, esegue le migrazioni e verifica il servizio. Se qualcosa fallisce, tenta il rollback.')}</p>
-      </section>
-
       {applyOpen && (
         <ConfirmDialog
           title={t('Aggiornare Memora?')}

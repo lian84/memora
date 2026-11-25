@@ -17,6 +17,40 @@ export function MonitorAdminPanel() {
     setDraft(current => current ?? next.settings);
   }, []);
 
+  const alertText = (alert: MonitorStatus['alerts'][number]): { title: string; detail: string } => {
+    if (alert.key === 'disk_critical' || alert.key === 'disk_warning') {
+      const percent = status?.disk.percent;
+      return {
+        title: t(alert.key === 'disk_critical' ? 'Spazio disco quasi esaurito' : 'Spazio disco in esaurimento'),
+        detail: percent === null || percent === undefined
+          ? alert.detail
+          : t('Utilizzo dati al {percent}%.', { percent: percent.toFixed(1) }),
+      };
+    }
+    if (alert.key === 'backup_missing') {
+      return {
+        title: t('Nessun backup disponibile'),
+        detail: t('Il backup automatico è attivo ma non esiste ancora un archivio.'),
+      };
+    }
+    if (alert.key === 'backup_old') {
+      return {
+        title: t('Backup locale vecchio'),
+        detail: t('L’ultimo backup ha più di {days} giorni.', { days: status?.settings.backupMaxAgeDays ?? 0 }),
+      };
+    }
+    if (alert.key === 'backup_failed') return { title: t('Backup fallito'), detail: alert.detail };
+    if (alert.key === 'remote_upload_failed') return { title: t('Upload remoto fallito'), detail: alert.detail };
+    if (alert.key.startsWith('automation_')) {
+      const name = alert.title.replace(/^[^:]+:\s*/, '');
+      return {
+        title: t('Automazione fallita: {name}', { name }),
+        detail: t(alert.detail.includes('timeout') ? 'L’ultima esecuzione è andata in timeout.' : 'L’ultima esecuzione è fallita.'),
+      };
+    }
+    return { title: alert.title, detail: alert.detail };
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -74,12 +108,15 @@ export function MonitorAdminPanel() {
         {status && status.alerts.length === 0 && <div className="second-brain-empty">{t('Nessun avviso attivo.')}</div>}
         {status && status.alerts.length > 0 && (
           <div className="monitor-alerts">
-            {status.alerts.map(alert => (
-              <div className={`monitor-alert is-${alert.severity}`} key={alert.key}>
-                <strong>{alert.title}</strong>
-                <span>{alert.detail}</span>
-              </div>
-            ))}
+            {status.alerts.map(alert => {
+              const text = alertText(alert);
+              return (
+                <div className={`monitor-alert is-${alert.severity}`} key={alert.key}>
+                  <strong>{text.title}</strong>
+                  <span>{text.detail}</span>
+                </div>
+              );
+            })}
           </div>
         )}
         {draft && (

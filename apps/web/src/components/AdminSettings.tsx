@@ -133,6 +133,17 @@ export interface PresetPreview {
   editable: boolean;
 }
 
+function metricAlertText(alert: string, t: Translate): string {
+  const failed = alert.match(/^(\d+) job Curator falliti$/);
+  if (failed) return t('{count} job Curator falliti', { count: failed[1]! });
+  if (alert === 'Coda Curator bloccata da oltre 2 minuti') return t('Coda Curator bloccata da oltre 2 minuti');
+  if (alert === 'Backlog Curator elevato') return t('Backlog Curator elevato');
+  if (alert === 'Memory Inbox con molti candidati in attesa') return t('Memory Inbox con molti candidati in attesa');
+  if (alert === 'Errori Curator registrati in questa sessione') return t('Errori Curator registrati in questa sessione');
+  if (alert === 'Errori di retrieval registrati in questa sessione') return t('Errori di retrieval registrati in questa sessione');
+  return alert;
+}
+
 const modeDescriptions: Record<MemorySearchModeSetting, string> = {
   lexical: 'Minimo consumo RAM, ricerca per parole.',
   semantic: 'Ricerca per significato tramite embedding locale.',
@@ -196,8 +207,11 @@ export function switchProvider(draft: RuntimeSettings, role: ModelRole, provider
   return { ...draft, curator: { ...draft.curator, provider, model: '' } };
 }
 
-type Translate = (source: string) => string;
-const identityTranslate: Translate = source => source;
+type Translate = (source: string, values?: Record<string, string | number>) => string;
+const identityTranslate: Translate = (source, values) => {
+  if (!values) return source;
+  return source.replace(/\{(\w+)\}/g, (match, key: string) => key in values ? String(values[key]) : match);
+};
 
 export function validateSettingsDraft(draft: RuntimeSettings, t: Translate = identityTranslate): string | null {
   if (!Number.isInteger(draft.memory.topK) || draft.memory.topK < 1 || draft.memory.topK > 50) return t('topK deve essere un intero tra 1 e 50.');
@@ -754,7 +768,7 @@ export function AdminSettingsView({
         <h3>{t('Osservabilità')}</h3>
         {status && status.metrics.alerts.length > 0 && (
           <div className="admin-inline-warning" role="status">
-            {status.metrics.alerts.join(' · ')}
+            {status.metrics.alerts.map(alert => metricAlertText(alert, t)).join(' · ')}
           </div>
         )}
         <div className="admin-system-grid">
