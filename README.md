@@ -101,7 +101,7 @@ limitations.
 - PDF, DOCX, XLSX and PPTX generation without LibreOffice.
 - SSRF-safe web research through Brave or SearXNG, with numbered citations.
 - Scheduled automations with cron/timezone, run history and optional MCP access.
-- Single-user login, browser notifications, optional Telegram delivery and bidirectional Telegram sessions, including private forum groups with one topic per session, plus an IT/EN/FR interface.
+- Single-user login, browser notifications, optional Telegram delivery and bidirectional Telegram sessions, including private forum groups with one topic per session, per-topic projects and optional project title prefixes, plus an IT/EN/FR interface.
 - One-click update from Administration with a mandatory encrypted backup.
 - Responsive layout, chat side panel and runtime administration.
 

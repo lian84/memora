@@ -66,7 +66,7 @@
 - [x] Comandi di servizio, sessioni condivise e conversazione nello stesso backend della web UI
 - [x] Allegati in ingresso e avviso dei turni interrotti dopo un riavvio
 - [x] Condivisione Telegram opt-in delle risposte web, per singola chat
-- [x] Gruppi privati con forum topic: General come sessione predefinita, un topic per sessione, pairing con scope gruppo e pannello amministrativo
+- [x] Gruppi privati con forum topic: General come sessione predefinita, un topic per sessione, progetto predefinito del gruppo con override per topic, prefisso progetto opzionale, pairing con scope gruppo e pannello amministrativo
 
 ## Fase 7 — Automazioni
 

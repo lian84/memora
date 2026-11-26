@@ -101,7 +101,7 @@ noti.
 - PDF, DOCX, XLSX e PPTX senza LibreOffice.
 - Ricerca web SSRF-safe tramite Brave o SearXNG, con citazioni numerate.
 - Automazioni pianificate con cron/timezone, cronologia e accesso MCP opzionale.
-- Login single-user, notifiche browser, consegna Telegram opzionale e sessioni Telegram bidirezionali, inclusi gruppi forum privati con un topic per sessione, con interfaccia IT/EN/FR.
+- Login single-user, notifiche browser, consegna Telegram opzionale e sessioni Telegram bidirezionali, inclusi gruppi forum privati con un topic per sessione, progetti per topic e prefissi progetto opzionali, con interfaccia IT/EN/FR.
 - Aggiornamento con un clic da Amministrazione, con backup cifrato obbligatorio.
 - Layout responsive, pannello laterale e amministrazione runtime.
 

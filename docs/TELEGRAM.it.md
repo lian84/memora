@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072).
 
 ## Requisiti
 
@@ -48,6 +48,40 @@ per chat lunghe e progetti. Un supergruppo privato con Topics attivi è il
 workspace; **General** è la sessione predefinita e ogni topic secondario è una
 sessione Memora separata.
 
+### Progetti nel gruppo
+
+Il **progetto è un metadata del topic/sessione**, non il titolo. Il prefisso nel
+titolo è solo una scelta di visualizzazione.
+
+- Il gruppo ha un **progetto predefinito** usato da General e dai nuovi topic. Se
+  il default del gruppo non è impostato, viene usato il default dell’account
+  inbound.
+- `/new <id-progetto> <titolo>` crea un topic in un altro progetto.
+- I topic creati manualmente usano il progetto predefinito del gruppo.
+- Ogni topic salva il `projectId` risolto; cambiare il default del gruppo in
+  seguito vale solo per i nuovi topic e per General se non è ancora stata
+  creata. I topic creati prima di questo metadata vengono recuperati dal
+  progetto della sessione all’avvio, quando possibile.
+- Il progetto non si può cambiare su una sessione già esistente: crea un nuovo
+  topic/sessione. Cambiare il default del gruppo non migra General né le
+  sessioni dei topic esistenti.
+- Usa un gruppo per progetto per una separazione visiva forte, oppure un solo
+  gruppo con default e override per un’unica interfaccia Telegram.
+
+L’opzione **Mostra il progetto nei titoli dei topic** è per gruppo. È attiva di
+default per i gruppi appena associati e disattiva per i gruppi salvati prima
+che esistesse questa opzione:
+
+- `[Lavoro] Preventivo` se attiva;
+- `Preventivo` se disattiva.
+
+Il prefisso vale per i nuovi topic secondari e per `/rename`. Quando il prefisso
+è attivo, un `[etichetta]` iniziale è considerato presentazione gestita e viene
+rimosso dal titolo base salvato. Non viene mai applicato a General. Dopo aver cambiato l’opzione usa **Riallinea titoli** nel
+pannello del gruppo per aggiornare i topic esistenti. L’ID progetto resta la
+fonte di verità; il titolo è solo presentazione. Se rinomini un progetto serve un
+riallineamento dei titoli.
+
 Requisiti:
 
 - il gruppo deve essere **privato** (nessun username pubblico);
@@ -70,14 +104,18 @@ Configurazione:
 5. Il bot verifica che il gruppo sia un forum privato e che possa gestire i
    topic. In caso positivo salva il gruppo in
    `config/telegram-groups.json` (`0600`).
+6. Dopo l’associazione, nel pannello del gruppo scegli progetto e profilo agente
+   predefiniti e se mostrare il progetto nei titoli. I topic esistenti mantengono
+   il loro progetto.
 
 Comandi nel gruppo:
 
 | Comando | Effetto nel gruppo |
 |---|---|
 | `/start <codice>` | Associa il gruppo da General |
-| `/new [titolo]` | Crea un nuovo topic e una sessione (solo General) |
-| `/sessions` | Elenca General e i topic del gruppo |
+| `/projects` | Elenca ID e nomi dei progetti attivi |
+| `/new [id-progetto] [titolo]` | Crea un nuovo topic/sessione, anche in un altro progetto (solo General) |
+| `/sessions` | Elenca General e i topic del gruppo con il progetto |
 | `/switch N` | Invia il link al topic scelto; il topic resta collegato alla sua sessione |
 | `/current` | Mostra la sessione del topic corrente |
 | `/rename Titolo` | Rinomina la sessione e il topic corrente |
@@ -86,13 +124,18 @@ Comandi nel gruppo:
 | `/ping`, `/help` | Verifica e elenco comandi |
 
 Un topic creato manualmente da Telegram viene collegato a una nuova sessione
-quando il bot riceve `forum_topic_created`; se il messaggio di servizio va perso,
-il collegamento nasce al primo messaggio. Risposte, typing, documenti e artefatti
-usano il `message_thread_id` del topic. Il topic General non usa thread ID.
+quando il bot riceve `forum_topic_created`, usando il progetto predefinito del
+gruppo; se il messaggio di servizio va perso, il collegamento nasce al primo
+messaggio. Per scegliere un altro progetto usa `/new <id-progetto> <titolo>` da
+General. Risposte, typing, documenti e artefatti usano il `message_thread_id` del
+topic. Il topic General non usa thread ID e non ha prefisso progetto.
 
 L’eliminazione di una sessione Memora rimuove il collegamento al gruppo/topic; il
 topic Telegram resta. La revoca di un gruppo dal pannello amministrativo ferma il
-routing del gruppo ma lascia le sessioni nella web UI.
+routing del gruppo ma lascia le sessioni nella web UI. Il progetto predefinito
+del gruppo si può cambiare dal pannello; vale per General solo se non è ancora
+stata creata e per i nuovi topic. I topic esistenti mantengono il progetto
+salvato.
 
 Tutti i membri del gruppo Telegram possono leggere i messaggi del bot e i titoli
 dei topic. Usa un gruppo privato dedicato, con solo proprietario e bot.
@@ -246,6 +289,8 @@ PDF/Office vengono comunque consegnati in uscita.
 
 - I gruppi sono limitati a un forum privato con proprietario e bot; niente
   gruppi pubblici o permessi multi-utente.
+- Il progetto viene fissato alla creazione della sessione e non può essere
+  spostato. Il prefisso nel titolo è solo presentazione e si può riallineare.
 - Un topic chiuso o eliminato mantiene il suo binding nel registry finché la
   sessione non viene eliminata o il gruppo non viene revocato; il recupero dei
   topic obsoleti è limitato.

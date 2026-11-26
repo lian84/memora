@@ -2541,3 +2541,50 @@ General is special and is the default conversation of the group.
 - The group owner must keep the bot administrator and privacy mode disabled.
 - The web UI admin panel lists groups and topics but session contents remain in
   the web UI/session storage, not in the group registry.
+
+---
+## ADR-072 — Project per topic with a group default
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+A Telegram forum has a flat list of topics. One group can either represent a
+single project or host sessions from several projects. The project belongs to
+the session, not to a Telegram topic hierarchy. Users who want visual separation
+can still create one group per project.
+
+### Decision
+
+- Keep the group as the default project scope. General and new topics inherit
+  `defaultProjectId` (`??` account inbound default).
+- Store the resolved `projectId` on each secondary topic, not only on the group.
+  `/new <project-id> <title>` creates a topic in another project. Manual topics
+  use the group default.
+- Treat the project of a session as immutable. Changing a group default or a
+  topic project affects only new sessions; it never moves an existing session.
+- The optional `[Project name]` topic prefix is presentation only. The source of
+  truth remains `projectId`.
+- Add a per-group `showProjectInTopicTitle` flag, enabled for newly paired
+  groups and disabled for migrated groups. It applies to new topics and
+  `/rename`; existing topics are updated only by an explicit **Sync titles**
+  action.
+- General is never prefixed. Prefix length is bounded by Telegram's 128-character
+  topic limit; the base title remains stored without the prefix.
+- Manual topic title edits strip the known prefix and update the base title, but
+  do not change the project. Project renames require a title sync.
+- Multiple groups per Telegram account remain supported; each can have a
+  different default project and prefix setting.
+
+### Consequences
+
+- One group can host sessions from several projects without inventing unsupported
+  Telegram hierarchy.
+- Users who prefer strict separation can use one group per project and disable
+  the prefix.
+- The title is not authoritative; UI and commands must display the project from
+  metadata.
+- Existing topics created before this change may not have a stored project; they
+  are backfilled from the session project at startup when available, otherwise
+  they fall back to the group default.
+- Moving a session to another project requires a new session.

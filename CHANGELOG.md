@@ -19,7 +19,9 @@ All notable changes to Memora are documented here.
 - Telegram groups with forum topics: private supergroup setup, group-scoped
   pairing, General as the default session, one session per topic, contextual
   commands, thread-aware replies/typing/documents/artifacts and admin group
-  listing. Web sharing to topics is planned for the next milestone.
+  listing. Groups have a default project, per-topic project overrides via
+  `/new <project>`, and an optional `[Project]` title prefix with explicit sync.
+  Web sharing to topics is planned for the next milestone.
 
 ## [0.1.4] - 2026-11-25
 

@@ -2401,3 +2401,52 @@ General è speciale ed è la conversazione predefinita del gruppo.
   mode disattivata.
 - Il pannello amministrativo web elenca gruppi e topic, ma il contenuto delle
   sessioni resta nella web UI/storage delle sessioni, non nel registry.
+
+---
+## ADR-072 — Progetto per topic con default del gruppo
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Un forum Telegram ha una lista piatta di topic. Un gruppo può rappresentare un
+singolo progetto oppure ospitare sessioni di progetti diversi. Il progetto
+appartiene alla sessione, non a una gerarchia di topic Telegram. Chi vuole una
+separazione visiva può comunque creare un gruppo per progetto.
+
+### Decisione
+
+- Il gruppo resta l’ambito del progetto predefinito. General e i nuovi topic
+  ereditano `defaultProjectId` (`??` default dell’account inbound).
+- Salvare il `projectId` risolto su ogni topic secondario, non solo sul gruppo.
+  `/new <id-progetto> <titolo>` crea un topic in un altro progetto. I topic
+  manuali usano il default del gruppo.
+- Il progetto di una sessione è immutabile. Cambiare il default del gruppo o il
+  progetto di un topic vale solo per le nuove sessioni; non sposta mai una
+  sessione esistente.
+- Il prefisso opzionale `[Nome progetto]` è solo presentazione. La fonte di
+  verità resta `projectId`.
+- Aggiungere un flag per gruppo `showProjectInTopicTitle`, attivo per i gruppi
+  appena associati e disattivo per quelli migrati. Vale per i nuovi topic e per
+  `/rename`; i topic esistenti si aggiornano solo con l’azione esplicita
+  **Riallinea titoli**.
+- General non ha mai il prefisso. La lunghezza rispetta il limite Telegram di 128
+  caratteri; il titolo base resta salvato senza prefisso.
+- Le modifiche manuali del titolo rimuovono il prefisso noto e aggiornano il
+  titolo base, ma non cambiano il progetto. La rinomina di un progetto richiede
+  un riallineamento dei titoli.
+- Restano supportati più gruppi per account Telegram; ognuno può avere progetto
+  predefinito e impostazione del prefisso diversi.
+
+### Conseguenze
+
+- Un gruppo può ospitare sessioni di più progetti senza inventare gerarchie
+  Telegram non supportate.
+- Chi preferisce la separazione stretta può usare un gruppo per progetto e
+  disattivare il prefisso.
+- Il titolo non è autorevole; UI e comandi devono mostrare il progetto dai
+  metadata.
+- I topic creati prima di questa modifica possono non avere un progetto salvato;
+  vengono recuperati dal progetto della sessione all’avvio quando possibile,
+  altrimenti usano il default del gruppo.
+- Spostare una sessione in un altro progetto richiede una nuova sessione.

@@ -49,6 +49,10 @@ Memora contiene dati personali e può invocare tool di filesystem/shell.
   risposte API.
 - I topic sono visibili a tutti i membri del gruppo Telegram: usare solo gruppi
   privati dedicati e non aggiungere persone non fidate.
+- Il progetto è un metadata della sessione/topic, non il prefisso del titolo. Il
+  prefisso `[Progetto]` è solo presentazione e non può cambiare il contesto o i
+  permessi di una sessione. Il progetto viene fissato alla creazione e non si può
+  spostare una sessione esistente.
 - Allegati in ingresso trattati come non fidati: limite 15 MB, estensioni
   supportate, nessuna esecuzione, estrazione testo/immagine soltanto.
 - Il contenuto Telegram non può cambiare tool, ruoli, permessi o impostazioni.

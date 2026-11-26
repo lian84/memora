@@ -67,7 +67,10 @@ Telegram, so no public port, webhook or TLS certificate is required.
 - Groups are paired with a separate `group` code sent in General. The bot must
   be an administrator with Manage Topics; the group must be a private forum.
   General is the default session, each topic is a session, and `/new` creates a
-  topic only from General. The admin panel lists groups, topics, General and the
+  topic only from General. The group panel sets the default project/agent profile
+  and the optional project prefix; `/new <project-id> <title>` can override the
+  project per topic. **Sync titles** updates existing topic titles after a prefix
+  change. The admin panel lists groups, topics, General, their projects and the
   allowed group users.
 - State is stored in `config/telegram-inbound.json` and
   `config/telegram-groups.json` with mode `0600`. They contain no tokens or
