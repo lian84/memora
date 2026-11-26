@@ -66,6 +66,7 @@
 - [x] Comandi di servizio, sessioni condivise e conversazione nello stesso backend della web UI
 - [x] Allegati in ingresso e avviso dei turni interrotti dopo un riavvio
 - [x] Condivisione Telegram opt-in delle risposte web, per singola chat
+- [x] Gruppi privati con forum topic: General come sessione predefinita, un topic per sessione, pairing con scope gruppo e pannello amministrativo
 
 ## Fase 7 — Automazioni
 
@@ -133,11 +134,12 @@
 4. Audit licenze e dipendenze.
 5. Documentare il gate di approvazione per le scritture MCP distruttive.
 6. Riprendere le feature rimandate: Calendar/Gmail, installer SearXNG nativo e
-   allegati/gruppi Telegram.
+   condivisione web verso i topic Telegram.
 
 ## Rimandato
 
-- Gruppi, topic e allegati in ingresso per Telegram; streaming progressivo.
+- Condivisione web verso i topic Telegram, recupero avanzato dei topic chiusi/eliminati
+  e streaming progressivo.
 - Calendar e Gmail.
 - Docker/Compose come percorso di installazione principale.
 - Multi-utente e permessi granulari.

@@ -2473,9 +2473,9 @@ interface where each long-running chat is a separate topic.
   General session, topic bindings and per-group defaults. No message text or
   tokens are stored.
 - Use group-scoped pairing codes: a code generated for a group cannot pair a
-  private DM, and vice versa. The sender must already be in the account
-  allowlist; the group must be a forum; the bot must be an administrator with
-  `can_manage_topics`.
+  private DM, and vice versa. A group code authorizes the sender in the group
+  allowlist only; it does not grant private-DM access. The group must be a
+  forum; the bot must be an administrator with `can_manage_topics`.
 - Make the Telegram transport thread-aware (`message_thread_id` for messages,
   documents, edits and typing) and add topic/group API methods.
 - Keep the feature opt-in and limited to private groups with a single owner in
@@ -2496,3 +2496,48 @@ interface where each long-running chat is a separate topic.
   message must mention the bot. This is acceptable only in a dedicated private
   group.
 - Bot administrator rights and topic limits are operational dependencies.
+
+---
+## ADR-071 — Inbound forum routing: General and one session per topic
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+The group foundation from ADR-070 needs deterministic routing. Telegram does
+not expose a complete topic catalog to bots: a bot learns topic names from
+service messages or from the first message carrying `message_thread_id`.
+General is special and is the default conversation of the group.
+
+### Decision
+
+- Use General as the group’s default session, created lazily on the first
+  message or command that needs it.
+- Bind each secondary topic to one Memora session. Create the session and
+  binding on `forum_topic_created` when the service message is received, or
+  lazily on the first message if the service message was missed.
+- Create a new topic and a new session only with `/new [titolo]` from General.
+  Reject `/new` inside a secondary topic.
+- Route all replies, typing, documents, edits and stop confirmations with the
+  originating `message_thread_id`.
+- Keep the group allowlist separate from the private-DM allowlist. Group
+  pairing consumes a `group` code and never grants DM access.
+- Sync a topic title only on `/rename`; manual topic edits update the registry
+  title but do not rename the session. Automatic session titles never overwrite
+  a topic title.
+- Use `/sessions` to list General and the group topics, and `/switch N` to
+  return the link to the selected topic. A topic remains a stable session
+  boundary; switching does not silently rebind it.
+- Validate at pairing time that the group is a private forum and that the bot
+  is an administrator with `can_manage_topics`; validate that privacy mode is
+  disabled. Each turn reuses the normal `TurnManager` and read state.
+
+### Consequences
+
+- A group can be rebuilt from Telegram state with lazy binding, without a
+  database of topic titles.
+- Topic renames, deletions and closed topics need separate hardening; stale
+  bindings are cleaned when a Memora session is deleted.
+- The group owner must keep the bot administrator and privacy mode disabled.
+- The web UI admin panel lists groups and topics but session contents remain in
+  the web UI/session storage, not in the group registry.

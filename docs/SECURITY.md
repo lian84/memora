@@ -36,12 +36,19 @@ Memora contiene dati personali e può invocare tool di filesystem/shell.
 - Accesso solo per ID utente numerici in allowlist; nessun auto-pairing.
 - Codice di pairing monouso, hashato, con TTL di dieci minuti e limite di
   tentativi per utente.
-- Solo chat private; gruppi, canali, bot e utenti non autorizzati non entrano
-  nelle sessioni.
+- DM private e supergruppi privati con forum; canali, gruppi pubblici, gruppi
+  base senza Topics, bot e utenti non autorizzati non entrano nelle sessioni.
+- Un codice `group` autorizza il mittente nella allowlist del gruppo e non
+  concede l’accesso alla DM. Il gruppo deve essere privato, con solo proprietario
+  e bot; il bot deve essere amministratore con `can_manage_topics` e privacy mode
+  disattivata.
 - Long polling senza porte pubbliche; un solo processo può consumare un token.
   Un conflitto `409` non cancella webhook esistenti.
 - Token nel secret store; nessun token o testo dei messaggi in
-  `config/telegram-inbound.json`, nei log o nelle risposte API.
+  `config/telegram-inbound.json`, `config/telegram-groups.json`, nei log o nelle
+  risposte API.
+- I topic sono visibili a tutti i membri del gruppo Telegram: usare solo gruppi
+  privati dedicati e non aggiungere persone non fidate.
 - Allegati in ingresso trattati come non fidati: limite 15 MB, estensioni
   supportate, nessuna esecuzione, estrazione testo/immagine soltanto.
 - Il contenuto Telegram non può cambiare tool, ruoli, permessi o impostazioni.

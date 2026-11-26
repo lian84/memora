@@ -52,6 +52,7 @@ Ultimo aggiornamento: 2026-11-26.
 - [x] Telegram in ingresso: long polling opt-in per account senza porte pubbliche, codici di associazione monouso, allowlist di utenti numerici e cache delle chat osservate. I messaggi diventano turni normali nelle stesse sessioni Pi della web UI, con binding per utente, `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`, typing e risposta finale, consegna di artefatti PDF/Office e stato letto condiviso.
 - [x] Allegati Telegram in ingresso: foto, PDF, DOCX, Markdown, TXT, CSV, JSON, log, HTML e immagini fino a 15 MB; vocali, video, sticker, XLSX e PPTX vengono rifiutati.
 - [x] Avviso dopo un riavvio per un turno Telegram interrotto e pulizia una tantum del turno pendente.
+- [x] Gruppi Telegram con forum topic: un supergruppo privato per workspace, General come sessione predefinita e ogni topic secondario come sessione Memora. Pairing con scope gruppo, creazione topic con `/new`, comandi contestuali, risposte/typing/documenti/artefatti con thread, recupero dei turni pendenti e pannello amministrativo dei gruppi.
 - [x] Condivisione Telegram opt-in per chat dal composer web: solo risposte o conversazione completa, artefatti PDF/Office opzionali, ultimo errore visibile e read state condiviso. I turni nati da Telegram non vengono mai duplicati.
 - [x] Job e cronologia in `$MEMORA_DATA_DIR/automations/`.
 

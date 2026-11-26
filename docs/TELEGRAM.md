@@ -7,7 +7,7 @@ messages run in the same Pi sessions, memory and projects used by the web UI.
 This document covers setup, commands, attachments, security and limitations.
 
 Related: [`FEATURES.md`](FEATURES.md), [`ADMINISTRATION.md`](ADMINISTRATION.md),
-[`DECISIONS.md`](DECISIONS.md) (ADR-068).
+[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071).
 
 ## Requirements
 
@@ -34,8 +34,65 @@ webhook.
 7. The account is added to the numeric allowlist; the private chat becomes the
    account notification chat if it was empty.
 
-Only private chats are accepted. Groups, channels, bots and messages from
-unpaired users are ignored or receive an authorization notice.
+Only private chats are accepted for DM pairing. A private **supergroup with
+Topics** can be paired separately (see below); channels, public groups, basic
+groups without Topics, bots and unpaired users are ignored or receive an
+authorization notice.
+
+## Groups and forum topics
+
+A group is optional. It is a second interface over the same sessions, intended
+for long-running chats and projects. One private supergroup with Topics enabled
+is the workspace; **General** is the default session and each secondary topic is
+a separate Memora session.
+
+Requirements:
+
+- the group must be **private** (no public username);
+- only the owner and the bot should be members;
+- **Topics** must be enabled;
+- the bot must be an administrator with **Manage Topics** / `can_manage_topics`;
+- BotFather privacy mode must be **disabled** so the bot receives normal
+  messages in topics. If the bot was already in the group, remove and re-add it
+  after changing privacy mode.
+
+Setup:
+
+1. Create the private group, add the bot and enable Topics.
+2. Promote the bot to administrator with Manage Topics.
+3. In **Administration → Telegram → Inbound → Forum groups**, generate a
+   **group pairing code**.
+4. Send `/start <code>` in the **General** topic. The code has scope `group`: it
+   authorizes the sender in that group, not the private DM.
+5. The bot verifies that the group is a private forum and that it can manage
+   topics. On success, the group is saved in
+   `config/telegram-groups.json` (`0600`).
+
+Group commands:
+
+| Command | Effect in a group |
+|---|---|
+| `/start <code>` | Pair the group from General |
+| `/new [title]` | Create a new topic and session (General only) |
+| `/sessions` | List General and the group topics |
+| `/switch N` | Send the link to the selected topic; a topic stays bound to its session |
+| `/current` | Show the session of the current topic |
+| `/rename Title` | Rename the session and the current topic |
+| `/stop` | Abort the current topic's turn |
+| `/status` | Group, topic and session status |
+| `/ping`, `/help` | Health check and command list |
+
+A topic created manually from Telegram is bound to a new session when the bot
+receives `forum_topic_created`; if the service message is missed, the binding is
+created lazily on the first message. Replies, typing, documents and artifacts
+use the topic's `message_thread_id`. The General topic uses no thread ID.
+
+Deleting a Memora session removes its group/topic binding; the Telegram topic
+remains. Removing a group from the admin panel stops group routing but leaves
+the sessions in the web UI.
+
+Everyone in the Telegram group can read the bot messages and topic titles. Use a
+dedicated private group with only the owner and the bot.
 
 ## Commands
 
@@ -83,8 +140,10 @@ A web chat can explicitly push its turns to Telegram. The control is a Telegram
 button in the composer, next to Web and attachments. It is off by default and is
 saved per session on the server, so it is shared across devices.
 
-- **Destination**: an existing paired Telegram chat. The target is resolved from
-  the binding/allowlist; arbitrary chat IDs are rejected.
+- **Destination**: an existing paired Telegram chat. In this milestone the
+  destination is a private DM; forum-topic destinations arrive in the next
+  milestone. The target is resolved from the binding/allowlist; arbitrary chat
+  IDs are rejected.
 - **Answers only** (default): the final answer of web-originated turns is sent
   to Telegram. Telegram-originated turns are not duplicated.
 - **Full conversation**: the user text written in the web UI is also sent, and
@@ -131,9 +190,10 @@ Limits and behavior:
 - Pairing codes are one-time, hashed, expire after ten minutes and are rate
   limited per Telegram user.
 - Access uses numeric Telegram user IDs, never usernames.
-- The bridge state is stored in `config/telegram-inbound.json` with mode `0600`.
-  It contains allowlist entries, session bindings, the update offset and settings,
-  but no message text and no bot tokens.
+- The DM bridge state is stored in `config/telegram-inbound.json` with mode
+  `0600`. It contains allowlist entries, session bindings, the update offset and
+  settings, but no message text and no bot tokens. Groups and topic bindings are
+  in `config/telegram-groups.json` with the same permissions.
 - Tokens stay in the existing secret store. They are never returned by the API or
   written to logs.
 - The bot cannot change settings, allowlists or administrative state. The model
@@ -166,7 +226,12 @@ enabled, the user is authorized, and the status is Running. Send `/ping`.
 Wrong attempts are limited per user.
 
 **No messages after a restart** — the binding and offset persist; send `/ping`.
-If the previous turn was running, the bot sends one interrupted notice.
+If the previous turn was running, the bot sends one interrupted notice in the
+DM or topic.
+
+**Group pairing fails** — check that the group is a private forum, the bot is an
+administrator with Manage Topics, privacy mode is disabled and the code was sent
+in General. The bot reports the failed check in General.
 
 **Attachment rejected** — check the 15 MB limit and supported formats. Voice,
 video, stickers, XLSX and PPTX are not accepted inbound; PDF/Office artifacts are
@@ -174,7 +239,10 @@ still delivered outbound.
 
 ## Known limitations
 
-- No groups or forum topics; private chats only.
+- Groups are limited to a private forum with one owner and the bot; no public
+  groups or multi-user permissions.
+- A closed or deleted Telegram topic keeps its registry entry until the session is
+  deleted or the group is removed; stale-topic recovery is limited.
 - No Telegram albums coalescing; each album item is a separate message.
 - Photos require a model that accepts image input.
 - No voice transcription.

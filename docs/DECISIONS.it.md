@@ -2330,9 +2330,10 @@ un’interfaccia veloce in cui ogni chat lunga è un topic distinto.
   gruppi, sessione General, binding dei topic e default del gruppo. Non salvare
   testo dei messaggi o token.
 - Usare codici di pairing con scope gruppo: un codice generato per un gruppo non
-  può associare una DM privata e viceversa. Il mittente deve essere già nella
-  allowlist dell’account; il gruppo deve essere un forum; il bot deve essere
-  amministratore con `can_manage_topics`.
+  può associare una DM privata e viceversa. Un codice gruppo autorizza il
+  mittente solo nella allowlist del gruppo; non concede l’accesso alla DM
+  privata. Il gruppo deve essere un forum; il bot deve essere amministratore con
+  `can_manage_topics`.
 - Rendere il trasporto Telegram thread-aware (`message_thread_id` per messaggi,
   documenti, modifiche e typing) e aggiungere i metodi per topic e gruppi.
 - Mantenere la funzione opt-in e limitata a gruppi privati con un solo
@@ -2354,3 +2355,49 @@ un’interfaccia veloce in cui ogni chat lunga è un topic distinto.
   privato dedicato.
 - I permessi di amministratore del bot e i limiti dei topic sono dipendenze
   operative.
+
+---
+## ADR-071 — Routing dei forum in ingresso: General e una sessione per topic
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Le fondamenta dei gruppi di ADR-070 richiedono un routing deterministico.
+Telegram non espone ai bot un catalogo completo dei topic: il bot apprende i
+nomi dai messaggi di servizio o dal primo messaggio con `message_thread_id`.
+General è speciale ed è la conversazione predefinita del gruppo.
+
+### Decisione
+
+- Usare General come sessione predefinita del gruppo, creata in modo lazy al
+  primo messaggio o comando che la richiede.
+- Collegare ogni topic secondario a una sola sessione Memora. Creare sessione e
+  binding su `forum_topic_created` quando arriva il messaggio di servizio,
+  oppure in modo lazy al primo messaggio se il servizio è stato perso.
+- Creare un nuovo topic e una nuova sessione solo con `/new [titolo]` da
+  General. Rifiutare `/new` dentro un topic secondario.
+- Inviare risposte, typing, documenti, modifiche e conferme di stop con il
+  `message_thread_id` di origine.
+- Mantenere la allowlist del gruppo separata da quella delle DM. Il pairing del
+  gruppo consuma un codice `group` e non concede mai l’accesso alla DM.
+- Sincronizzare il titolo di un topic solo con `/rename`; le modifiche manuali
+  del topic aggiornano il titolo nel registry ma non rinominano la sessione. I
+  titoli automatici delle sessioni non sovrascrivono mai il titolo del topic.
+- Usare `/sessions` per elencare General e i topic del gruppo, e `/switch N` per
+  restituire il link al topic selezionato. Un topic resta un confine stabile di
+  sessione; lo switch non lo ricollega silenziosamente.
+- Validare al pairing che il gruppo sia un forum privato e che il bot sia
+  amministratore con `can_manage_topics`; verificare che la privacy mode sia
+  disattivata. Ogni turno riusa il normale `TurnManager` e il read state.
+
+### Conseguenze
+
+- Un gruppo può essere ricostruito dallo stato Telegram con binding lazy, senza
+  un database dei titoli dei topic.
+- Rinomine, eliminazioni e topic chiusi richiedono hardening separato; i
+  binding obsoleti vengono puliti quando una sessione Memora viene eliminata.
+- Il proprietario del gruppo deve mantenere il bot amministratore e la privacy
+  mode disattivata.
+- Il pannello amministrativo web elenca gruppi e topic, ma il contenuto delle
+  sessioni resta nella web UI/storage delle sessioni, non nel registry.

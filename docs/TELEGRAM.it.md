@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071).
 
 ## Requisiti
 
@@ -36,8 +36,66 @@ webhook esistenti.
 7. L’account viene aggiunto alla allowlist numerica; la chat privata diventa la
    chat di notifica dell’account se era vuota.
 
-Sono accettate solo chat private. Gruppi, canali, bot e utenti non associati
-vengono ignorati o ricevono un avviso di autorizzazione.
+Per il pairing DM sono accettate solo chat private. Un **supergruppo privato con
+Topics** può essere associato separatamente (vedi sotto); canali, gruppi
+pubblici, gruppi base senza Topics, bot e utenti non associati vengono ignorati
+o ricevono un avviso di autorizzazione.
+
+## Gruppi e forum topic
+
+Il gruppo è opzionale. È una seconda interfaccia sulle stesse sessioni, pensata
+per chat lunghe e progetti. Un supergruppo privato con Topics attivi è il
+workspace; **General** è la sessione predefinita e ogni topic secondario è una
+sessione Memora separata.
+
+Requisiti:
+
+- il gruppo deve essere **privato** (nessun username pubblico);
+- nel gruppo devono esserci solo il proprietario e il bot;
+- **Topics** deve essere attivo;
+- il bot deve essere amministratore con **Manage Topics** /
+  `can_manage_topics`;
+- la privacy mode di BotFather deve essere **disattivata**, altrimenti il bot non
+  riceve i messaggi normali nei topic. Se il bot era già nel gruppo, rimuovilo e
+  riaggiungilo dopo la modifica.
+
+Configurazione:
+
+1. Crea il gruppo privato, aggiungi il bot e attiva Topics.
+2. Promuovi il bot ad amministratore con Manage Topics.
+3. In **Amministrazione → Telegram → Ingresso → Gruppi forum**, genera un
+   **codice di associazione gruppo**.
+4. Invia `/start <codice>` nel topic **General**. Il codice ha scope `group`:
+   autorizza il mittente in quel gruppo, non la DM privata.
+5. Il bot verifica che il gruppo sia un forum privato e che possa gestire i
+   topic. In caso positivo salva il gruppo in
+   `config/telegram-groups.json` (`0600`).
+
+Comandi nel gruppo:
+
+| Comando | Effetto nel gruppo |
+|---|---|
+| `/start <codice>` | Associa il gruppo da General |
+| `/new [titolo]` | Crea un nuovo topic e una sessione (solo General) |
+| `/sessions` | Elenca General e i topic del gruppo |
+| `/switch N` | Invia il link al topic scelto; il topic resta collegato alla sua sessione |
+| `/current` | Mostra la sessione del topic corrente |
+| `/rename Titolo` | Rinomina la sessione e il topic corrente |
+| `/stop` | Interrompe il turno del topic corrente |
+| `/status` | Stato di gruppo, topic e sessione |
+| `/ping`, `/help` | Verifica e elenco comandi |
+
+Un topic creato manualmente da Telegram viene collegato a una nuova sessione
+quando il bot riceve `forum_topic_created`; se il messaggio di servizio va perso,
+il collegamento nasce al primo messaggio. Risposte, typing, documenti e artefatti
+usano il `message_thread_id` del topic. Il topic General non usa thread ID.
+
+L’eliminazione di una sessione Memora rimuove il collegamento al gruppo/topic; il
+topic Telegram resta. La revoca di un gruppo dal pannello amministrativo ferma il
+routing del gruppo ma lascia le sessioni nella web UI.
+
+Tutti i membri del gruppo Telegram possono leggere i messaggi del bot e i titoli
+dei topic. Usa un gruppo privato dedicato, con solo proprietario e bot.
 
 ## Comandi
 
@@ -85,8 +143,10 @@ Una chat web può inviare esplicitamente i propri turni su Telegram. Il controll
 è un pulsante Telegram nel composer, accanto a Web e allegati. È disattivato di
 default ed è salvato per sessione sul server, quindi vale su tutti i dispositivi.
 
-- **Destinazione**: una chat Telegram già associata. Il target viene risolto dal
-  binding/allowlist; chat ID arbitrari vengono rifiutati.
+- **Destinazione**: una chat Telegram già associata. In questa milestone la
+  destinazione è una DM privata; le destinazioni forum/topic arrivano nella
+  milestone successiva. Il target viene risolto dal binding/allowlist; chat ID
+  arbitrari vengono rifiutati.
 - **Solo risposte** (default): viene inviata su Telegram la risposta finale dei
   turni nati dalla web UI. I turni nati da Telegram non vengono duplicati.
 - **Conversazione completa**: viene inviato anche il testo scritto nella web UI e
@@ -170,7 +230,13 @@ l’utente autorizzato e lo stato In esecuzione. Invia `/ping`.
 nuovo. I tentativi errati sono limitati per utente.
 
 **Nessun messaggio dopo un riavvio** — binding e offset persistono; invia `/ping`.
-Se il turno precedente era in corso, il bot invia un avviso di interruzione.
+Se il turno precedente era in corso, il bot invia un avviso di interruzione nella
+DM o nel topic.
+
+**Il pairing del gruppo fallisce** — verifica che il gruppo sia un forum privato,
+che il bot sia amministratore con Manage Topics, che la privacy mode sia
+disattivata e che il codice sia stato inviato in General. Il bot riporta il
+controllo fallito in General.
 
 **Allegato rifiutato** — controlla il limite di 15 MB e i formati supportati.
 Vocali, video, sticker, XLSX e PPTX non sono accettati in ingresso; gli artefatti
@@ -178,7 +244,11 @@ PDF/Office vengono comunque consegnati in uscita.
 
 ## Limiti noti
 
-- Nessun gruppo o topic forum; solo chat private.
+- I gruppi sono limitati a un forum privato con proprietario e bot; niente
+  gruppi pubblici o permessi multi-utente.
+- Un topic chiuso o eliminato mantiene il suo binding nel registry finché la
+  sessione non viene eliminata o il gruppo non viene revocato; il recupero dei
+  topic obsoleti è limitato.
 - Nessun raggruppamento degli album Telegram; ogni elemento è un messaggio
   separato.
 - Le foto richiedono un modello che accetti input immagine.
