@@ -2449,3 +2449,50 @@ per chat.
   the authoritative answer remains in the web UI.
 - Answers and artifacts may contain personal data and transit through Telegram,
   so the setting is opt-in and documented.
+
+---
+## ADR-070 — Telegram groups use forum topics as sessions
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+A Telegram bot has only one private chat per user, so multiple Memora sessions
+cannot be separated in a DM. Groups with forum topics provide native threads
+with names, per-topic history and direct links. They match the need for a fast
+interface where each long-running chat is a separate topic.
+
+### Decision
+
+- Require a private supergroup with Topics enabled, with only the owner and the
+  bot. The bot must be an administrator with permission to manage topics.
+- Treat the group as a project/workspace and each topic as a Memora session.
+  The General topic is the default session of the group.
+- Keep the existing private-DM binding store unchanged. Add a dedicated
+  `TelegramGroupStore` in `config/telegram-groups.json` (`0600`) for groups,
+  General session, topic bindings and per-group defaults. No message text or
+  tokens are stored.
+- Use group-scoped pairing codes: a code generated for a group cannot pair a
+  private DM, and vice versa. The sender must already be in the account
+  allowlist; the group must be a forum; the bot must be an administrator with
+  `can_manage_topics`.
+- Make the Telegram transport thread-aware (`message_thread_id` for messages,
+  documents, edits and typing) and add topic/group API methods.
+- Keep the feature opt-in and limited to private groups with a single owner in
+  the first version. Do not support arbitrary public groups or multi-user
+  permissions.
+- Plan web sharing and inbound group routing as separate milestones on top of
+  this foundation.
+
+### Consequences
+
+- Topics are the natural session list: the title, link and history of a topic
+  map to a Memora session.
+- The DM bridge and share flows remain unchanged.
+- A group member can read bot messages, so the group must be private and
+  dedicated; the bot rejects unauthorized senders but cannot hide messages from
+  group members.
+- Privacy mode must be disabled to receive normal messages in topics, or every
+  message must mention the bot. This is acceptable only in a dedicated private
+  group.
+- Bot administrator rights and topic limits are operational dependencies.

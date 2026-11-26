@@ -2306,3 +2306,51 @@ telefono; la scelta deve essere esplicita per singola chat.
   la risposta autorevole resta nella web UI.
 - Risposte e artefatti possono contenere dati personali e transitano su Telegram,
   quindi l’impostazione è opt-in e documentata.
+
+---
+## ADR-070 — I gruppi Telegram usano i forum topic come sessioni
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Un bot Telegram ha una sola chat privata per utente, quindi più sessioni Memora
+non possono essere separate in una DM. I gruppi con forum topic offrono thread
+nativi con nome, cronologia separata e link diretto. Sono adatti all’esigenza di
+un’interfaccia veloce in cui ogni chat lunga è un topic distinto.
+
+### Decisione
+
+- Richiedere un supergruppo privato con Topics attivi, con solo il proprietario e
+  il bot. Il bot deve essere amministratore con permesso di gestire i topic.
+- Trattare il gruppo come progetto/workspace e ogni topic come sessione Memora.
+  Il topic General è la sessione predefinita del gruppo.
+- Lasciare invariato lo store dei binding DM. Aggiungere un
+  `TelegramGroupStore` dedicato in `config/telegram-groups.json` (`0600`) per
+  gruppi, sessione General, binding dei topic e default del gruppo. Non salvare
+  testo dei messaggi o token.
+- Usare codici di pairing con scope gruppo: un codice generato per un gruppo non
+  può associare una DM privata e viceversa. Il mittente deve essere già nella
+  allowlist dell’account; il gruppo deve essere un forum; il bot deve essere
+  amministratore con `can_manage_topics`.
+- Rendere il trasporto Telegram thread-aware (`message_thread_id` per messaggi,
+  documenti, modifiche e typing) e aggiungere i metodi per topic e gruppi.
+- Mantenere la funzione opt-in e limitata a gruppi privati con un solo
+  proprietario nella prima versione. Non supportare gruppi pubblici arbitrari o
+  permessi multi-utente.
+- Pianificare routing in ingresso e condivisione web come milestone separate
+  sopra questa base.
+
+### Conseguenze
+
+- I topic sono la lista naturale delle sessioni: titolo, link e cronologia di un
+  topic corrispondono a una sessione Memora.
+- Il bridge DM e i flussi di condivisione restano invariati.
+- Un membro del gruppo può leggere i messaggi del bot, quindi il gruppo deve
+  essere privato e dedicato; il bot rifiuta i mittenti non autorizzati ma non può
+  nascondere i messaggi agli altri membri.
+- La privacy mode va disattivata per ricevere i messaggi normali nei topic,
+  oppure ogni messaggio deve menzionare il bot. È accettabile solo in un gruppo
+  privato dedicato.
+- I permessi di amministratore del bot e i limiti dei topic sono dipendenze
+  operative.
