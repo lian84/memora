@@ -78,11 +78,11 @@ function validUserId(value: unknown): string {
   return text;
 }
 
-function validTitle(value: unknown, fallback = ''): string {
+function validTitle(value: unknown, fallback = '', maxLength = 128): string {
   if (value === undefined || value === null || value === '') return fallback;
   if (typeof value !== 'string') throw new TelegramGroupError('invalid_telegram_group_title', 'Titolo Telegram non valido');
   const title = value.replace(/\s+/g, ' ').trim();
-  if (!title || title.length > 128 || hasControlChars(title)) throw new TelegramGroupError('invalid_telegram_group_title', 'Titolo Telegram non valido');
+  if (!title || title.length > maxLength || hasControlChars(title)) throw new TelegramGroupError('invalid_telegram_group_title', 'Titolo Telegram non valido');
   return title;
 }
 
@@ -194,7 +194,7 @@ export class TelegramGroupStore {
     const now = this.now();
     const group: TelegramGroup = {
       chatId,
-      title: validTitle(input.title, existing?.title ?? 'Memora'),
+      title: validTitle(input.title, existing?.title ?? 'Memora', 255),
       isForum: input.isForum !== false,
       pairedAt: existing?.pairedAt ?? now,
       updatedAt: now,
@@ -397,7 +397,7 @@ export class TelegramGroupStore {
       try { generalSessionId = value.generalSessionId === undefined ? undefined : validSessionId(value.generalSessionId); } catch { generalSessionId = undefined; }
       return {
         chatId,
-        title: validTitle(value.title, 'Memora'),
+        title: validTitle(value.title, 'Memora', 255),
         isForum: value.isForum !== false,
         pairedAt: typeof value.pairedAt === 'number' && Number.isFinite(value.pairedAt) ? value.pairedAt : this.now(),
         updatedAt: typeof value.updatedAt === 'number' && Number.isFinite(value.updatedAt) ? value.updatedAt : this.now(),
