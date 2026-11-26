@@ -20,11 +20,13 @@ interface ComposerProps {
   webEnabled?: boolean;
   webAvailable?: boolean;
   onToggleWeb?: () => void;
+  telegramShareActive?: boolean;
+  onTelegramShare?: () => void;
   agent?: SessionAgentInfo | null;
   agentSaving?: boolean;
 }
 
-export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null, webEnabled = false, webAvailable = false, onToggleWeb, agent = null, agentSaving = false }: ComposerProps) {
+export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreaming = false, focusKey = null, attachments = [], onFilesSelected, onRemoveAttachment, attachmentBusy = false, attachmentError = null, webEnabled = false, webAvailable = false, onToggleWeb, telegramShareActive = false, onTelegramShare, agent = null, agentSaving = false }: ComposerProps) {
   const { t } = useI18n();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -108,6 +110,19 @@ export function Composer({ onSend, onQueue, onAbort, disabled = false, isStreami
           onClick={onToggleWeb}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" /></svg>
+        </button>
+      )}
+      {onTelegramShare && (
+        <button
+          type="button"
+          className={`attach-button telegram-share-toggle${telegramShareActive ? ' is-active' : ''}`}
+          aria-label={telegramShareActive ? t('Condivisione Telegram attiva') : t('Condivisione Telegram')}
+          aria-pressed={telegramShareActive}
+          title={telegramShareActive ? t('Condivisione Telegram attiva') : t('Invia le risposte su Telegram')}
+          disabled={disabled}
+          onClick={onTelegramShare}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
         </button>
       )}
       {onFilesSelected && (

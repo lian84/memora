@@ -380,6 +380,7 @@ export * from './agents.js';
 
 export * from './mcp.js';
 export * from './automations.js';
+export * from './telegram.js';
 export * from './backups.js';
 export * from './updates.js';
 export * from './monitor.js';

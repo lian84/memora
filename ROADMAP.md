@@ -62,9 +62,10 @@
 - [x] Notifiche e risultati delle automazioni in uscita
 - [x] Invio di documenti PDF, DOCX, XLSX e PPTX
 - [x] Account Telegram riutilizzabili
-- [ ] Bot in ingresso
-- [ ] Whitelist e controllo accessi
-- [ ] Stesse sessioni e stesso backend della web UI
+- [x] Polling in ingresso, pairing monouso e allowlist per ID numerico
+- [x] Comandi di servizio, sessioni condivise e conversazione nello stesso backend della web UI
+- [x] Allegati in ingresso e avviso dei turni interrotti dopo un riavvio
+- [x] Condivisione Telegram opt-in delle risposte web, per singola chat
 
 ## Fase 7 — Automazioni
 
@@ -131,12 +132,12 @@
 3. Rifare l'installazione pulita con v0.1.4 e aggiornare la checklist.
 4. Audit licenze e dipendenze.
 5. Documentare il gate di approvazione per le scritture MCP distruttive.
-6. Riprendere le feature rimandate: Telegram in ingresso, Calendar/Gmail e
-   installer SearXNG nativo.
+6. Riprendere le feature rimandate: Calendar/Gmail, installer SearXNG nativo e
+   allegati/gruppi Telegram.
 
 ## Rimandato
 
-- Bot Telegram in ingresso e stessa esperienza delle sessioni web.
+- Gruppi, topic e allegati in ingresso per Telegram; streaming progressivo.
 - Calendar e Gmail.
 - Docker/Compose come percorso di installazione principale.
 - Multi-utente e permessi granulari.

@@ -123,6 +123,203 @@ describe('TelegramService', () => {
     const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
     await expect(service.send('test', account.id)).rejects.toMatchObject({ code: 'telegram_api_error' });
   });
+
+  it('invia a una chat esplicita con HTML senza usare la chat di notifica', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '99', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.sendTo('42', '<b>Ciao</b>', account.id, { parseMode: 'HTML' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/sendMessage');
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body).toMatchObject({ chat_id: '42', text: '<b>Ciao</b>', parse_mode: 'HTML', disable_web_page_preview: true });
+  });
+
+  it('modifica un messaggio e ignora “message is not modified”', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.editMessage('42', 7, '<b>Aggiornato</b>', account.id, { parseMode: 'HTML' });
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/editMessageText');
+    expect(body).toMatchObject({ chat_id: '42', message_id: 7, parse_mode: 'HTML' });
+
+    const notModified = vi.fn(async () => new Response(JSON.stringify({ ok: false, error_code: 400, description: 'Bad Request: message is not modified' }), { status: 400 }));
+    const tolerant = new TelegramService(store, notModified as unknown as typeof fetch);
+    await expect(tolerant.editMessage('42', 7, 'stesso testo', account.id)).resolves.toBeUndefined();
+  });
+
+  it('invia il typing e legge i metadati di un file', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      const method = String(args[0]);
+      if (method.includes('/getFile')) {
+        return new Response(JSON.stringify({ ok: true, result: { file_id: 'file-1', file_path: 'photos/a.jpg', file_size: 123 } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+    });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.sendChatAction('42', 'typing', account.id);
+    await expect(service.getFile('file-1', account.id)).resolves.toEqual({ fileId: 'file-1', filePath: 'photos/a.jpg', size: 123 });
+    const actionBody = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(actionBody).toEqual({ chat_id: '42', action: 'typing' });
+  });
+
+  it('rifiuta un file senza percorso e un’azione non valida', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, result: { file_id: 'x' } }), { status: 200 }));
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.getFile('file-1', account.id)).rejects.toMatchObject({ code: 'telegram_file_unavailable' });
+    await expect(service.sendChatAction('42', 'boh' as never, account.id)).rejects.toMatchObject({ code: 'invalid_telegram_action' });
+  });
+
+  it('legge il bot e registra i comandi', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      if (String(args[0]).includes('/getMe')) {
+        return new Response(JSON.stringify({ ok: true, result: { id: 123, is_bot: true, first_name: 'Memora', username: 'memora_bot' } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+    });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.getMe(account.id)).resolves.toEqual({ id: '123', firstName: 'Memora', username: 'memora_bot' });
+    await service.setMyCommands([{ command: 'start', description: 'Avvia Memora' }], account.id, { languageCode: 'it' });
+    const body = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/setMyCommands');
+    expect(body).toEqual({ commands: [{ command: 'start', description: 'Avvia Memora' }], language_code: 'it' });
+  });
+
+  it('valida i comandi prima di chiamare Telegram', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, result: true }), { status: 200 }));
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.setMyCommands([{ command: 'Start', description: 'Maiuscolo' }], account.id)).rejects.toMatchObject({ code: 'invalid_telegram_commands' });
+    await expect(service.setMyCommands([{ command: 'start', description: 'x' }, { command: 'start', description: 'y' }], account.id)).rejects.toMatchObject({ code: 'invalid_telegram_commands' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('ritenta un 429 rispettando retry_after e poi lo propaga', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const limited = () => new Response(JSON.stringify({ ok: false, error_code: 429, description: 'Too Many Requests', parameters: { retry_after: 2 } }), { status: 429 });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(limited())
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }));
+    const sleep = vi.fn(async (milliseconds: number) => { void milliseconds; });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch, { sleep, maxRetries: 1 });
+    await service.sendTo('42', 'ciao', account.id);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(2_000);
+
+    const alwaysLimited = vi.fn(async () => limited());
+    const exhaustedSleep = vi.fn(async (milliseconds: number) => { void milliseconds; });
+    const exhausted = new TelegramService(store, alwaysLimited as unknown as typeof fetch, { sleep: exhaustedSleep, maxRetries: 1 });
+    await expect(exhausted.sendTo('42', 'ciao', account.id)).rejects.toMatchObject({ code: 'telegram_rate_limited', retryAfterMs: 2_000 });
+    expect(alwaysLimited).toHaveBeenCalledTimes(2);
+    expect(exhaustedSleep).toHaveBeenCalledWith(2_000);
+  });
+
+  it('invia un documento a una chat esplicita', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '99', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.sendDocumentTo('42', { filename: 'report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') }, account.id);
+    const form = (fetchMock.mock.calls[0]?.[1] as RequestInit).body as FormData;
+    expect(form).toBeInstanceOf(FormData);
+    expect(form.get('chat_id')).toBe('42');
+    expect((form.get('document') as { name?: string } | null)?.name).toBe('report.pdf');
+  });
+
+  it('rifiuta una chat non numerica prima della richiesta', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }));
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.sendTo('@canale', 'ciao', account.id)).rejects.toMatchObject({ code: 'invalid_telegram_chat_id' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('esegue getUpdates con offset e timeout espliciti', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: [] }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.getUpdates(account.id, { offset: 42, timeoutSeconds: 5, limit: 10, allowedUpdates: ['message'] })).resolves.toEqual([]);
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/getUpdates');
+    expect(body).toEqual({ offset: 42, timeout: 5, limit: 10, allowed_updates: ['message'] });
+
+    await service.getUpdates(account.id, { timeoutSeconds: 0 });
+    const noOffset = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(noOffset.offset).toBeUndefined();
+  });
+
+  it('non ritenta automaticamente i 429 di getUpdates', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '', token: '123:token' });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: false, error_code: 429, description: 'Too Many Requests', parameters: { retry_after: 1 } }), { status: 429 }));
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.getUpdates(account.id, { timeoutSeconds: 0 })).rejects.toMatchObject({ code: 'telegram_rate_limited', retryAfterMs: 1_000 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('scarica un file Telegram con limite e percorso validato', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      const url = String(args[0]);
+      if (url.includes('/file/bot')) {
+        return new Response(Buffer.from('contenuto'), { status: 200, headers: { 'content-length': '10' } });
+      }
+      return new Response(JSON.stringify({ ok: false, description: 'not found' }), { status: 404 });
+    });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.downloadFile('photos/a.jpg', account.id, 100)).resolves.toEqual(Buffer.from('contenuto'));
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/file/bot123:token/photos/a.jpg');
+    await expect(service.downloadFile('photos/a.jpg', account.id, 5)).rejects.toMatchObject({ code: 'telegram_file_too_large' });
+    await expect(service.downloadFile('../secret', account.id)).rejects.toMatchObject({ code: 'invalid_telegram_file_path' });
+
+    const failing = new TelegramService(store, vi.fn(async () => new Response(JSON.stringify({ ok: false, description: 'file not found' }), { status: 404 })) as unknown as typeof fetch);
+    await expect(failing.downloadFile('photos/a.jpg', account.id)).rejects.toMatchObject({ code: 'telegram_file_download_failed' });
+  });
+
+  it('riconosce un conflitto webhook e annulla il long polling', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '', token: '123:token' });
+    const conflict = vi.fn(async () => new Response(JSON.stringify({ ok: false, error_code: 409, description: 'Conflict: webhook is active' }), { status: 409 }));
+    const service = new TelegramService(store, conflict as unknown as typeof fetch);
+    await expect(service.getUpdates(account.id, { timeoutSeconds: 0 })).rejects.toMatchObject({ code: 'telegram_conflict' });
+
+    const pending = vi.fn((_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal;
+      signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+    }));
+    const cancellable = new TelegramService(store, pending as unknown as typeof fetch);
+    const controller = new AbortController();
+    const request = cancellable.getUpdates(account.id, { timeoutSeconds: 25, signal: controller.signal });
+    controller.abort();
+    await expect(request).rejects.toMatchObject({ code: 'telegram_aborted' });
+  });
 });
 
 describe('splitTelegramText', () => {

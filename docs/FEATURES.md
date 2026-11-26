@@ -6,7 +6,7 @@ This is the single functional registry for the project. It describes what is
 implemented, the expected behavior and the known limitations. The README links
 here; architectural decisions are in [`DECISIONS.md`](DECISIONS.md).
 
-Last updated: 2026-11-20.
+Last updated: 2026-11-26.
 
 ## 1. Chat and sessions
 
@@ -49,8 +49,8 @@ Last updated: 2026-11-20.
   persisted in `turns.json`.
 - [x] Shared read state across devices in `config/turn-reads.json`.
 - [x] Opt-in browser notifications when a response is ready (tab must remain
-  open). Telegram is used only for scheduled automation results and works with
-  the browser closed.
+  open). Telegram delivers scheduled automation results and supports inbound
+  conversations in the same sessions; notifications work with the browser closed.
 - [x] End-to-end HTTP tests with two SSE clients and replay after reconnection.
 - [x] Manual rename always wins over automatic title generation.
 - [x] All-automations page with a sidebar shortcut, count and jobs from every project.
@@ -59,6 +59,10 @@ Last updated: 2026-11-20.
 - [x] Per-automation LLM provider/model/reasoning selection, inherited from project/chat defaults when omitted.
 - [x] Per-automation web search flag, with a warning when web search is not configured.
 - [x] Optional Telegram delivery of automation results. Multiple accounts are managed in Administration → Telegram, tokens are kept per account in the local secret store, and one account can be reused by many automations. Generated PDF/Office artifacts are delivered as Telegram documents.
+- [x] Telegram inbound: per-account opt-in long polling with no public port, one-time pairing codes, numeric user allowlist and observed-chat cache. Chat messages run as normal turns in the same Pi sessions as the web UI, with per-user session bindings, `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`, typing and final replies, PDF/Office artifact delivery and shared read state.
+- [x] Telegram inbound attachments: photos, PDF, DOCX, Markdown, TXT, CSV, JSON, log, HTML and images, up to 15 MB; unsupported voice/video/stickers/XLSX/PPTX are rejected.
+- [x] Telegram restart notice for an interrupted pending turn and one-time pending-turn cleanup.
+- [x] Opt-in per-chat Telegram sharing from the web composer: final answers or full conversation, optional PDF/Office delivery, last-error visibility and shared read state. Telegram-originated turns are never duplicated.
 - [x] Jobs and run history stored under `$MEMORA_DATA_DIR/automations/`.
 
 ## 2. Memory and Second Brain

@@ -101,7 +101,7 @@ noti.
 - PDF, DOCX, XLSX e PPTX senza LibreOffice.
 - Ricerca web SSRF-safe tramite Brave o SearXNG, con citazioni numerate.
 - Automazioni pianificate con cron/timezone, cronologia e accesso MCP opzionale.
-- Login single-user, notifiche browser, consegna Telegram opzionale e interfaccia IT/EN/FR.
+- Login single-user, notifiche browser, consegna Telegram opzionale e sessioni Telegram bidirezionali, con interfaccia IT/EN/FR.
 - Aggiornamento con un clic da Amministrazione, con backup cifrato obbligatorio.
 - Layout responsive, pannello laterale e amministrazione runtime.
 
@@ -148,6 +148,7 @@ Vedi [Installazione, ripristino e aggiornamento](docs/INSTALL.it.md).
 - [Amministrazione](docs/ADMINISTRATION.it.md)
 - [Memoria](docs/MEMORY.it.md)
 - [Automazioni](docs/AUTOMATIONS.it.md)
+- [Telegram](docs/TELEGRAM.it.md)
 - [Backup](docs/BACKUP.it.md)
 - [Esportazione dati](docs/EXPORT.it.md)
 - [Aggiornamenti](docs/UPDATES.it.md)

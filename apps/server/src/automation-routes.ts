@@ -6,12 +6,17 @@ import type { AutomationScheduler } from './automation-scheduler.js';
 import { AutomationRunError } from './automation-scheduler.js';
 import { AutomationScheduleError } from './automation-schedule.js';
 import { TelegramError, type TelegramService, type TelegramStore } from './telegram.js';
+import type { TelegramInboundService } from './telegram-inbound.js';
+import type { TelegramMirrorService } from './telegram-mirror.js';
 
 export interface AutomationRoutesDeps {
   store: AutomationStore;
   scheduler: AutomationScheduler;
   telegramStore: TelegramStore;
   telegram: TelegramService;
+  /** Canale in ingresso; assente nei test che non lo esercitano. */
+  inbound?: TelegramInboundService;
+  mirror?: TelegramMirrorService;
   log: (event: string, details?: Record<string, unknown>) => void;
 }
 
@@ -89,6 +94,11 @@ export function registerAutomationRoutes(app: FastifyInstance, deps: AutomationR
   app.patch<{ Params: { id: string }; Body: Record<string, unknown> | undefined }>('/api/admin/telegram/accounts/:id', async (request, reply) => {
     try {
       const account = await deps.telegramStore.updateAccount(request.params.id, (request.body ?? {}) as never);
+      if (deps.inbound) {
+        await deps.inbound.refreshAccount(request.params.id).catch(error => {
+          deps.log('telegram_inbound_refresh_failed', { accountId: request.params.id, error: error instanceof Error ? error.message : String(error) });
+        });
+      }
       return reply.send({ account });
     } catch (error) {
       return sendError(reply, error);
@@ -98,7 +108,18 @@ export function registerAutomationRoutes(app: FastifyInstance, deps: AutomationR
   app.delete<{ Params: { id: string }; Querystring: { confirm?: string } }>('/api/admin/telegram/accounts/:id', async (request, reply) => {
     try {
       if (request.query.confirm !== request.params.id) return reply.status(400).send({ error: 'invalid_telegram_account_confirmation' });
-      return reply.send(await deps.telegramStore.deleteAccount(request.params.id));
+      const result = await deps.telegramStore.deleteAccount(request.params.id);
+      if (deps.inbound) {
+        await deps.inbound.removeAccount(request.params.id).catch(error => {
+          deps.log('telegram_inbound_remove_failed', { accountId: request.params.id, error: error instanceof Error ? error.message : String(error) });
+        });
+      }
+      if (deps.mirror) {
+        await deps.mirror.removeAccount(request.params.id).catch(error => {
+          deps.log('telegram_mirror_remove_failed', { accountId: request.params.id, error: error instanceof Error ? error.message : String(error) });
+        });
+      }
+      return reply.send(result);
     } catch (error) {
       return sendError(reply, error);
     }
@@ -115,6 +136,11 @@ export function registerAutomationRoutes(app: FastifyInstance, deps: AutomationR
 
   app.post<{ Params: { id: string } }>('/api/admin/telegram/accounts/:id/discover', async (request, reply) => {
     try {
+      // Con il polling attivo `getUpdates` appartiene al poller: la scoperta
+      // delle chat legge la cache osservata invece di contendere gli update.
+      if (deps.inbound?.isInboundEnabled(request.params.id)) {
+        return reply.send({ chats: deps.inbound.listObservedChats(request.params.id) });
+      }
       return reply.send({ chats: await deps.telegram.discoverChats(request.params.id) });
     } catch (error) {
       return sendError(reply, error);

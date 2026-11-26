@@ -31,6 +31,31 @@ Memora contiene dati personali e può invocare tool di filesystem/shell.
 - Le fonti sono persistite nella sessione e mostrate nel pannello Web.
 - I log non contengono query, URL completi o contenuto delle pagine.
 
+## Telegram in ingresso
+
+- Accesso solo per ID utente numerici in allowlist; nessun auto-pairing.
+- Codice di pairing monouso, hashato, con TTL di dieci minuti e limite di
+  tentativi per utente.
+- Solo chat private; gruppi, canali, bot e utenti non autorizzati non entrano
+  nelle sessioni.
+- Long polling senza porte pubbliche; un solo processo può consumare un token.
+  Un conflitto `409` non cancella webhook esistenti.
+- Token nel secret store; nessun token o testo dei messaggi in
+  `config/telegram-inbound.json`, nei log o nelle risposte API.
+- Allegati in ingresso trattati come non fidati: limite 15 MB, estensioni
+  supportate, nessuna esecuzione, estrazione testo/immagine soltanto.
+- Il contenuto Telegram non può cambiare tool, ruoli, permessi o impostazioni.
+  Il bot non espone comandi amministrativi.
+- Telegram conserva i messaggi sui propri server; il canale non è cifrato
+  end-to-end da Memora.
+- Backup cifrati inclusivi dello stato del bridge; export leggibili senza
+  `config/`.
+- Poller sospesi durante i backup e fermati prima dello shutdown; i turni
+  interrotti ricevono un solo avviso dopo il riavvio.
+- Condivisione web → Telegram solo opt-in per chat; il target è validato
+  contro binding/allowlist, non è un chat ID arbitrario. La modalità completa
+  cambia la sessione attiva Telegram ed è indicata nella UI.
+
 ## Memoria e provider esterni
 
 Il confine di fiducia tra conversazione, memoria, Curator e provider è descritto

@@ -2185,3 +2185,124 @@ il meccanismo di disaster recovery con configurazione e segreti.
 - Gli export si possono ispezionare con strumenti standard.
 - Non sono cifrati e contengono dati personali: l’operatore deve proteggerli.
 - Il disaster recovery esatto resta il percorso backup/restore cifrato.
+
+---
+## ADR-068 — Telegram in ingresso come secondo client dello stesso agente
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Telegram oggi è solo in uscita: automazioni, monitoraggio e avvisi di
+aggiornamento inviano messaggi, ma il bot non può ricevere una conversazione
+normale. L’utente vuole continuare le stesse sessioni Memora da Telegram senza
+mantenere un secondo assistente, una seconda memoria o un secondo archivio di
+sessioni.
+
+Sono state considerate tre architetture: un agente Telegram separato (scartato
+perché duplica memoria e cronologia), la chiamata diretta ad `AgentService`
+(scartata per i turni interattivi perché aggira coda, stato del turno e stream
+SSE usati dalla web UI) e l’adattamento di Telegram a `TurnManager` (scelta).
+Per il trasporto la scelta era tra long polling e webhook pubblico.
+
+### Decisione
+
+- Trattare Telegram come un client di Memora, non come un agente separato. I
+turni in ingresso passano da `TurnManager` e `AgentService` e producono normali
+sessioni Pi JSONL.
+- Usare il long polling come default, senza porte pubbliche. Il webhook resta
+un’opzione successiva ed esplicita per installazioni che espongono HTTPS.
+- Mantenere una sessione attiva persistente per utente Telegram associato.
+Comandi: `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`.
+Inizialmente solo chat private. Inviare gli artefatti PDF/Office del turno e
+segnare il turno come letto dopo una consegna riuscita.
+- Autorizzare gli ID numerici degli utenti tramite un codice di pairing monouso.
+Salvare il codice hashato, con TTL di dieci minuti e limite dei tentativi
+falliti per utente in memoria; non fidarsi degli username e non associare
+automaticamente il primo mittente.
+- Salvare lo stato non segreto del bridge in `config/telegram-inbound.json` con
+permessi `0600`: allowlist, binding chat → sessione, offset degli update e
+impostazioni. Non salvare mai testo dei messaggi o token del bot. I backup
+cifrati includono il file; gli export leggibili escludono `config/`.
+- Rendere l’offset monotono e deduplicare gli update per `update_id`. Il poller
+in ingresso è l’unico consumatore di `getUpdates`; la scoperta delle chat legge
+la cache del poller quando l’ingresso è attivo.
+- Rispondere con il testo finale e l’indicatore di digitazione nella prima
+milestone; la modifica progressiva dei messaggi arriva dopo. Rendere un
+sottoinsieme HTML sicuro, dividere a 4.000 caratteri, convertire le tabelle GFM
+in elenchi leggibili e allegare il Markdown completo quando servirebbero più di
+tre blocchi. Ritentare le risposte `429` rispettando `retry_after` e con un
+ritardo massimo. Non inviare il reasoning nascosto e non rispecchiare su
+Telegram i turni nati dalla web UI, salvo scelta esplicita futura.
+- Partire disabilitati per account e abilitare esplicitamente da Amministrazione.
+Un solo processo Memora può fare polling su un token; un secondo processo riceve
+`409 Conflict`, mostrato come errore amministrativo.
+- Mettere in pausa il polling durante i backup, fermarlo prima dello shutdown
+graceful e marcare i turni in corso come interrotti con un solo avviso dopo il
+riavvio.
+
+### Conseguenze
+
+- Web e Telegram condividono sessioni, memoria, progetti e profili agente senza
+uno store duplicato.
+- La web UI può mostrare i turni nati da Telegram tramite lo stato dei turni e
+l’infrastruttura SSE già esistenti.
+- Telegram conserva i messaggi sui propri server; il canale non è cifrato
+end-to-end da Memora. Gli update più vecchi della finestra di retention di
+Telegram vanno persi mentre il bot è offline.
+- Una sola istanza può fare polling su un determinato token; il polling
+distribuito richiede un futuro meccanismo di coordinamento.
+- Gruppi, topic, allegati in ingresso, streaming progressivo e modalità webhook
+restano fasi successive.
+
+---
+## ADR-069 — Mirroring opt-in per chat dei turni web su Telegram
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Il bridge Telegram consegna già i turni nati da Telegram, ma un turno avviato
+dalla web UI non viene inviato su Telegram. L’utente può iniziare una chat web
+lunga e allontanarsi dal computer, aspettandosi la risposta su Telegram. Un
+interruttore globale sarebbe rumoroso e manderebbe ogni risposta web sul
+telefono; la scelta deve essere esplicita per singola chat.
+
+### Decisione
+
+- Aggiungere un’impostazione di condivisione per sessione, disattivata di
+  default, esposta nel composer della chat accanto a Web e allegati.
+- Salvare i target in `config/telegram-shares.json` (`0600`), non nel JSONL della
+  sessione, così gli ID Telegram personali non finiscono negli export leggibili.
+  I backup cifrati includono il file.
+- Offrire due modalità: `answers` (default, solo la risposta finale
+  dell’assistente) e `full` (anche il messaggio utente scritto nella web UI). Gli
+  allegati web non vengono copiati su Telegram.
+- Etichettare i turni con `source = web | telegram` in `TurnManager` ed esporre
+  un observer di fine turno. Il mirror consegna solo i turni `web`; quelli
+  Telegram restano di proprietà del bridge in ingresso. Questo evita duplicati e
+  loop.
+- Risolvere il target dal binding/allowlist Telegram esistente; il client non può
+  inviare chat ID arbitrari. In modalità `full` la chat scelta diventa la
+  sessione attiva Telegram, così le risposte tornano in questa chat.
+- Inviare la risposta finale con il formatter esistente, il fallback Markdown per
+  risposte lunghe e gli artefatti PDF/Office. Dopo una consegna riuscita marcare
+  il turno come letto; in caso di errore salvare un `lastError` breve senza
+  contenuto della conversazione.
+- Serializzare le consegne per sessione e includere la coda del mirror
+  nell’`isIdle` dei backup e nello shutdown graceful.
+- Non aggiungere un interruttore globale, un avviso di avvio o retry/outbox in
+  questa milestone.
+
+### Conseguenze
+
+- L’utente può ricevere esplicitamente le risposte web su Telegram senza cambiare
+  il comportamento predefinito di ogni chat.
+- Web e Telegram hanno percorsi di consegna separati ma condividono sessioni,
+  cronologia e read state.
+- La modalità completa cambia la sessione attiva Telegram; la UI deve dirlo
+  esplicitamente.
+- Un riavvio tra la fine del turno e la consegna Telegram può perdere la copia;
+  la risposta autorevole resta nella web UI.
+- Risposte e artefatti possono contenere dati personali e transitano su Telegram,
+  quindi l’impostazione è opt-in e documentata.

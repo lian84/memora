@@ -2,6 +2,21 @@
 
 All notable changes to Memora are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Bidirectional Telegram: long polling inbound channel with one-time pairing,
+  numeric user allowlist, shared Memora sessions through `TurnManager`,
+  `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`, typing and
+  final replies, PDF/Office artifact delivery and shared read state.
+- Telegram inbound attachments: photos, PDF, DOCX, text and images up to 15 MB;
+  unsupported formats are rejected. Pollers pause during backups and an
+  interrupted pending turn receives one notice after a restart.
+- Per-chat Telegram sharing from the web composer: answers-only or full
+  conversation, optional PDF/Office artifacts, last-error visibility and shared
+  read state; Telegram-originated turns are not duplicated.
+
 ## [0.1.4] - 2026-11-25
 
 ### Changed

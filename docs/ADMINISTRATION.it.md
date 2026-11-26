@@ -43,6 +43,35 @@ provenienza, mai il valore. La configurazione è adatta a systemd, Docker futuro
 VPS, Proxmox, mini PC e installazioni locali, senza path hardcoded oltre
 `MEMORA_DATA_DIR`.
 
+## Telegram in ingresso
+
+**Amministrazione → Telegram** può abilitare un canale in ingresso opt-in per
+ogni account bot. Usa il long polling: Memora apre solo connessioni in uscita
+verso Telegram, quindi non servono porte pubbliche, webhook o certificati TLS.
+
+- Il pairing usa un codice monouso con scadenza di dieci minuti e un deep link al
+  bot; il codice viene salvato solo come hash.
+- L’accesso è controllato da ID utente Telegram numerici, mai dagli username.
+  Sono accettate solo chat private.
+- Il poller possiede `getUpdates`; la scoperta delle chat legge la cache osservata
+  quando l’ingresso è attivo.
+- I messaggi diventano turni normali nelle stesse sessioni Memora della web UI,
+  quindi cronologia, memoria, progetti e profili agente sono condivisi. Comandi:
+  `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`, `/status`,
+  `/ping`, `/help`.
+- Il bot invia l’indicatore di digitazione durante il turno, la risposta finale e
+  gli eventuali artefatti PDF/Office creati. Segna il turno come letto dopo una
+  consegna riuscita.
+- Una chat web può attivare la consegna Telegram dal composer. Il target è una
+  chat già associata; il default è solo risposte, la conversazione completa rende
+  quella chat la sessione attiva Telegram e i turni nati da Telegram non vengono
+  mai duplicati.
+- Lo stato è in `config/telegram-inbound.json` con permessi `0600`. Non contiene
+  token né testo dei messaggi; i backup cifrati lo includono, gli export leggibili
+  escludono `config/`.
+- Un secondo processo che fa polling sullo stesso token riceve `409 Conflict`; il
+  pannello mostra il conflitto senza cancellare webhook esistenti.
+
 ## Login e accesso
 
 Al primo avvio, se non esiste `$MEMORA_DATA_DIR/config/auth.json`, Memora entra
