@@ -198,6 +198,10 @@ export interface TelegramGroup {
   defaultProjectId: string | null;
   defaultAgentProfileId: string | null;
   generalSessionId?: string;
+  /** Ultimo turno avviato nel topic General. */
+  generalLastTurnId?: string;
+  /** Turno del topic General ancora in corso. */
+  generalPendingTurnId?: string;
   topics: Record<string, TelegramTopicBinding>;
 }
 

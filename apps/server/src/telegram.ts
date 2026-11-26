@@ -333,6 +333,8 @@ export interface TelegramBotInfo {
   id: string;
   firstName: string;
   username?: string;
+  /** False se la privacy mode è attiva; nei gruppi il bot non riceve i messaggi normali. */
+  canReadAllGroupMessages?: boolean;
 }
 
 export interface TelegramFile {
@@ -694,7 +696,7 @@ export class TelegramService {
 
   async getMe(accountId?: string): Promise<TelegramBotInfo> {
     const { token } = this.tokenFor(accountId);
-    const result = await this.request<{ id?: number | string; first_name?: string; username?: string }>(token, 'getMe', {});
+    const result = await this.request<{ id?: number | string; first_name?: string; username?: string; can_read_all_group_messages?: boolean }>(token, 'getMe', {});
     const id = typeof result?.id === 'number' || typeof result?.id === 'string' ? String(result.id) : '';
     if (!id || typeof result.first_name !== 'string') {
       throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
@@ -703,6 +705,7 @@ export class TelegramService {
       id,
       firstName: result.first_name,
       ...(typeof result.username === 'string' ? { username: result.username } : {}),
+      ...(typeof result.can_read_all_group_messages === 'boolean' ? { canReadAllGroupMessages: result.can_read_all_group_messages } : {}),
     };
   }
 

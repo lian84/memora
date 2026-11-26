@@ -187,12 +187,12 @@ describe('TelegramService', () => {
     const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
     const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
       if (String(args[0]).includes('/getMe')) {
-        return new Response(JSON.stringify({ ok: true, result: { id: 123, is_bot: true, first_name: 'Memora', username: 'memora_bot' } }), { status: 200 });
+        return new Response(JSON.stringify({ ok: true, result: { id: 123, is_bot: true, first_name: 'Memora', username: 'memora_bot', can_read_all_group_messages: true } }), { status: 200 });
       }
       return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
     });
     const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
-    await expect(service.getMe(account.id)).resolves.toEqual({ id: '123', firstName: 'Memora', username: 'memora_bot' });
+    await expect(service.getMe(account.id)).resolves.toEqual({ id: '123', firstName: 'Memora', username: 'memora_bot', canReadAllGroupMessages: true });
     await service.setMyCommands([{ command: 'start', description: 'Avvia Memora' }], account.id, { languageCode: 'it' });
     const body = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as Record<string, unknown>;
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/setMyCommands');

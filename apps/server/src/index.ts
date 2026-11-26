@@ -335,6 +335,7 @@ telegramInboundHolder.current = new TelegramInboundService({
   sessions: agentService,
   reads: turnReadStore,
   attachments: chatAttachmentStore,
+  groups: telegramGroups,
   log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'telegram-inbound'),
   canProcess: () => !backupService.isMaintenance(),
 });

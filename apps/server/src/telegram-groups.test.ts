@@ -53,6 +53,13 @@ describe('TelegramGroupStore', () => {
     await store.updateTopicTurn(ACCOUNT, GROUP, '17', { lastTurnId: 'turn-1', pendingTurnId: 'turn-1' });
     expect(store.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ lastTurnId: 'turn-1', pendingTurnId: 'turn-1' });
     expect(store.findTopicBySession(ACCOUNT, 'sess_topic')).toMatchObject({ chatId: GROUP, topic: { threadId: '17' } });
+    await store.setGeneralSession(ACCOUNT, GROUP, 'sess_general');
+    await store.updateGeneralTurn(ACCOUNT, GROUP, { lastTurnId: 'turn-g', pendingTurnId: 'turn-g' });
+    expect(store.get(ACCOUNT, GROUP)).toMatchObject({ generalLastTurnId: 'turn-g', generalPendingTurnId: 'turn-g' });
+    await store.updateGeneralTurn(ACCOUNT, GROUP, { pendingTurnId: null });
+    expect(store.get(ACCOUNT, GROUP)?.generalPendingTurnId).toBeUndefined();
+    await store.updateTopicTitle(ACCOUNT, GROUP, '17', 'Titolo aggiornato');
+    expect(store.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ title: 'Titolo aggiornato', titleSource: 'manual' });
     await store.updateTopicTurn(ACCOUNT, GROUP, '17', { pendingTurnId: null });
     expect(store.getTopic(ACCOUNT, GROUP, '17')?.pendingTurnId).toBeUndefined();
     expect(await store.removeTopic(ACCOUNT, GROUP, '17')).toBe(true);

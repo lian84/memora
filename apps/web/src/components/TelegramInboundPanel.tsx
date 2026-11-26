@@ -3,6 +3,7 @@ import type {
   AgentProfileSummary,
   ProjectRecord,
   TelegramAccountView,
+  TelegramGroup,
   TelegramInboundAdminView,
   TelegramPairingCodeView,
   TelegramPollerStatus,
@@ -11,10 +12,13 @@ import type {
 import {
   addTelegramInboundUser,
   clearTelegramPairing,
+  createTelegramGroupPairing,
   createTelegramPairing,
   getTelegramInbound,
   listAgentProfiles,
+  listTelegramGroups,
   listProjects,
+  removeTelegramGroup,
   removeTelegramInboundBinding,
   removeTelegramInboundUser,
   updateTelegramInbound,
@@ -53,6 +57,11 @@ function formatTimestamp(value?: number): string {
   return value ? new Date(value).toLocaleString() : '—';
 }
 
+function telegramGroupLink(chatId: string, threadId?: string): string {
+  const bare = chatId.startsWith('-100') ? chatId.slice(4) : chatId.replace(/^-/, '');
+  return `https://t.me/c/${bare}${threadId ? `/${threadId}` : ''}`;
+}
+
 export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelProps) {
   const { t } = useI18n();
   const [data, setData] = useState<TelegramInboundAdminView | null>(null);
@@ -60,6 +69,8 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
   const [agents, setAgents] = useState<AgentProfileSummary[]>([]);
   const [settings, setSettings] = useState<SettingsForm>({ defaultProjectId: '', defaultAgentProfileId: '', replyMode: 'final' });
   const [pairing, setPairing] = useState<TelegramPairingCodeView | null>(null);
+  const [groupPairing, setGroupPairing] = useState<TelegramPairingCodeView | null>(null);
+  const [groups, setGroups] = useState<TelegramGroup[]>([]);
   const [manualId, setManualId] = useState('');
   const [manualLabel, setManualLabel] = useState('');
   const [loading, setLoading] = useState(true);
@@ -71,9 +82,17 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     setLoading(true);
     setError(null);
     try {
-      const next = await getTelegramInbound(account.id);
+      const [next, nextGroups] = await Promise.all([
+        getTelegramInbound(account.id),
+        listTelegramGroups(account.id),
+      ]);
       setData(next);
       setSettings(settingsFrom(next));
+      setGroups(nextGroups);
+      if (!next.inbound.pairing.active) {
+        setPairing(null);
+        setGroupPairing(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -104,7 +123,10 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     setMessage(null);
     try {
       const next = await updateTelegramInbound(account.id, { enabled: !data.inbound.enabled });
-      if (!next.inbound.enabled) setPairing(null);
+      if (!next.inbound.enabled) {
+        setPairing(null);
+        setGroupPairing(null);
+      }
       apply(next, next.inbound.enabled ? t('Ingresso Telegram abilitato.') : t('Ingresso Telegram disabilitato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -138,6 +160,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     try {
       const next = await createTelegramPairing(account.id);
       setPairing(next);
+      setGroupPairing(null);
       await load();
       setMessage(t('Codice generato. Invialo al bot con /start <codice>.'));
     } catch (err) {
@@ -154,6 +177,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     try {
       const next = await clearTelegramPairing(account.id);
       setPairing(null);
+      setGroupPairing(null);
       apply(next, t('Codice di associazione annullato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -210,6 +234,39 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
       await removeTelegramInboundBinding(account.id, userId);
       await load();
       setMessage(t('Collegamento rimosso. La sessione resta disponibile nella web UI.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const generateGroupPairing = async (): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const next = await createTelegramGroupPairing(account.id);
+      setGroupPairing(next);
+      setPairing(null);
+      await load();
+      setMessage(t('Codice gruppo generato. Invialo nel topic General con /start <codice>.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeGroup = async (chatId: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await removeTelegramGroup(account.id, chatId);
+      setGroupPairing(null);
+      await load();
+      setMessage(t('Gruppo rimosso. Le sessioni restano nella web UI.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -336,6 +393,58 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                       <span>{t('Utente')}: {binding.userId} · {t('Aggiornata')}: {formatTimestamp(binding.updatedAt)}</span>
                     </div>
                     <button type="button" className="is-danger" onClick={() => void removeBinding(binding.userId)} disabled={saving}>{t('Scollega')}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="telegram-inbound-block">
+            <h5>{t('Gruppi forum')}</h5>
+            <p className="admin-field-note">
+              {t('Usa un supergruppo privato con Topics attivi, solo proprietario e bot. Il topic General è la sessione predefinita; ogni topic secondario è una sessione.')}
+            </p>
+            {groupPairing ? (
+              <div className="telegram-pairing-code">
+                <code>{groupPairing.code}</code>
+                <small>{t('Scade alle {time}', { time: formatTimestamp(groupPairing.expiresAt) })}</small>
+                <p className="admin-field-note">{t('Invia /start <codice> nel topic General del gruppo. Il bot deve essere amministratore con Manage Topics.')}</p>
+              </div>
+            ) : data.inbound.pairing.active ? (
+              <p className="admin-field-note">{t('Codice attivo fino alle {time}. Generane uno nuovo per vederlo.', { time: formatTimestamp(data.inbound.pairing.expiresAt) })}</p>
+            ) : null}
+            <div className="admin-actions">
+              <button type="button" className="admin-primary" onClick={() => void generateGroupPairing()} disabled={saving || !data.inbound.enabled || !account.tokenConfigured}>
+                {t('Genera codice gruppo')}
+              </button>
+            </div>
+            {groups.length === 0 ? (
+              <p className="admin-field-note">{t('Nessun gruppo associato. Genera un codice e invialo in General.')}</p>
+            ) : (
+              <div className="telegram-inbound-list">
+                {groups.map(group => (
+                  <div className="telegram-inbound-row" key={group.chatId}>
+                    <div>
+                      <strong>{group.title}</strong>
+                      <span>
+                        <code>{group.chatId}</code> · {group.isForum ? t('Forum') : t('Non forum')} · {t('Aggiornato')}: {formatTimestamp(group.updatedAt)}
+                      </span>
+                      <span>
+                        {t('General')}: {group.generalSessionId ? <a href={telegramGroupLink(group.chatId, '1')} target="_blank" rel="noopener noreferrer">{t('apri')} ↗</a> : t('non ancora avviato')}
+                      </span>
+                      {Object.values(group.topics).length > 0 && (
+                        <span>
+                          {t('Topic')}: {Object.values(group.topics).map((topic, index) => (
+                            <span key={topic.threadId}>
+                              {index > 0 ? ' · ' : ''}
+                              <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                      <span>{t('Utenti autorizzati')}: {group.allowedUsers.join(', ')}</span>
+                    </div>
+                    <button type="button" className="is-danger" onClick={() => void removeGroup(group.chatId)} disabled={saving}>{t('Revoca')}</button>
                   </div>
                 ))}
               </div>

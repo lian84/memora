@@ -4,13 +4,20 @@ import type {
   ChatProvider,
   ReasoningLevel,
   StreamEvent,
+  TelegramBinding,
   TelegramChat,
+  TelegramChatInfo,
+  TelegramChatMemberInfo,
+  TelegramForumTopic,
+  TelegramGroup,
   TelegramInboundStatus,
+  TelegramTopicBinding,
   TelegramPairingCodeView,
   TelegramPollerStatus,
 } from '@memora/shared';
 import { escapeTelegramHtml, prepareTelegramReply, splitTelegramHtml } from './telegram-format.js';
 import type { TelegramBindingStore } from './telegram-bindings.js';
+import type { TelegramGroupStore } from './telegram-groups.js';
 import { TelegramInboundError } from './telegram-bindings.js';
 import { TelegramError, type TelegramBotInfo, type TelegramDocument, type TelegramFile, type TelegramStore } from './telegram.js';
 
@@ -36,6 +43,10 @@ export interface TelegramInboundTransport {
   getFile?(fileId: string, accountId?: string): Promise<TelegramFile>;
   downloadFile?(filePath: string, accountId?: string, maxBytes?: number): Promise<Buffer>;
   getMe(accountId?: string): Promise<TelegramBotInfo>;
+  createForumTopic?(chatId: string, name: string, accountId?: string): Promise<TelegramForumTopic>;
+  editForumTopic?(chatId: string, threadId: number, name: string, accountId?: string): Promise<void>;
+  getChat?(chatId: string, accountId?: string): Promise<TelegramChatInfo>;
+  getChatMember?(chatId: string, userId: string | number, accountId?: string): Promise<TelegramChatMemberInfo>;
 }
 
 
@@ -128,6 +139,8 @@ export interface TelegramInboundDeps {
   reads?: TelegramInboundReads;
   /** Store degli allegati delle chat, riusato dalla web UI. */
   attachments?: TelegramInboundAttachments;
+  /** Registry dei gruppi forum e dei topic collegati alle sessioni. */
+  groups?: TelegramGroupStore;
 }
 
 interface PollerState {
@@ -147,6 +160,9 @@ interface TurnBridge {
   accountId: string;
   chatId: string;
   userId: string;
+  /** Presente per i messaggi nei topic; assente per General e per le DM. */
+  threadId?: string;
+  group: boolean;
   sessionId: string;
   turnId: string;
   startedAt: number;
@@ -162,6 +178,20 @@ interface TurnBridge {
 interface SessionChoice {
   at: number;
   entries: Array<{ sessionId: string; title: string; projectId?: string }>;
+}
+
+interface GroupContext {
+  accountId: string;
+  chatId: string;
+  userId: string;
+  userLabel: string;
+  group: TelegramGroup;
+  threadId?: string;
+}
+
+interface GroupSessionChoice {
+  at: number;
+  entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean }>;
 }
 
 const MAX_OBSERVED_CHATS = 50;
@@ -218,6 +248,25 @@ function timeOf(value: Date | number): number {
 
 function errorCode(error: unknown): string | undefined {
   return error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : undefined;
+}
+
+function messageThreadId(message: Record<string, unknown>): string | undefined {
+  const threadId = numericId(message.message_thread_id, /^\d{1,20}$/);
+  if (!threadId || threadId === '0' || threadId === '1') return undefined;
+  // General può arrivare con thread_id 1: non è un topic secondario.
+  if (message.is_topic_message === false) return undefined;
+  return threadId;
+}
+
+function threadNumber(threadId?: string): number | undefined {
+  if (!threadId) return undefined;
+  const value = Number(threadId);
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
+function groupLink(chatId: string, threadId?: string): string {
+  const bare = chatId.startsWith('-100') ? chatId.slice(4) : chatId.replace(/^-/, '');
+  return `https://t.me/c/${bare}${threadId ? `/${threadId}` : ''}`;
 }
 
 
@@ -351,7 +400,11 @@ export class TelegramInboundService {
   private readonly sessions?: TelegramInboundSessionService;
   private readonly reads?: TelegramInboundReads;
   private readonly attachments?: TelegramInboundAttachments;
+  private readonly groups?: TelegramGroupStore;
   private readonly bridges = new Map<string, TurnBridge>();
+  private readonly groupChoices = new Map<string, GroupSessionChoice>();
+  /** Topic creati via API: evita che il service message crei una seconda sessione. */
+  private readonly pendingTopicCreations = new Set<string>();
   private readonly typingTimers = new Set<NodeJS.Timeout>();
   private readonly sessionChoices = new Map<string, SessionChoice>();
   private readonly pendingTitles = new Map<string, string>();
@@ -377,6 +430,7 @@ export class TelegramInboundService {
     this.sessions = deps.sessions;
     this.reads = deps.reads;
     this.attachments = deps.attachments;
+    this.groups = deps.groups;
   }
 
   /** Avvia i poller degli account con ingresso e account abilitati. */
@@ -600,11 +654,12 @@ export class TelegramInboundService {
 
   private async notifyInterrupted(accountId: string): Promise<void> {
     if (!this.turns) return;
-    let bindings;
+    let bindings: TelegramBinding[];
     try {
       bindings = this.bindings.get(accountId).bindings;
     } catch {
-      return;
+      this.log('telegram_pending_read_failed', { accountId });
+      bindings = [];
     }
     for (const binding of bindings) {
       if (!binding.pendingTurnId) continue;
@@ -620,6 +675,45 @@ export class TelegramInboundService {
         await this.bindings.updateBinding(accountId, binding.userId, { pendingTurnId: null });
       } catch (error) {
         this.log('telegram_pending_clear_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      }
+    }
+
+    if (!this.groups) return;
+    let groups;
+    try {
+      groups = this.groups.list(accountId);
+    } catch {
+      this.log('telegram_group_pending_read_failed', { accountId });
+      return;
+    }
+    for (const group of groups) {
+      if (group.generalPendingTurnId) {
+        const turn = this.turns.getTurn(group.generalPendingTurnId);
+        if (turn?.status === 'interrupted') {
+          await this.safeReply(
+            accountId,
+            group.chatId,
+            '⚠️ La risposta precedente è stata interrotta da un riavvio di Memora. Puoi riprovare.',
+          );
+        }
+        await this.groups.updateGeneralTurn(accountId, group.chatId, { pendingTurnId: null }).catch(error => {
+          this.log('telegram_pending_clear_failed', { accountId, code: errorCode(error) ?? 'internal' });
+        });
+      }
+      for (const topic of Object.values(group.topics)) {
+        if (!topic.pendingTurnId) continue;
+        const turn = this.turns.getTurn(topic.pendingTurnId);
+        if (turn?.status === 'interrupted') {
+          await this.safeReply(
+            accountId,
+            group.chatId,
+            '⚠️ La risposta precedente è stata interrotta da un riavvio di Memora. Puoi riprovare.',
+            topic.threadId,
+          );
+        }
+        await this.groups.updateTopicTurn(accountId, group.chatId, topic.threadId, { pendingTurnId: null }).catch(error => {
+          this.log('telegram_pending_clear_failed', { accountId, code: errorCode(error) ?? 'internal' });
+        });
       }
     }
   }
@@ -641,7 +735,8 @@ export class TelegramInboundService {
     if (!message) return;
     const from = isRecord(message.from) ? message.from : undefined;
     const chat = isRecord(message.chat) ? message.chat : undefined;
-    if (!from || !chat || from.is_bot === true || chat.type !== 'private') return;
+    if (!from || !chat || from.is_bot === true) return;
+    if (chat.type !== 'private' && chat.type !== 'supergroup') return;
 
     const userId = numericId(from.id, /^\d{1,20}$/);
     const chatId = numericId(chat.id, /^-?\d{1,20}$/);
@@ -651,6 +746,11 @@ export class TelegramInboundService {
     const name = displayName(from, userId);
     this.trackObservedChat(accountId, chatId, chat);
     if (!this.allowIncoming(accountId, userId)) return;
+
+    if (chat.type === 'supergroup') {
+      await this.handleGroupUpdate(accountId, chatId, userId, name, message, text, chat);
+      return;
+    }
 
     if (!this.bindings.isAllowed(accountId, userId)) {
       await this.handleUnauthorized(accountId, chatId, userId, name, text);
@@ -702,6 +802,790 @@ export class TelegramInboundService {
         return;
       default:
         await this.safeReply(accountId, chatId, 'Comando non riconosciuto. Usa /help per i comandi disponibili.');
+    }
+  }
+
+  private async handleGroupUpdate(
+    accountId: string,
+    chatId: string,
+    userId: string,
+    userLabel: string,
+    message: Record<string, unknown>,
+    text: string,
+    chat: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.groups) return;
+    const threadId = messageThreadId(message);
+    const group = this.groups.get(accountId, chatId);
+    const command = parseCommand(text);
+
+    if (isRecord(message.forum_topic_created)) {
+      await this.handleGroupTopicCreated(accountId, chatId, userId, message);
+      return;
+    }
+    if (isRecord(message.forum_topic_edited)) {
+      if (group && threadId && group.allowedUsers.includes(userId)) {
+        const name = typeof message.forum_topic_edited.name === 'string' ? message.forum_topic_edited.name : '';
+        if (name) await this.groups.updateTopicTitle(accountId, chatId, threadId, name).catch(() => undefined);
+      }
+      return;
+    }
+
+    if (!group) {
+      if (command?.name === 'start') {
+        await this.pairGroup(accountId, chatId, userId, userLabel, text, threadId, chat);
+      }
+      return;
+    }
+
+    if (!group.isForum) {
+      if (command?.name === 'start') {
+        await this.safeReply(
+          accountId,
+          chatId,
+          'Questo gruppo non è un forum. Attiva i **Topics** nelle impostazioni del gruppo e riprova.',
+          threadId,
+        );
+      }
+      return;
+    }
+
+    if (!group.allowedUsers.includes(userId)) {
+      if (command?.name === 'start') {
+        await this.safeReply(
+          accountId,
+          chatId,
+          'Questo gruppo è già associato a Memora, ma il tuo account non è autorizzato. Chiedi all’amministratore di generare un nuovo codice per il gruppo.',
+          threadId,
+        );
+      }
+      return;
+    }
+
+    const context: GroupContext = { accountId, chatId, userId, userLabel, group, ...(threadId ? { threadId } : {}) };
+    if (command) {
+      await this.handleGroupCommand(context, command.name, command.args);
+      return;
+    }
+    await this.handleGroupMessage(context, message, text);
+  }
+
+  private async pairGroup(
+    accountId: string,
+    chatId: string,
+    userId: string,
+    userLabel: string,
+    text: string,
+    threadId: string | undefined,
+    chat: Record<string, unknown>,
+  ): Promise<void> {
+    const command = parseCommand(text);
+    if (!command || command.name !== 'start' || !command.args) {
+      await this.safeReply(
+        accountId,
+        chatId,
+        'Per associare il gruppo a Memora, genera un codice in **Amministrazione → Telegram → Gruppi** e invia `/start <codice>` nel topic **General**.',
+        threadId,
+      );
+      return;
+    }
+    if (threadId) {
+      await this.safeReply(
+        accountId,
+        chatId,
+        'Invia il codice di associazione nel topic **General**, non in un topic secondario.',
+        threadId,
+      );
+      return;
+    }
+    if (!this.groups) return;
+    const getChat = this.telegram.getChat?.bind(this.telegram);
+    const getChatMember = this.telegram.getChatMember?.bind(this.telegram);
+    if (!getChat || !getChatMember) {
+      await this.safeReply(accountId, chatId, 'La configurazione dei gruppi non è disponibile in questo momento.', threadId);
+      return;
+    }
+
+    let info: TelegramChatInfo;
+    try {
+      info = await getChat(chatId, accountId);
+    } catch (error) {
+      this.log('telegram_group_chat_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(accountId, chatId, '⚠️ Non è stato possibile verificare il gruppo. Riprova tra poco.', threadId);
+      return;
+    }
+    if (info.type !== 'supergroup' || info.isForum !== true) {
+      await this.safeReply(
+        accountId,
+        chatId,
+        'Questo gruppo non è un forum. Attiva i **Topics** nelle impostazioni del gruppo e riprova.',
+        threadId,
+      );
+      return;
+    }
+    if (info.username) {
+      await this.safeReply(accountId, chatId, 'Per la prima versione usa un gruppo **privato**, senza username pubblico.', threadId);
+      return;
+    }
+
+    // Forza una nuova lettura: la privacy mode può essere stata modificata
+    // dopo l'ultimo avvio del poller.
+    this.botInfo.delete(accountId);
+    const bot = await this.ensureBotInfo(accountId);
+    if (!bot) {
+      await this.safeReply(accountId, chatId, '⚠️ Non è stato possibile leggere l’identità del bot. Riprova tra poco.', threadId);
+      return;
+    }
+    if (bot.canReadAllGroupMessages === false) {
+      await this.safeReply(
+        accountId,
+        chatId,
+        'La privacy mode del bot è attiva. In BotFather usa `/setprivacy` → **Disable**, poi rimuovi e riaggiungi il bot al gruppo.',
+        threadId,
+      );
+      return;
+    }
+
+    let member: TelegramChatMemberInfo;
+    try {
+      member = await getChatMember(chatId, bot.id, accountId);
+    } catch (error) {
+      this.log('telegram_group_member_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(accountId, chatId, '⚠️ Non è stato possibile verificare i permessi del bot nel gruppo.', threadId);
+      return;
+    }
+    if ((member.status !== 'administrator' && member.status !== 'creator') || member.canManageTopics !== true) {
+      await this.safeReply(
+        accountId,
+        chatId,
+        'Rendi il bot **amministratore** del gruppo con il permesso **Manage Topics** e riprova.',
+        threadId,
+      );
+      return;
+    }
+
+    const code = command.args.split(/\s+/)[0] ?? '';
+    let consumed: { userId: string; label?: string };
+    try {
+      consumed = await this.bindings.consumePairingCode(accountId, {
+        code,
+        userId,
+        label: userLabel,
+        scope: 'group',
+      });
+    } catch (error) {
+      if (error instanceof TelegramInboundError) {
+        await this.safeReply(accountId, chatId, pairingErrorMessage(error.code), threadId);
+        return;
+      }
+      throw error;
+    }
+
+    const title = info.title?.trim() || (typeof chat.title === 'string' ? chat.title.trim() : '') || 'Memora';
+    try {
+      await this.groups.upsert(accountId, {
+        chatId,
+        title,
+        isForum: true,
+        allowedUsers: [consumed.userId],
+      });
+    } catch (error) {
+      this.log('telegram_group_pair_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(accountId, chatId, '⚠️ Il gruppo è valido, ma non è stato possibile salvarlo. Riprova.', threadId);
+      return;
+    }
+
+    this.log('telegram_group_paired', { accountId });
+    await this.safeReply(
+      accountId,
+      chatId,
+      '**Gruppo associato a Memora.**\n\nIl topic General è la sessione predefinita. Usa `/new [titolo]` da General per creare un topic-sessione, `/help` per i comandi.',
+      threadId,
+    );
+  }
+
+  private async handleGroupTopicCreated(
+    accountId: string,
+    chatId: string,
+    userId: string,
+    message: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.groups || !this.sessions) return;
+    const group = this.groups.get(accountId, chatId);
+    if (!group || !group.allowedUsers.includes(userId)) return;
+    const threadId = messageThreadId(message);
+    if (!threadId) return;
+    const creationKey = `${chatId}:${threadId}`;
+    if (this.pendingTopicCreations.delete(creationKey)) return;
+    if (this.groups.getTopic(accountId, chatId, threadId)) return;
+    const created = isRecord(message.forum_topic_created) ? message.forum_topic_created : {};
+    const name = typeof created.name === 'string' ? normalizeTitle(created.name) : '';
+    const title = name || `Topic ${threadId}`;
+    let sessionId: string;
+    try {
+      sessionId = await this.createGroupSession(group, accountId);
+    } catch (error) {
+      this.log('telegram_group_topic_session_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(accountId, chatId, '⚠️ Topic creato, ma non è stato possibile creare la sessione. Riprova a scrivere qui.', threadId);
+      return;
+    }
+    try {
+      await this.groups.putTopic(accountId, chatId, { threadId, sessionId, title, titleSource: 'manual' });
+    } catch (error) {
+      this.log('telegram_group_topic_bind_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(accountId, chatId, '⚠️ Non è stato possibile collegare il topic alla sessione.', threadId);
+      return;
+    }
+    if (name) this.pendingTitles.set(sessionId, name);
+    await this.safeReply(accountId, chatId, '✅ **Topic collegato a Memora.**\nScrivi qui per continuare la sessione.', threadId);
+  }
+
+  private async handleGroupCommand(context: GroupContext, name: string, args: string): Promise<void> {
+    switch (name) {
+      case 'start':
+        await this.safeReply(
+          context.accountId,
+          context.chatId,
+          'Questo gruppo è già associato a Memora. Usa `/help` per i comandi disponibili.',
+          context.threadId,
+        );
+        return;
+      case 'ping':
+        await this.safeReply(context.accountId, context.chatId, '🏓 pong', context.threadId);
+        return;
+      case 'help':
+        await this.groupShowHelp(context);
+        return;
+      case 'status':
+        await this.groupShowStatus(context);
+        return;
+      case 'new':
+        await this.groupNewTopic(context, args);
+        return;
+      case 'sessions':
+        await this.groupShowSessions(context);
+        return;
+      case 'switch':
+        await this.groupSwitch(context, args);
+        return;
+      case 'current':
+        await this.groupShowCurrent(context);
+        return;
+      case 'rename':
+        await this.groupRename(context, args);
+        return;
+      case 'stop':
+        await this.groupStop(context);
+        return;
+      default:
+        await this.safeReply(
+          context.accountId,
+          context.chatId,
+          'Comando non riconosciuto. Usa `/help` per i comandi disponibili.',
+          context.threadId,
+        );
+    }
+  }
+
+  private async handleGroupMessage(
+    context: GroupContext,
+    message: Record<string, unknown>,
+    text: string,
+  ): Promise<void> {
+    if (!this.turns || !this.sessions) {
+      await this.safeReply(context.accountId, context.chatId, 'La conversazione Telegram non è ancora disponibile.', context.threadId);
+      return;
+    }
+
+    const incoming = attachmentFromMessage(message);
+    if (incoming.kind === 'unsupported') {
+      await this.safeReply(
+        context.accountId,
+        context.chatId,
+        incoming.reason === 'media'
+          ? 'Per ora supporto foto, PDF, DOCX e file di testo. Vocali, video e sticker non sono ancora supportati.'
+          : 'Formato non supportato. Sono supportati PDF, DOCX, testo e immagini.',
+        context.threadId,
+      );
+      return;
+    }
+    if (incoming.kind === 'ok' && incoming.size !== undefined && incoming.size > MAX_INBOUND_ATTACHMENT_BYTES) {
+      await this.safeReply(context.accountId, context.chatId, 'L’allegato supera il limite di 15 MB.', context.threadId);
+      return;
+    }
+    if (incoming.kind === 'none' && !text.trim()) {
+      // Messaggi di servizio del forum (topic chiuso, messaggio fissato, ecc.).
+      return;
+    }
+
+    let downloaded: Buffer | undefined;
+    if (incoming.kind === 'ok') {
+      if (!this.attachments || !this.telegram.getFile || !this.telegram.downloadFile) {
+        await this.safeReply(context.accountId, context.chatId, 'Gli allegati da Telegram non sono disponibili in questo momento.', context.threadId);
+        return;
+      }
+      try {
+        const file = await this.telegram.getFile(incoming.fileId, context.accountId);
+        if (file.size !== undefined && file.size > MAX_INBOUND_ATTACHMENT_BYTES) {
+          await this.safeReply(context.accountId, context.chatId, 'L’allegato supera il limite di 15 MB.', context.threadId);
+          return;
+        }
+        downloaded = await this.telegram.downloadFile(file.filePath, context.accountId, MAX_INBOUND_ATTACHMENT_BYTES);
+      } catch (error) {
+        this.log('telegram_attachment_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+        await this.safeReply(context.accountId, context.chatId, attachmentErrorMessage(error), context.threadId);
+        return;
+      }
+    }
+
+    let active: { sessionId: string; notice?: string };
+    try {
+      active = await this.ensureGroupSession(context);
+    } catch (error) {
+      this.log('telegram_turn_start_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(context.accountId, context.chatId, '⚠️ Non è stato possibile avviare la risposta. Riprova tra poco.', context.threadId);
+      return;
+    }
+    if (active.notice) await this.safeReply(context.accountId, context.chatId, active.notice, context.threadId);
+
+    const contexts: ChatAttachmentContext[] = [];
+    if (incoming.kind === 'ok' && downloaded) {
+      try {
+        const saved = await this.attachments!.save(active.sessionId, { filename: incoming.filename, data: downloaded });
+        contexts.push(await this.attachments!.toModelContext({ ...saved, buffer: downloaded }));
+      } catch (error) {
+        this.log('telegram_attachment_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+        await this.safeReply(context.accountId, context.chatId, attachmentErrorMessage(error), context.threadId);
+        return;
+      }
+    }
+
+    const prompt = text.trim() || (incoming.kind === 'ok'
+      ? (incoming.isImage ? 'Descrivi l’immagine allegata.' : 'Analizza il documento allegato.')
+      : '');
+    if (!prompt) {
+      await this.safeReply(context.accountId, context.chatId, 'Il messaggio non contiene testo o allegati supportati.', context.threadId);
+      return;
+    }
+
+    try {
+      const turn = this.turns.startTelegram(active.sessionId, prompt, contexts);
+      await this.markGroupPendingTurn(context, active.sessionId, turn.turnId);
+      this.attachTurn(context.accountId, context.chatId, context.userId, active.sessionId, turn, {
+        ...(context.threadId ? { threadId: context.threadId } : {}),
+        group: true,
+      });
+    } catch (error) {
+      this.log('telegram_turn_start_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(context.accountId, context.chatId, '⚠️ Non è stato possibile avviare la risposta. Riprova tra poco.', context.threadId);
+    }
+  }
+
+  private async ensureGroupSession(context: GroupContext): Promise<{ sessionId: string; notice?: string }> {
+    if (!this.sessions || !this.groups) throw new Error('sessions_unavailable');
+    const group = this.groups.get(context.accountId, context.chatId);
+    if (!group) throw new Error('group_not_found');
+
+    if (context.threadId) {
+      const topic = this.groups.getTopic(context.accountId, context.chatId, context.threadId);
+      if (topic) {
+        if (!(await this.sessions.hasSession(topic.sessionId))) {
+          const created = await this.createGroupSession(group, context.accountId);
+          await this.groups.putTopic(context.accountId, context.chatId, {
+            threadId: context.threadId,
+            sessionId: created,
+            title: topic.title,
+            titleSource: topic.titleSource,
+          });
+          return { sessionId: created, notice: 'ℹ️ La sessione precedente non esiste più; ne ho aperta una nuova in questo topic.' };
+        }
+        const archived = this.sessions.getSessionArchived ? await this.sessions.getSessionArchived(topic.sessionId) : false;
+        if (archived) {
+          const created = await this.createGroupSession(group, context.accountId);
+          await this.groups.putTopic(context.accountId, context.chatId, {
+            threadId: context.threadId,
+            sessionId: created,
+            title: topic.title,
+            titleSource: topic.titleSource,
+          });
+          return { sessionId: created, notice: 'ℹ️ La sessione precedente era archiviata; ne ho aperta una nuova in questo topic.' };
+        }
+        await this.sessions.resumeSession(topic.sessionId);
+        return { sessionId: topic.sessionId };
+      }
+
+      const created = await this.createGroupSession(group, context.accountId);
+      await this.groups.putTopic(context.accountId, context.chatId, {
+        threadId: context.threadId,
+        sessionId: created,
+        title: `Topic ${context.threadId}`,
+        titleSource: 'manual',
+      });
+      return { sessionId: created };
+    }
+
+    if (group.generalSessionId) {
+      if (!(await this.sessions.hasSession(group.generalSessionId))) {
+        const created = await this.createGroupSession(group, context.accountId);
+        await this.groups.setGeneralSession(context.accountId, context.chatId, created);
+        return { sessionId: created, notice: 'ℹ️ La sessione General non esiste più; ne ho aperta una nuova.' };
+      }
+      const archived = this.sessions.getSessionArchived ? await this.sessions.getSessionArchived(group.generalSessionId) : false;
+      if (archived) {
+        const created = await this.createGroupSession(group, context.accountId);
+        await this.groups.setGeneralSession(context.accountId, context.chatId, created);
+        return { sessionId: created, notice: 'ℹ️ La sessione General era archiviata; ne ho aperta una nuova.' };
+      }
+      await this.sessions.resumeSession(group.generalSessionId);
+      return { sessionId: group.generalSessionId };
+    }
+
+    const created = await this.createGroupSession(group, context.accountId);
+    await this.groups.setGeneralSession(context.accountId, context.chatId, created);
+    return { sessionId: created };
+  }
+
+  private async createGroupSession(group: TelegramGroup, accountId?: string): Promise<string> {
+    if (!this.sessions) throw new Error('sessions_unavailable');
+    const settings = accountId ? this.bindings.get(accountId).settings : undefined;
+    const created = await this.sessions.createSession(
+      undefined,
+      undefined,
+      undefined,
+      group.defaultProjectId ?? settings?.defaultProjectId ?? undefined,
+      group.defaultAgentProfileId ?? settings?.defaultAgentProfileId ?? undefined,
+      { autoTitle: true },
+    );
+    return created.sessionId;
+  }
+
+  private async markGroupPendingTurn(context: GroupContext, sessionId: string, turnId: string): Promise<void> {
+    if (!this.groups) return;
+    try {
+      if (context.threadId) {
+        const topic = this.groups.getTopic(context.accountId, context.chatId, context.threadId);
+        if (topic?.sessionId === sessionId) {
+          await this.groups.updateTopicTurn(context.accountId, context.chatId, context.threadId, {
+            lastTurnId: turnId,
+            pendingTurnId: turnId,
+          });
+        }
+      } else {
+        const group = this.groups.get(context.accountId, context.chatId);
+        if (group?.generalSessionId === sessionId) {
+          await this.groups.updateGeneralTurn(context.accountId, context.chatId, {
+            lastTurnId: turnId,
+            pendingTurnId: turnId,
+          });
+        }
+      }
+    } catch (error) {
+      this.log('telegram_pending_turn_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+    }
+  }
+
+  private groupSession(context: GroupContext): { sessionId: string; topic?: TelegramTopicBinding } | null {
+    if (!this.groups) return null;
+    const group = this.groups.get(context.accountId, context.chatId);
+    if (!group) return null;
+    if (context.threadId) {
+      const topic = group.topics[context.threadId];
+      return topic ? { sessionId: topic.sessionId, topic } : null;
+    }
+    return group.generalSessionId ? { sessionId: group.generalSessionId } : null;
+  }
+
+  private async groupShowHelp(context: GroupContext): Promise<void> {
+    await this.safeReply(context.accountId, context.chatId, [
+      '**Comandi del gruppo**',
+      '',
+      '/new [titolo] — crea un topic e una sessione (solo da General)',
+      '/sessions — elenca le sessioni del gruppo',
+      '/switch N — apre il topic della sessione N',
+      '/current — sessione di questo topic',
+      '/rename Titolo — rinomina sessione e topic',
+      '/stop — interrompe la risposta',
+      '/status — stato del gruppo',
+      '/ping — verifica il canale',
+      '/help — questo elenco',
+    ].join('\n'), context.threadId);
+  }
+
+  private async groupShowStatus(context: GroupContext): Promise<void> {
+    const group = this.groups?.get(context.accountId, context.chatId) ?? context.group;
+    const status = this.getStatus(context.accountId);
+    const current = this.groupSession(context);
+    const active = current && this.turns ? this.turns.getCurrent(current.sessionId) : null;
+    const topicCount = Object.keys(group.topics).length;
+    const label = context.threadId ? current?.topic?.title ?? `Topic ${context.threadId}` : 'General';
+    await this.safeSendHtml(context.accountId, context.chatId, [
+      '<b>Memora · Gruppo Telegram</b>',
+      '',
+      `Gruppo: ${escapeTelegramHtml(group.title)}`,
+      `Forum: ${group.isForum ? 'sì' : 'no'}`,
+      `Canale: ${status.enabled ? 'abilitato' : 'disabilitato'} (${escapeTelegramHtml(status.status)})`,
+      `Utenti autorizzati: ${group.allowedUsers.length}`,
+      `Topic collegati: ${topicCount}`,
+      `General: ${group.generalSessionId ? 'attivo' : 'non ancora avviato'}`,
+      `Contesto: ${escapeTelegramHtml(label)}`,
+      `Sessione: ${current ? `<code>${escapeTelegramHtml(current.sessionId.slice(0, 20))}…</code>` : 'nessuna'}`,
+      ...(active && (active.status === 'running' || active.status === 'queued') ? [`Turno: ${escapeTelegramHtml(active.status)}`] : []),
+    ].join('\n'), context.threadId);
+  }
+
+  private async groupNewTopic(context: GroupContext, args: string): Promise<void> {
+    if (context.threadId) {
+      await this.safeReply(
+        context.accountId,
+        context.chatId,
+        'Crea nuove sessioni da **General** con `/new [titolo]`; questo topic è già collegato a una sessione.',
+        context.threadId,
+      );
+      return;
+    }
+    if (!this.sessions || !this.groups || !this.telegram.createForumTopic) {
+      await this.safeReply(context.accountId, context.chatId, 'La creazione dei topic non è disponibile in questo momento.', context.threadId);
+      return;
+    }
+    const requestedTitle = normalizeTitle(args);
+    const title = requestedTitle || 'Nuova sessione';
+    let topic: TelegramForumTopic;
+    try {
+      topic = await this.telegram.createForumTopic(context.chatId, title, context.accountId);
+    } catch (error) {
+      this.log('telegram_topic_create_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(
+        context.accountId,
+        context.chatId,
+        '⚠️ Non è stato possibile creare il topic. Verifica che il bot sia amministratore con **Manage Topics**.',
+        context.threadId,
+      );
+      return;
+    }
+    const threadId = /^\d{1,20}$/.test(topic.threadId) && topic.threadId !== '0' ? topic.threadId : '';
+    if (!threadId) {
+      await this.safeReply(context.accountId, context.chatId, '⚠️ Telegram ha restituito un topic non valido.', context.threadId);
+      return;
+    }
+    const creationKey = `${context.chatId}:${threadId}`;
+    this.pendingTopicCreations.add(creationKey);
+    try {
+      let sessionId: string;
+      try {
+        sessionId = await this.createGroupSession(context.group, context.accountId);
+      } catch (error) {
+        this.log('telegram_group_topic_session_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+        await this.safeReply(context.accountId, context.chatId, '⚠️ Topic creato, ma non è stato possibile creare la sessione. Scrivi nel topic per riprovare.', context.threadId);
+        return;
+      }
+      try {
+        await this.groups.putTopic(context.accountId, context.chatId, {
+          threadId,
+          sessionId,
+          title: topic.name || title,
+          titleSource: 'manual',
+        });
+      } catch (error) {
+        this.log('telegram_group_topic_bind_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+        await this.safeReply(context.accountId, context.chatId, '⚠️ Topic creato, ma non è stato possibile collegarlo alla sessione.', context.threadId);
+        return;
+      }
+      if (requestedTitle) this.pendingTitles.set(sessionId, requestedTitle);
+    } finally {
+      this.pendingTopicCreations.delete(creationKey);
+    }
+    const link = groupLink(context.chatId, threadId);
+    await this.safeSendHtml(
+      context.accountId,
+      context.chatId,
+      `<b>Topic creato</b>\n<a href="${link}">${escapeTelegramHtml(topic.name || title)}</a>\nScrivi nel topic per iniziare.`,
+      context.threadId,
+    );
+  }
+
+  private async groupShowSessions(context: GroupContext): Promise<void> {
+    if (!this.groups) return;
+    const group = this.groups.get(context.accountId, context.chatId);
+    if (!group) return;
+    const entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean }> = [];
+    if (group.generalSessionId) {
+      entries.push({ sessionId: group.generalSessionId, title: 'General', general: true });
+    }
+    for (const topic of Object.values(group.topics).sort((a, b) => a.createdAt - b.createdAt)) {
+      entries.push({ sessionId: topic.sessionId, title: topic.title, threadId: topic.threadId, general: false });
+    }
+    this.groupChoices.set(`${context.accountId}:${context.chatId}`, { at: this.now(), entries });
+    if (entries.length === 0) {
+      await this.safeReply(
+        context.accountId,
+        context.chatId,
+        'Nessuna sessione nel gruppo. Scrivi in General oppure usa `/new` da General.',
+        context.threadId,
+      );
+      return;
+    }
+    const lines = ['<b>Sessioni del gruppo</b>', ''];
+    entries.forEach((entry, index) => {
+      const marker = context.threadId
+        ? entry.threadId === context.threadId ? '▸ ' : ''
+        : entry.general ? '▸ ' : '';
+      const link = entry.threadId ? ` · <a href="${groupLink(context.chatId, entry.threadId)}">apri</a>` : '';
+      lines.push(`${index + 1}. ${marker}<b>${escapeTelegramHtml(entry.title)}</b>${link}`);
+    });
+    lines.push('', 'Usa <code>/switch N</code> per aprire il topic di una sessione.');
+    await this.safeSendHtml(context.accountId, context.chatId, lines.join('\n'), context.threadId);
+  }
+
+  private async groupSwitch(context: GroupContext, args: string): Promise<void> {
+    const choice = this.groupChoices.get(`${context.accountId}:${context.chatId}`);
+    const index = Number(args.trim());
+    if (!choice || this.now() - choice.at > SESSION_CHOICE_TTL_MS || !Number.isSafeInteger(index) || index < 1 || index > choice.entries.length) {
+      await this.safeReply(context.accountId, context.chatId, 'Usa `/sessions` e poi `/switch N` con un numero valido.', context.threadId);
+      return;
+    }
+    const selected = choice.entries[index - 1];
+    if (!selected) {
+      await this.safeReply(context.accountId, context.chatId, 'Sessione non valida.', context.threadId);
+      return;
+    }
+    if (selected.threadId) {
+      await this.safeSendHtml(
+        context.accountId,
+        context.chatId,
+        `<b>Apri il topic</b>\n<a href="${groupLink(context.chatId, selected.threadId)}">${escapeTelegramHtml(selected.title)}</a>`,
+        context.threadId,
+      );
+      return;
+    }
+    await this.safeReply(
+      context.accountId,
+      context.chatId,
+      'General è la sessione predefinita del gruppo. Scrivi in General per continuarla.',
+      context.threadId,
+    );
+  }
+
+  private async groupShowCurrent(context: GroupContext): Promise<void> {
+    if (!this.sessions) {
+      await this.safeReply(context.accountId, context.chatId, 'La conversazione Telegram non è ancora disponibile.', context.threadId);
+      return;
+    }
+    const current = this.groupSession(context);
+    if (!current) {
+      await this.safeReply(
+        context.accountId,
+        context.chatId,
+        context.threadId ? 'Questo topic non è ancora collegato a una sessione. Scrivi un messaggio per crearlo.' : 'General non ha ancora una sessione. Scrivi un messaggio per crearla.',
+        context.threadId,
+      );
+      return;
+    }
+    try {
+      const list = await this.sessions.listSessions(false, true);
+      const session = list.find(item => item.sessionId === current.sessionId);
+      if (!session) {
+        await this.safeReply(context.accountId, context.chatId, 'La sessione collegata non esiste più. Scrivi un messaggio per crearne una nuova.', context.threadId);
+        return;
+      }
+      if (session.archived) {
+        await this.safeReply(context.accountId, context.chatId, 'La sessione collegata è archiviata. Scrivi un messaggio per crearne una nuova.', context.threadId);
+        return;
+      }
+      await this.safeSendHtml(context.accountId, context.chatId, [
+        '<b>Sessione corrente</b>',
+        escapeTelegramHtml(sessionTitle(session)),
+        `${session.messageCount} messaggi`,
+        `Topic: ${escapeTelegramHtml(context.threadId ? current.topic?.title ?? `Topic ${context.threadId}` : 'General')}`,
+        ...(session.projectId ? [`Progetto: ${escapeTelegramHtml(session.projectId)}`] : []),
+      ].join('\n'), context.threadId);
+    } catch (error) {
+      this.log('telegram_current_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(context.accountId, context.chatId, '⚠️ Non è stato possibile leggere la sessione corrente.', context.threadId);
+    }
+  }
+
+  private async groupRename(context: GroupContext, args: string): Promise<void> {
+    if (!this.sessions) {
+      await this.safeReply(context.accountId, context.chatId, 'La conversazione Telegram non è ancora disponibile.', context.threadId);
+      return;
+    }
+    const title = normalizeTitle(args);
+    if (!title) {
+      await this.safeReply(context.accountId, context.chatId, 'Uso: `/rename Titolo della sessione`', context.threadId);
+      return;
+    }
+    const current = this.groupSession(context);
+    if (!current) {
+      await this.safeReply(context.accountId, context.chatId, 'Nessuna sessione in questo contesto. Scrivi un messaggio oppure usa `/new` da General.', context.threadId);
+      return;
+    }
+    let renamed = false;
+    try {
+      await this.sessions.renameSession(current.sessionId, title);
+      this.pendingTitles.delete(current.sessionId);
+      renamed = true;
+    } catch (error) {
+      if (errorCode(error) === 'session_not_persisted') {
+        this.pendingTitles.set(current.sessionId, title);
+      } else {
+        this.log('telegram_rename_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+        await this.safeReply(context.accountId, context.chatId, '⚠️ Non è stato possibile rinominare la sessione.', context.threadId);
+        return;
+      }
+    }
+
+    let topicUpdated = true;
+    if (context.threadId) {
+      if (this.telegram.editForumTopic) {
+        try {
+          await this.telegram.editForumTopic(context.chatId, Number(context.threadId), title, context.accountId);
+        } catch (error) {
+          topicUpdated = false;
+          this.log('telegram_topic_rename_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+        }
+      } else {
+        topicUpdated = false;
+      }
+      if (topicUpdated && this.groups) {
+        await this.groups.updateTopicTitle(context.accountId, context.chatId, context.threadId, title).catch(() => undefined);
+      }
+    }
+    await this.safeSendHtml(
+      context.accountId,
+      context.chatId,
+      renamed
+        ? `<b>${context.threadId ? 'Sessione e topic rinominati' : 'Sessione rinominata'}</b>\n${escapeTelegramHtml(title)}${topicUpdated ? '' : '\n\nIl titolo del topic non è stato aggiornato: verifica i permessi del bot.'}`
+        : `<b>Titolo in attesa</b>\n${escapeTelegramHtml(title)}\nVerrà applicato dopo il primo messaggio.`,
+      context.threadId,
+    );
+  }
+
+  private async groupStop(context: GroupContext): Promise<void> {
+    if (!this.turns) {
+      await this.safeReply(context.accountId, context.chatId, 'La conversazione Telegram non è ancora disponibile.', context.threadId);
+      return;
+    }
+    const current = this.groupSession(context);
+    if (!current) {
+      await this.safeReply(context.accountId, context.chatId, 'Nessuna risposta in corso.', context.threadId);
+      return;
+    }
+    const turn = this.turns.getCurrent(current.sessionId);
+    if (!turn || (turn.status !== 'running' && turn.status !== 'queued')) {
+      await this.safeReply(context.accountId, context.chatId, 'Nessuna risposta in corso.', context.threadId);
+      return;
+    }
+    const owned = this.bridges.has(turn.turnId);
+    try {
+      const aborted = await this.turns.abortSession(current.sessionId);
+      if (!aborted) {
+        await this.safeReply(context.accountId, context.chatId, 'Nessuna risposta in corso.', context.threadId);
+        return;
+      }
+      if (!owned) await this.safeReply(context.accountId, context.chatId, '⏹ Interruzione richiesta.', context.threadId);
+    } catch (error) {
+      this.log('telegram_stop_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+      await this.safeReply(context.accountId, context.chatId, '⚠️ Non è stato possibile interrompere la risposta.', context.threadId);
     }
   }
 
@@ -814,6 +1698,21 @@ export class TelegramInboundService {
 
   private async clearPendingTurn(bridge: TurnBridge): Promise<void> {
     try {
+      if (bridge.group) {
+        if (!this.groups) return;
+        if (bridge.threadId) {
+          const topic = this.groups.getTopic(bridge.accountId, bridge.chatId, bridge.threadId);
+          if (topic?.sessionId === bridge.sessionId && topic.pendingTurnId === bridge.turnId) {
+            await this.groups.updateTopicTurn(bridge.accountId, bridge.chatId, bridge.threadId, { pendingTurnId: null });
+          }
+        } else {
+          const group = this.groups.get(bridge.accountId, bridge.chatId);
+          if (group?.generalSessionId === bridge.sessionId && group.generalPendingTurnId === bridge.turnId) {
+            await this.groups.updateGeneralTurn(bridge.accountId, bridge.chatId, { pendingTurnId: null });
+          }
+        }
+        return;
+      }
       const binding = this.bindings.getBinding(bridge.accountId, bridge.userId);
       if (binding?.sessionId === bridge.sessionId && binding.pendingTurnId === bridge.turnId) {
         await this.bindings.updateBinding(bridge.accountId, bridge.userId, { pendingTurnId: null });
@@ -867,12 +1766,21 @@ export class TelegramInboundService {
     return { sessionId: binding.sessionId };
   }
 
-  private attachTurn(accountId: string, chatId: string, userId: string, sessionId: string, turn: TelegramInboundTurnInfo): void {
+  private attachTurn(
+    accountId: string,
+    chatId: string,
+    userId: string,
+    sessionId: string,
+    turn: TelegramInboundTurnInfo,
+    options: { threadId?: string; group?: boolean } = {},
+  ): void {
     if (!this.turns) return;
     const bridge: TurnBridge = {
       accountId,
       chatId,
       userId,
+      group: options.group === true,
+      ...(options.threadId ? { threadId: options.threadId } : {}),
       sessionId,
       turnId: turn.turnId,
       startedAt: turn.createdAt,
@@ -902,7 +1810,7 @@ export class TelegramInboundService {
             bridge.queuedTimer = null;
             if (bridge.finished || bridge.running || bridge.queuedNotified) return;
             bridge.queuedNotified = true;
-            void this.safeReply(accountId, chatId, '⏳ In coda…');
+            void this.safeReply(accountId, chatId, '⏳ In coda…', bridge.threadId);
           }, 2_000);
           bridge.queuedTimer.unref?.();
         } else if (status === 'running') {
@@ -926,7 +1834,9 @@ export class TelegramInboundService {
   private startTyping(bridge: TurnBridge): void {
     if (bridge.finished || bridge.typingTimer) return;
     const tick = (): void => {
-      void this.telegram.sendChatAction?.(bridge.chatId, 'typing', bridge.accountId).catch(() => undefined);
+      void this.telegram.sendChatAction?.(bridge.chatId, 'typing', bridge.accountId, {
+        ...(threadNumber(bridge.threadId) ? { messageThreadId: threadNumber(bridge.threadId) } : {}),
+      }).catch(() => undefined);
     };
     tick();
     const timer = setInterval(tick, TYPING_INTERVAL_MS);
@@ -961,13 +1871,13 @@ export class TelegramInboundService {
 
       const status = typeof payload.status === 'string' ? payload.status : 'failed';
       if (status === 'aborted') {
-        await this.safeReply(bridge.accountId, bridge.chatId, '⏹ Risposta interrotta.');
+        await this.safeReply(bridge.accountId, bridge.chatId, '⏹ Risposta interrotta.', bridge.threadId);
         return;
       }
       if (status === 'failed' || status === 'interrupted') {
         const error = this.turns?.getTurn(bridge.turnId)?.error;
         const detail = error ? `\n\n${escapeTelegramHtml(error)}` : '';
-        await this.safeSendHtml(bridge.accountId, bridge.chatId, `<b>⚠️ Risposta non completata</b>${detail}`);
+        await this.safeSendHtml(bridge.accountId, bridge.chatId, `<b>⚠️ Risposta non completata</b>${detail}`, bridge.threadId);
         return;
       }
 
@@ -979,7 +1889,7 @@ export class TelegramInboundService {
           this.log('telegram_final_text_failed', { accountId: bridge.accountId, code: errorCode(error) ?? 'internal' });
         }
       }
-      const sent = await this.safeReply(bridge.accountId, bridge.chatId, text || 'Risposta completata senza testo.');
+      const sent = await this.safeReply(bridge.accountId, bridge.chatId, text || 'Risposta completata senza testo.', bridge.threadId);
       const documents = await this.sendTurnArtifacts(bridge);
 
       const pendingTitle = this.pendingTitles.get(bridge.sessionId);
@@ -1023,7 +1933,9 @@ export class TelegramInboundService {
             filename: full.name,
             mimeType: full.mimeType,
             buffer: full.buffer,
-          }, bridge.accountId);
+          }, bridge.accountId, {
+            ...(threadNumber(bridge.threadId) ? { messageThreadId: threadNumber(bridge.threadId) } : {}),
+          });
           sent += 1;
         } catch (error) {
           this.log('telegram_artifact_send_failed', { accountId: bridge.accountId, artifactId: artifact.id, code: errorCode(error) ?? 'internal' });
@@ -1302,16 +2214,22 @@ export class TelegramInboundService {
     );
   }
 
-  private async safeReply(accountId: string, chatId: string, markdown: string): Promise<boolean> {
+  private async safeReply(accountId: string, chatId: string, markdown: string, threadId?: string): Promise<boolean> {
     try {
       const prepared = prepareTelegramReply(markdown);
+      const messageThreadId = threadNumber(threadId);
       let sent = false;
       for (const chunk of prepared.chunks) {
-        await this.telegram.sendTo(chatId, chunk, accountId, { parseMode: 'HTML' });
+        await this.telegram.sendTo(chatId, chunk, accountId, {
+          parseMode: 'HTML',
+          ...(messageThreadId ? { messageThreadId } : {}),
+        });
         sent = true;
       }
       if (prepared.document) {
-        await this.telegram.sendDocumentTo(chatId, prepared.document, accountId);
+        await this.telegram.sendDocumentTo(chatId, prepared.document, accountId, {
+          ...(messageThreadId ? { messageThreadId } : {}),
+        });
         sent = true;
       }
       return sent;
@@ -1324,12 +2242,16 @@ export class TelegramInboundService {
     }
   }
 
-  private async safeSendHtml(accountId: string, chatId: string, html: string): Promise<boolean> {
+  private async safeSendHtml(accountId: string, chatId: string, html: string, threadId?: string): Promise<boolean> {
     try {
       const chunks = splitTelegramHtml(html);
+      const messageThreadId = threadNumber(threadId);
       let sent = false;
       for (const chunk of chunks) {
-        await this.telegram.sendTo(chatId, chunk, accountId, { parseMode: 'HTML' });
+        await this.telegram.sendTo(chatId, chunk, accountId, {
+          parseMode: 'HTML',
+          ...(messageThreadId ? { messageThreadId } : {}),
+        });
         sent = true;
       }
       return sent;
@@ -1357,6 +2279,7 @@ export class TelegramInboundService {
       label: label.slice(0, 120),
       type: typeof chat.type === 'string' ? chat.type : 'unknown',
       ...(username ? { username } : {}),
+      ...(chat.is_forum === true ? { isForum: true } : {}),
     });
     while (chats.size > MAX_OBSERVED_CHATS) {
       const oldest = chats.keys().next().value;

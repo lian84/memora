@@ -192,6 +192,11 @@ export class TelegramGroupStore {
       throw new TelegramGroupError('invalid_telegram_group_users', 'La allowlist del gruppo non è valida');
     }
     const now = this.now();
+    const generalSessionId = input.generalSessionId === null
+      ? undefined
+      : input.generalSessionId !== undefined
+        ? validSessionId(input.generalSessionId)
+        : existing?.generalSessionId;
     const group: TelegramGroup = {
       chatId,
       title: validTitle(input.title, existing?.title ?? 'Memora', 255),
@@ -205,13 +210,13 @@ export class TelegramGroupStore {
       defaultAgentProfileId: input.defaultAgentProfileId === undefined
         ? existing?.defaultAgentProfileId ?? null
         : validOptionalSlug(input.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido'),
-      ...(input.generalSessionId === null
-        ? {}
-        : input.generalSessionId !== undefined
-          ? { generalSessionId: validSessionId(input.generalSessionId) }
-          : existing?.generalSessionId
-            ? { generalSessionId: existing.generalSessionId }
-            : {}),
+      ...(generalSessionId ? { generalSessionId } : {}),
+      ...(generalSessionId && existing?.generalSessionId === generalSessionId && existing.generalLastTurnId
+        ? { generalLastTurnId: existing.generalLastTurnId }
+        : {}),
+      ...(generalSessionId && existing?.generalSessionId === generalSessionId && existing.generalPendingTurnId
+        ? { generalPendingTurnId: existing.generalPendingTurnId }
+        : {}),
       topics: existing?.topics ?? {},
     };
     groups.set(chatId, group);
@@ -240,8 +245,35 @@ export class TelegramGroupStore {
 
   async setGeneralSession(accountId: string, chatId: string, sessionId: string | null): Promise<TelegramGroup> {
     const group = this.requireGroup(accountId, chatId);
-    if (sessionId === null) delete group.generalSessionId;
-    else group.generalSessionId = validSessionId(sessionId);
+    const next = sessionId === null ? undefined : validSessionId(sessionId);
+    if (next !== group.generalSessionId) {
+      delete group.generalLastTurnId;
+      delete group.generalPendingTurnId;
+    }
+    if (next === undefined) delete group.generalSessionId;
+    else group.generalSessionId = next;
+    group.updatedAt = this.now();
+    await this.persist();
+    return copyGroup(group);
+  }
+
+  async updateGeneralTurn(accountId: string, chatId: string, patch: {
+    lastTurnId?: string;
+    pendingTurnId?: string | null;
+  }): Promise<TelegramGroup> {
+    const group = this.requireGroup(accountId, chatId);
+    if (!group.generalSessionId) throw new TelegramGroupError('telegram_general_not_found', 'Sessione General non trovata', 404);
+    if (patch.lastTurnId !== undefined) {
+      if (!TURN_ID_PATTERN.test(patch.lastTurnId)) throw new TelegramGroupError('invalid_telegram_turn', 'ID turno Telegram non valido');
+      group.generalLastTurnId = patch.lastTurnId;
+    }
+    if (patch.pendingTurnId !== undefined) {
+      if (patch.pendingTurnId !== null && !TURN_ID_PATTERN.test(patch.pendingTurnId)) {
+        throw new TelegramGroupError('invalid_telegram_turn', 'ID turno Telegram non valido');
+      }
+      if (patch.pendingTurnId === null) delete group.generalPendingTurnId;
+      else group.generalPendingTurnId = patch.pendingTurnId;
+    }
     group.updatedAt = this.now();
     await this.persist();
     return copyGroup(group);
@@ -305,6 +337,19 @@ export class TelegramGroupStore {
     return copyTopic(topic);
   }
 
+  async updateTopicTitle(accountId: string, chatId: string, threadId: string, title: string): Promise<TelegramTopicBinding | undefined> {
+    const group = this.requireGroup(accountId, chatId);
+    const id = validThreadId(threadId);
+    const topic = group.topics[id];
+    if (!topic) return undefined;
+    topic.title = validTitle(title, topic.title);
+    topic.titleSource = 'manual';
+    topic.updatedAt = this.now();
+    group.updatedAt = topic.updatedAt;
+    await this.persist();
+    return copyTopic(topic);
+  }
+
   async removeTopic(accountId: string, chatId: string, threadId: string): Promise<boolean> {
     const group = this.requireGroup(accountId, chatId);
     const id = validThreadId(threadId);
@@ -324,6 +369,8 @@ export class TelegramGroupStore {
         let changed = false;
         if (group.generalSessionId === id) {
           delete group.generalSessionId;
+          delete group.generalLastTurnId;
+          delete group.generalPendingTurnId;
           changed = true;
           removed += 1;
         }
@@ -405,6 +452,8 @@ export class TelegramGroupStore {
         defaultProjectId: validOptionalSlug(value.defaultProjectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido'),
         defaultAgentProfileId: validOptionalSlug(value.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido'),
         ...(generalSessionId ? { generalSessionId } : {}),
+        ...(typeof value.generalLastTurnId === 'string' && TURN_ID_PATTERN.test(value.generalLastTurnId) ? { generalLastTurnId: value.generalLastTurnId } : {}),
+        ...(typeof value.generalPendingTurnId === 'string' && TURN_ID_PATTERN.test(value.generalPendingTurnId) ? { generalPendingTurnId: value.generalPendingTurnId } : {}),
         topics,
       };
     } catch {
