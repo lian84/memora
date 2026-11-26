@@ -8,6 +8,7 @@ import { AutomationScheduleError } from './automation-schedule.js';
 import { TelegramError, type TelegramService, type TelegramStore } from './telegram.js';
 import type { TelegramInboundService } from './telegram-inbound.js';
 import type { TelegramMirrorService } from './telegram-mirror.js';
+import type { TelegramGroupStore } from './telegram-groups.js';
 
 export interface AutomationRoutesDeps {
   store: AutomationStore;
@@ -17,6 +18,7 @@ export interface AutomationRoutesDeps {
   /** Canale in ingresso; assente nei test che non lo esercitano. */
   inbound?: TelegramInboundService;
   mirror?: TelegramMirrorService;
+  groups?: TelegramGroupStore;
   log: (event: string, details?: Record<string, unknown>) => void;
 }
 
@@ -117,6 +119,11 @@ export function registerAutomationRoutes(app: FastifyInstance, deps: AutomationR
       if (deps.mirror) {
         await deps.mirror.removeAccount(request.params.id).catch(error => {
           deps.log('telegram_mirror_remove_failed', { accountId: request.params.id, error: error instanceof Error ? error.message : String(error) });
+        });
+      }
+      if (deps.groups) {
+        await deps.groups.removeAccount(request.params.id).catch(error => {
+          deps.log('telegram_groups_remove_failed', { accountId: request.params.id, error: error instanceof Error ? error.message : String(error) });
         });
       }
       return reply.send(result);

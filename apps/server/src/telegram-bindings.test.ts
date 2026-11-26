@@ -98,6 +98,22 @@ describe('TelegramBindingStore', () => {
     expect(store.isAllowed(ACCOUNT, '999999')).toBe(false);
   });
 
+  it('separa i codici di pairing privati da quelli di gruppo', async () => {
+    const store = await enabledStore();
+    const groupCode = await store.createPairingCode(ACCOUNT, 'group');
+    await expect(store.pair(ACCOUNT, { code: groupCode.code, userId: '42' })).rejects.toMatchObject({
+      code: 'invalid_telegram_pairing_code',
+    });
+    expect(store.isAllowed(ACCOUNT, '42')).toBe(false);
+    await expect(store.pair(ACCOUNT, { code: groupCode.code, userId: '42', scope: 'group' })).resolves.toMatchObject({ id: '42' });
+
+    const privateCode = await store.createPairingCode(ACCOUNT, 'private');
+    await expect(store.pair(ACCOUNT, { code: privateCode.code, userId: '43', scope: 'group' })).rejects.toMatchObject({
+      code: 'invalid_telegram_pairing_code',
+    });
+    await expect(store.pair(ACCOUNT, { code: privateCode.code, userId: '43', scope: 'private' })).resolves.toMatchObject({ id: '43' });
+  });
+
   it('richiede che il canale sia abilitato per generare un codice', async () => {
     const store = await loadStore(await tempDir());
     await expect(store.createPairingCode(ACCOUNT)).rejects.toMatchObject({ code: 'telegram_inbound_disabled' });

@@ -1,7 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { TelegramAccount, TelegramAccountInput, TelegramAccountView, TelegramChat } from '@memora/shared';
+import type {
+  TelegramAccount,
+  TelegramAccountInput,
+  TelegramAccountView,
+  TelegramChat,
+  TelegramChatInfo,
+  TelegramChatMemberInfo,
+  TelegramForumTopic,
+} from '@memora/shared';
 
 const TELEGRAM_ENV_TOKEN = 'MEMORA_TELEGRAM_BOT_TOKEN';
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
@@ -48,6 +56,23 @@ function validChatId(value: unknown): string {
   if (!trimmed) return '';
   if (!/^-?\d{1,20}$/.test(trimmed)) throw new TelegramError('invalid_telegram_chat_id', 'Il Chat ID Telegram deve essere numerico');
   return trimmed;
+}
+
+function validTopicName(value: unknown): string {
+  if (typeof value !== 'string') throw new TelegramError('invalid_telegram_topic_name', 'Nome topic Telegram non valido');
+  const name = value.replace(/\s+/g, ' ').trim();
+  if (!name || name.length > 128 || hasControlChars(name)) {
+    throw new TelegramError('invalid_telegram_topic_name', 'Nome topic Telegram non valido');
+  }
+  return name;
+}
+
+function validMessageThreadId(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+    throw new TelegramError('invalid_telegram_thread_id', 'ID topic Telegram non valido');
+  }
+  return value;
 }
 
 function validToken(value: unknown): string {
@@ -321,6 +346,11 @@ export interface TelegramCommand {
   description: string;
 }
 
+export interface TelegramMessageOptions {
+  parseMode?: 'HTML';
+  messageThreadId?: number;
+}
+
 export interface TelegramServiceOptions {
   sleep?: (milliseconds: number) => Promise<void>;
   /** Numero di retry aggiuntivi solo per gli errori 429. */
@@ -408,9 +438,10 @@ export function splitTelegramText(text: string, limit = MAX_MESSAGE_LENGTH): str
   return chunks;
 }
 
-async function callTelegramDocument(token: string, document: TelegramDocument, chatId: string, fetchImpl: FetchLike): Promise<void> {
+async function callTelegramDocument(token: string, document: TelegramDocument, chatId: string, fetchImpl: FetchLike, messageThreadId?: number): Promise<void> {
   const form = new FormData();
   form.append('chat_id', chatId);
+  if (messageThreadId !== undefined) form.append('message_thread_id', String(messageThreadId));
   form.append('document', new Blob([new Uint8Array(document.buffer)], { type: document.mimeType }), document.filename);
   let response: Response;
   try {
@@ -488,10 +519,11 @@ export class TelegramService {
     chatId: string,
     text: string,
     accountId?: string,
-    options: { parseMode?: 'HTML' } = {},
+    options: TelegramMessageOptions = {},
   ): Promise<void> {
     const target = this.validTarget(chatId);
     const { token } = this.tokenFor(accountId);
+    const messageThreadId = validMessageThreadId(options.messageThreadId);
     const normalized = text.trim();
     if (!normalized) return;
     await this.request(token, 'sendMessage', {
@@ -499,6 +531,7 @@ export class TelegramService {
       text: normalized,
       disable_web_page_preview: true,
       ...(options.parseMode ? { parse_mode: options.parseMode } : {}),
+      ...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
     });
   }
 
@@ -508,13 +541,14 @@ export class TelegramService {
     messageId: number,
     text: string,
     accountId?: string,
-    options: { parseMode?: 'HTML' } = {},
+    options: TelegramMessageOptions = {},
   ): Promise<void> {
     if (!Number.isSafeInteger(messageId) || messageId <= 0) {
       throw new TelegramError('invalid_telegram_message_id', 'ID messaggio Telegram non valido');
     }
     const target = this.validTarget(chatId);
     const { token } = this.tokenFor(accountId);
+    const messageThreadId = validMessageThreadId(options.messageThreadId);
     const normalized = text.trim();
     if (!normalized) return;
     try {
@@ -524,6 +558,7 @@ export class TelegramService {
         text: normalized,
         disable_web_page_preview: true,
         ...(options.parseMode ? { parse_mode: options.parseMode } : {}),
+        ...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
       });
     } catch (error) {
       if (error instanceof TelegramError && error.code === 'telegram_api_error' && /message is not modified/i.test(error.message)) return;
@@ -531,11 +566,16 @@ export class TelegramService {
     }
   }
 
-  async sendChatAction(chatId: string, action: TelegramChatAction, accountId?: string): Promise<void> {
+  async sendChatAction(chatId: string, action: TelegramChatAction, accountId?: string, options: { messageThreadId?: number } = {}): Promise<void> {
     if (!CHAT_ACTIONS.has(action)) throw new TelegramError('invalid_telegram_action', 'Azione Telegram non valida');
     const target = this.validTarget(chatId);
     const { token } = this.tokenFor(accountId);
-    await this.request(token, 'sendChatAction', { chat_id: target, action });
+    const messageThreadId = validMessageThreadId(options.messageThreadId);
+    await this.request(token, 'sendChatAction', {
+      chat_id: target,
+      action,
+      ...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
+    });
   }
 
   /**
@@ -666,6 +706,80 @@ export class TelegramService {
     };
   }
 
+  async createForumTopic(chatId: string, name: string, accountId?: string): Promise<TelegramForumTopic> {
+    const target = this.validTarget(chatId);
+    const topicName = validTopicName(name);
+    const { token } = this.tokenFor(accountId);
+    const result = await this.request<{ message_thread_id?: number; name?: string }>(token, 'createForumTopic', {
+      chat_id: target,
+      name: topicName,
+    });
+    if (typeof result?.message_thread_id !== 'number' || !Number.isSafeInteger(result.message_thread_id) || result.message_thread_id <= 0) {
+      throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
+    }
+    return { threadId: String(result.message_thread_id), name: typeof result.name === 'string' ? result.name : topicName };
+  }
+
+  async editForumTopic(chatId: string, threadId: number, name: string, accountId?: string): Promise<void> {
+    const target = this.validTarget(chatId);
+    const thread = validMessageThreadId(threadId);
+    if (!thread) throw new TelegramError('invalid_telegram_thread_id', 'ID topic Telegram non valido');
+    const topicName = validTopicName(name);
+    const { token } = this.tokenFor(accountId);
+    await this.request(token, 'editForumTopic', {
+      chat_id: target,
+      message_thread_id: thread,
+      name: topicName,
+    });
+  }
+
+  async closeForumTopic(chatId: string, threadId: number, accountId?: string): Promise<void> {
+    const target = this.validTarget(chatId);
+    const thread = validMessageThreadId(threadId);
+    if (!thread) throw new TelegramError('invalid_telegram_thread_id', 'ID topic Telegram non valido');
+    const { token } = this.tokenFor(accountId);
+    await this.request(token, 'closeForumTopic', { chat_id: target, message_thread_id: thread });
+  }
+
+  async getChat(chatId: string, accountId?: string): Promise<TelegramChatInfo> {
+    const target = this.validTarget(chatId);
+    const { token } = this.tokenFor(accountId);
+    const result = await this.request<Record<string, unknown>>(token, 'getChat', { chat_id: target });
+    if (!result || (typeof result.id !== 'number' && typeof result.id !== 'string') || typeof result.type !== 'string') {
+      throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
+    }
+    return {
+      id: String(result.id),
+      type: result.type,
+      ...(typeof result.title === 'string' ? { title: result.title } : {}),
+      ...(typeof result.is_forum === 'boolean' ? { isForum: result.is_forum } : {}),
+      ...(typeof result.username === 'string' ? { username: result.username } : {}),
+    };
+  }
+
+  async getChatMember(chatId: string, userId: string | number, accountId?: string): Promise<TelegramChatMemberInfo> {
+    const target = this.validTarget(chatId);
+    const normalized = typeof userId === 'number' && Number.isSafeInteger(userId)
+      ? String(userId)
+      : typeof userId === 'string'
+        ? userId.trim()
+        : '';
+    if (!/^\d{1,20}$/.test(normalized)) throw new TelegramError('invalid_telegram_user_id', 'ID utente Telegram non valido');
+    const { token } = this.tokenFor(accountId);
+    const result = await this.request<Record<string, unknown>>(token, 'getChatMember', {
+      chat_id: target,
+      user_id: normalized,
+    });
+    if (!result || typeof result.status !== 'string') {
+      throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
+    }
+    return {
+      status: result.status,
+      ...(typeof result.can_manage_topics === 'boolean' ? { canManageTopics: result.can_manage_topics } : {}),
+      ...(typeof result.is_member === 'boolean' ? { isMember: result.is_member } : {}),
+    };
+  }
+
   async setMyCommands(
     commands: TelegramCommand[],
     accountId?: string,
@@ -707,11 +821,12 @@ export class TelegramService {
     await this.sendDocumentTo(account.chatId, document, account.id);
   }
 
-  async sendDocumentTo(chatId: string, document: TelegramDocument, accountId?: string): Promise<void> {
+  async sendDocumentTo(chatId: string, document: TelegramDocument, accountId?: string, options: { messageThreadId?: number } = {}): Promise<void> {
     const target = this.validTarget(chatId);
     const { token } = this.tokenFor(accountId);
+    const messageThreadId = validMessageThreadId(options.messageThreadId);
     this.validateDocument(document);
-    await this.retryRateLimit(() => callTelegramDocument(token, document, target, this.fetchImpl));
+    await this.retryRateLimit(() => callTelegramDocument(token, document, target, this.fetchImpl, messageThreadId));
   }
 
   async test(accountId?: string): Promise<void> {

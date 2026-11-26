@@ -302,6 +302,63 @@ describe('TelegramService', () => {
     await expect(failing.downloadFile('photos/a.jpg', account.id)).rejects.toMatchObject({ code: 'telegram_file_download_failed' });
   });
 
+  it('invia messaggi, typing e documenti in un topic', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.sendTo('42', 'ciao', account.id, { messageThreadId: 17 });
+    await service.sendChatAction('42', 'typing', account.id, { messageThreadId: 17 });
+    await service.sendDocumentTo('42', { filename: 'report.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') }, account.id, { messageThreadId: 17 });
+    const messageBody = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(messageBody.message_thread_id).toBe(17);
+    const actionBody = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(actionBody.message_thread_id).toBe(17);
+    const form = (fetchMock.mock.calls[2]?.[1] as RequestInit).body as FormData;
+    expect(form.get('message_thread_id')).toBe('17');
+  });
+
+  it('modifica un messaggio dentro un topic', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: {} }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.editMessage('42', 7, 'aggiornato', account.id, { parseMode: 'HTML', messageThreadId: 17 });
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body).toMatchObject({ chat_id: '42', message_id: 7, message_thread_id: 17, parse_mode: 'HTML' });
+  });
+
+  it('gestisce i topic forum e le informazioni del gruppo', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      const url = String(args[0]);
+      if (url.includes('/createForumTopic')) {
+        return new Response(JSON.stringify({ ok: true, result: { message_thread_id: 17, name: 'Preventivo' } }), { status: 200 });
+      }
+      if (url.includes('/getChatMember')) {
+        return new Response(JSON.stringify({ ok: true, result: { status: 'administrator', can_manage_topics: true } }), { status: 200 });
+      }
+      if (url.includes('/getChat')) {
+        return new Response(JSON.stringify({ ok: true, result: { id: -100123, type: 'supergroup', title: 'Memora', is_forum: true } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+    });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.createForumTopic('-100123', 'Preventivo', account.id)).resolves.toEqual({ threadId: '17', name: 'Preventivo' });
+    await service.editForumTopic('-100123', 17, 'Preventivo 2', account.id);
+    await service.closeForumTopic('-100123', 17, account.id);
+    await expect(service.getChat('-100123', account.id)).resolves.toEqual({ id: '-100123', type: 'supergroup', title: 'Memora', isForum: true });
+    await expect(service.getChatMember('-100123', 42, account.id)).resolves.toEqual({ status: 'administrator', canManageTopics: true });
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toMatchObject({ chat_id: '-100123', name: 'Preventivo' });
+    expect(JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body))).toMatchObject({ chat_id: '-100123', message_thread_id: 17, name: 'Preventivo 2' });
+    expect(JSON.parse(String((fetchMock.mock.calls[2]?.[1] as RequestInit).body))).toMatchObject({ chat_id: '-100123', message_thread_id: 17 });
+    expect(JSON.parse(String((fetchMock.mock.calls[4]?.[1] as RequestInit).body))).toMatchObject({ chat_id: '-100123', user_id: '42' });
+  });
+
   it('riconosce un conflitto webhook e annulla il long polling', async () => {
     const store = new TelegramStore({ dataDir: await tempDir() });
     await store.load();

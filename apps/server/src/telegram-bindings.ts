@@ -15,6 +15,7 @@ import {
   type TelegramInboundSettings,
   type TelegramPairingCodeView,
   type TelegramPairingInput,
+  type TelegramPairingScope,
   type TelegramReplyMode,
 } from '@memora/shared';
 
@@ -31,6 +32,7 @@ interface StoredPairing {
   salt: string;
   createdAt: number;
   expiresAt: number;
+  scope: TelegramPairingScope;
 }
 
 interface PairingFailures {
@@ -273,7 +275,10 @@ export class TelegramBindingStore {
     return this.get(id);
   }
 
-  async createPairingCode(accountId: string): Promise<TelegramPairingCodeView> {
+  async createPairingCode(accountId: string, scope: TelegramPairingScope = 'private'): Promise<TelegramPairingCodeView> {
+    if (scope !== 'private' && scope !== 'group') {
+      throw new TelegramInboundError('invalid_telegram_pairing_scope', 'Ambito di associazione non valido');
+    }
     const id = validAccountId(accountId);
     const state = this.account(id);
     if (!state.enabled) throw new TelegramInboundError('telegram_inbound_disabled', 'Il canale Telegram in ingresso non è abilitato', 409);
@@ -285,6 +290,7 @@ export class TelegramBindingStore {
       salt,
       createdAt,
       expiresAt: createdAt + this.pairingTtlMs,
+      scope,
     };
     this.clearPairingFailures(id);
     const expiresAt = state.pairing.expiresAt;
@@ -317,8 +323,11 @@ export class TelegramBindingStore {
     }
 
     const code = typeof input.code === 'string' ? input.code.trim() : '';
+    const scope = input.scope ?? 'private';
     const pairing = state.pairing;
-    if (!pairing) throw new TelegramInboundError('invalid_telegram_pairing_code', 'Codice di associazione non valido');
+    if (!pairing || (pairing.scope ?? 'private') !== scope) {
+      throw new TelegramInboundError('invalid_telegram_pairing_code', 'Codice di associazione non valido');
+    }
     if (pairing.expiresAt <= this.now()) {
       state.pairing = null;
       this.clearPairingFailures(id);
@@ -646,8 +655,9 @@ export class TelegramBindingStore {
       const salt = typeof value.pairing.salt === 'string' && /^[a-f0-9]{32}$/.test(value.pairing.salt) ? value.pairing.salt : null;
       const createdAt = typeof value.pairing.createdAt === 'number' && Number.isFinite(value.pairing.createdAt) ? value.pairing.createdAt : null;
       const expiresAt = typeof value.pairing.expiresAt === 'number' && Number.isFinite(value.pairing.expiresAt) ? value.pairing.expiresAt : null;
+      const scope: TelegramPairingScope = value.pairing.scope === 'group' ? 'group' : 'private';
       if (codeHash && salt && createdAt !== null && expiresAt !== null) {
-        state.pairing = { codeHash, salt, createdAt, expiresAt };
+        state.pairing = { codeHash, salt, createdAt, expiresAt, scope };
       }
     }
 

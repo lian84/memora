@@ -6,8 +6,8 @@ import type { TelegramDocument, TelegramStore } from './telegram.js';
 import type { TurnCompletion, TurnStatus } from './turn-manager.js';
 
 export interface TelegramMirrorTransport {
-  sendTo(chatId: string, text: string, accountId?: string, options?: { parseMode?: 'HTML' }): Promise<void>;
-  sendDocumentTo(chatId: string, document: TelegramDocument, accountId?: string): Promise<void>;
+  sendTo(chatId: string, text: string, accountId?: string, options?: { parseMode?: 'HTML'; messageThreadId?: number }): Promise<void>;
+  sendDocumentTo(chatId: string, document: TelegramDocument, accountId?: string, options?: { messageThreadId?: number }): Promise<void>;
 }
 
 export interface TelegramMirrorArtifact {

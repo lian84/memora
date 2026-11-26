@@ -29,10 +29,10 @@ export interface TelegramInboundTransport {
     chatId: string,
     text: string,
     accountId?: string,
-    options?: { parseMode?: 'HTML' },
+    options?: { parseMode?: 'HTML'; messageThreadId?: number },
   ): Promise<void>;
-  sendDocumentTo(chatId: string, document: TelegramDocument, accountId?: string): Promise<void>;
-  sendChatAction?(chatId: string, action: 'typing' | 'upload_document' | 'upload_photo', accountId?: string): Promise<void>;
+  sendDocumentTo(chatId: string, document: TelegramDocument, accountId?: string, options?: { messageThreadId?: number }): Promise<void>;
+  sendChatAction?(chatId: string, action: 'typing' | 'upload_document' | 'upload_photo', accountId?: string, options?: { messageThreadId?: number }): Promise<void>;
   getFile?(fileId: string, accountId?: string): Promise<TelegramFile>;
   downloadFile?(filePath: string, accountId?: string, maxBytes?: number): Promise<Buffer>;
   getMe(accountId?: string): Promise<TelegramBotInfo>;

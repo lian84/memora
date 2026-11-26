@@ -20,6 +20,8 @@ import { TelegramBindingStore } from './telegram-bindings.js';
 import { TelegramInboundService } from './telegram-inbound.js';
 import { registerTelegramInboundRoutes } from './telegram-inbound-routes.js';
 import { TelegramShareStore } from './telegram-shares.js';
+import { TelegramGroupStore } from './telegram-groups.js';
+import { registerTelegramGroupRoutes } from './telegram-group-routes.js';
 import { TelegramMirrorService } from './telegram-mirror.js';
 import { registerTelegramShareRoutes } from './telegram-share-routes.js';
 import { BackupService } from './backup.js';
@@ -251,6 +253,8 @@ const telegramBindings = new TelegramBindingStore({ dataDir, warn: message => ap
 await telegramBindings.load();
 const telegramShares = new TelegramShareStore({ dataDir, warn: message => app.log.warn(message) });
 await telegramShares.load();
+const telegramGroups = new TelegramGroupStore({ dataDir, warn: message => app.log.warn(message) });
+await telegramGroups.load();
 const telegramService = new TelegramService(telegramStore);
 const updateService = new UpdateService({
   dataDir,
@@ -382,8 +386,9 @@ const catalog = new ModelCatalogService({
 });
 
 registerTelegramInboundRoutes(app, { accounts: telegramStore, bindings: telegramBindings, inbound: telegramInbound, shares: telegramShares });
+registerTelegramGroupRoutes(app, { accounts: telegramStore, bindings: telegramBindings, groups: telegramGroups });
 registerTelegramShareRoutes(app, { accounts: telegramStore, bindings: telegramBindings, shares: telegramShares, inbound: telegramInbound, sessions: agentService });
-registerAutomationRoutes(app, { store: automationStore, scheduler: automationScheduler, telegramStore, telegram: telegramService, inbound: telegramInbound, mirror: telegramMirror, log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations') });
+registerAutomationRoutes(app, { store: automationStore, scheduler: automationScheduler, telegramStore, telegram: telegramService, inbound: telegramInbound, mirror: telegramMirror, groups: telegramGroups, log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations') });
 
 registerAdminRoutes(app, {
   store: settingsStore,
@@ -562,6 +567,9 @@ app.delete<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) =
     await agentService.removeArtifacts(req.params.id);
     await telegramShares.remove(req.params.id).catch(error => {
       app.log.warn({ error: error instanceof Error ? error.message : String(error) }, 'telegram share cleanup failed');
+    });
+    await telegramGroups.removeTopicsForSession(req.params.id).catch(error => {
+      app.log.warn({ error: error instanceof Error ? error.message : String(error) }, 'telegram group cleanup failed');
     });
     return reply.send({ ...result, deleted: true });
   } catch (err) {
