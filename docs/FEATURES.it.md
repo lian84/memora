@@ -6,7 +6,7 @@ Questa è la fonte funzionale unica del progetto. Descrive ciò che è già
 implementato, il comportamento atteso e i limiti noti. Il README rimanda qui;
 le decisioni architetturali sono in [`DECISIONS.it.md`](DECISIONS.it.md).
 
-Ultimo aggiornamento: 2026-11-20.
+Ultimo aggiornamento: 2026-11-26.
 
 ## 1. Chat e sessioni
 
@@ -40,7 +40,7 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Cleanup dei turni completati sostituiti e indicatore rosso per errore/interruzione.
 - [x] Messaggio in coda visibile subito e dopo il reload; il testo non viene persistito in `turns.json`.
 - [x] Stato “risposta letta” condiviso tra dispositivi in `config/turn-reads.json`.
-- [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta). Telegram è usato solo per i risultati delle automazioni pianificate e funziona a browser chiuso.
+- [x] Notifiche browser opt-in a risposta pronta (solo scheda aperta). Telegram consegna i risultati delle automazioni pianificate e supporta conversazioni in ingresso nelle stesse sessioni; le notifiche funzionano a browser chiuso.
 - [x] Test end-to-end HTTP con due client SSE e replay dopo riconnessione.
 - [x] Il rename manuale vince sempre sulla generazione automatica.
 - [x] Pagina con tutte le automazioni, scorciatoia nella sidebar, conteggio e job di ogni progetto.
@@ -49,6 +49,10 @@ Ultimo aggiornamento: 2026-11-20.
 - [x] Scelta provider/modello/reasoning LLM per singola automazione, con eredità dai default di progetto/chat se omessa.
 - [x] Flag ricerca web per singola automazione, con avviso se la ricerca web non è configurata.
 - [x] Consegna Telegram opzionale dei risultati. Più account sono gestiti in Amministrazione → Telegram, i token restano per account nel secret store locale e lo stesso account può essere riusato da più automazioni. I PDF e i documenti Office generati vengono consegnati come documenti Telegram.
+- [x] Telegram in ingresso: long polling opt-in per account senza porte pubbliche, codici di associazione monouso, allowlist di utenti numerici e cache delle chat osservate. I messaggi diventano turni normali nelle stesse sessioni Pi della web UI, con binding per utente, `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`, typing e risposta finale, consegna di artefatti PDF/Office e stato letto condiviso.
+- [x] Allegati Telegram in ingresso: foto, PDF, DOCX, Markdown, TXT, CSV, JSON, log, HTML e immagini fino a 15 MB; vocali, video, sticker, XLSX e PPTX vengono rifiutati.
+- [x] Avviso dopo un riavvio per un turno Telegram interrotto e pulizia una tantum del turno pendente.
+- [x] Condivisione Telegram opt-in per chat dal composer web: solo risposte o conversazione completa, artefatti PDF/Office opzionali, ultimo errore visibile e read state condiviso. I turni nati da Telegram non vengono mai duplicati.
 - [x] Job e cronologia in `$MEMORA_DATA_DIR/automations/`.
 
 ## 2. Memoria e Second Brain

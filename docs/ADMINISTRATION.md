@@ -40,6 +40,35 @@ the environment; `GET` returns only status and source, never the value. The
 configuration is suitable for systemd, future Docker, VPS, Proxmox, mini PCs and
 local installations, with no hardcoded paths beyond `MEMORA_DATA_DIR`.
 
+## Telegram inbound
+
+**Administration → Telegram** can enable an opt-in inbound channel for each bot
+account. It uses long polling: Memora opens only outbound connections to
+Telegram, so no public port, webhook or TLS certificate is required.
+
+- Pairing uses a one-time code with a ten-minute expiry and a deep link to the
+  bot; the code is stored only as a hash.
+- Access is controlled by numeric Telegram user IDs, never usernames. Only
+  private chats are accepted.
+- The poller owns `getUpdates`; chat discovery reads the observed-chat cache
+  while inbound is enabled.
+- Chat messages run as normal turns in the same Memora sessions used by the web
+  UI, so history, memory, projects and agent profiles are shared. Commands:
+  `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`, `/status`,
+  `/ping`, `/help`.
+- The bot sends a typing indicator while a turn runs, the final answer, and any
+  PDF/Office artifact created by the turn. It marks the turn as read after a
+  successful delivery.
+- A web chat can opt in to Telegram delivery from the composer. The target is
+  an existing paired chat; answers-only is the default, full conversation makes
+  that chat the active Telegram session, and Telegram-originated turns are never
+  duplicated.
+- State is stored in `config/telegram-inbound.json` with mode `0600`. It contains
+  no tokens or message text; encrypted backups include it, readable exports
+  exclude `config/`.
+- A second process polling the same token receives `409 Conflict`; the panel
+  surfaces the conflict without deleting an existing webhook.
+
 ## Login and access
 
 On first start, if `$MEMORA_DATA_DIR/config/auth.json` does not exist, Memora

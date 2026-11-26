@@ -2334,3 +2334,118 @@ disaster-recovery mechanism with configuration and secrets.
 - They are not encrypted and contain personal data, so operators must protect
   them.
 - Exact disaster recovery remains the encrypted backup/restore path.
+
+---
+## ADR-068 — Telegram inbound as a second client of the same agent
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+Telegram is currently outbound only: automations, monitoring and update notices
+send messages, but the bot cannot receive a normal conversation. Users want to
+continue the same Memora sessions from Telegram without maintaining a second
+assistant, a second memory or a second session archive.
+
+Three architectures were considered: a separate Telegram agent (rejected
+because it duplicates memory and history), calling `AgentService` directly
+(rejected for interactive turns because it bypasses the queue, turn state and
+SSE stream used by the web UI), and adapting Telegram to `TurnManager`
+(chosen). The transport choice was long polling versus a public webhook.
+
+### Decision
+
+- Treat Telegram as a client of Memora, not as a separate agent. Inbound turns
+go through `TurnManager` and `AgentService`, producing normal Pi JSONL sessions.
+- Use long polling by default with no public port. A webhook remains a later,
+explicit option for deployments that expose HTTPS.
+- Keep one persistent active session per paired Telegram user. Commands:
+`/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`. Support private
+chats only initially. Send the turn's PDF/Office artifacts and mark the turn as
+read after a successful delivery.
+- Authorize numeric Telegram user IDs through a one-time pairing code. Store the
+code hashed with a ten-minute TTL and rate-limit failed attempts per user in
+memory; never trust usernames or auto-pair the first sender.
+- Store non-secret bridge state in `config/telegram-inbound.json` with mode
+`0600`: allowlist, chat-to-session bindings, update offset and settings. Never
+store message text or bot tokens there. Encrypted backups include the file;
+readable exports exclude `config/`.
+- Make the offset monotonic and deduplicate updates by `update_id`. The inbound
+poller is the only consumer of `getUpdates`; chat discovery reads the poller
+cache while inbound is enabled.
+- Reply with the final text and typing indicator in the first milestone;
+progressive message edits come later. Render a safe HTML subset, split at
+4,000 characters, convert GFM tables to readable lists, and attach the full
+Markdown when more than three chunks would be needed. Retry `429` responses
+with `retry_after` and a bounded delay. Do not send hidden reasoning and do not
+mirror web-originated turns to Telegram by default.
+- Start disabled per account and enable it explicitly in Administration. One
+Memora process may poll a bot token; a second process receives `409 Conflict`,
+which is surfaced as an administrative error.
+- Pause polling during backups, stop it before graceful shutdown, and mark
+in-flight turns as interrupted with a single notice after restart.
+
+### Consequences
+
+- Web and Telegram share sessions, memory, projects and agent profiles with no
+duplicate store.
+- The web UI can show Telegram-originated turns through the existing turn state
+and SSE infrastructure.
+- Telegram retains messages on its servers; the channel is not end-to-end
+encrypted by Memora. Updates older than Telegram's retention window are lost
+while the bot is offline.
+- Only one instance can poll a given token; distributed polling needs a future
+coordination mechanism.
+- Groups, topics, inbound attachments, progressive streaming and webhook mode
+remain follow-up phases.
+
+---
+## ADR-069 — Opt-in per-chat mirroring of web turns to Telegram
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+The Telegram bridge already delivers turns started from Telegram, but a web
+turn is not sent to Telegram. Users may start a long web chat and leave the
+computer, expecting the answer on Telegram. A global mirroring switch would be
+noisy and would send every web answer to the phone; the choice must be explicit
+per chat.
+
+### Decision
+
+- Add a per-session share setting, disabled by default, exposed in the web chat
+  composer next to the web/attachment tools.
+- Store targets in `config/telegram-shares.json` (`0600`), not in session JSONL,
+  so personal Telegram IDs do not end up in readable exports. Encrypted backups
+  include the file.
+- Offer two modes: `answers` (default, only the final assistant answer) and
+  `full` (also the user prompt written in the web UI). Web attachments are not
+  copied to Telegram.
+- Tag turns with `source = web | telegram` in `TurnManager` and expose a
+  terminal-turn observer. The mirror delivers only `web` turns; Telegram turns
+  remain owned by the inbound bridge. This prevents duplicate delivery and
+  loops.
+- Resolve the target from the existing Telegram binding/allowlist; the client
+  cannot submit arbitrary chat IDs. In `full` mode the selected chat becomes the
+  active Telegram session so replies return to this chat.
+- Send the final answer through the existing formatter, long-answer Markdown
+  fallback and PDF/Office artifacts. After successful delivery mark the turn as
+  read; on failure store a short `lastError` without conversation content.
+- Serialize deliveries per session and include the mirror queue in backup
+  `isIdle` and graceful shutdown.
+- Do not add a global mirroring switch, a start notification or retry/outbox in
+  this milestone.
+
+### Consequences
+
+- Users can explicitly receive web answers on Telegram without changing the
+  default behavior of every chat.
+- Web and Telegram have separate delivery paths but share the same sessions,
+  history and read state.
+- Full mode changes the active Telegram session; the UI must state this
+  explicitly.
+- A restart between turn completion and Telegram delivery can lose the copy;
+  the authoritative answer remains in the web UI.
+- Answers and artifacts may contain personal data and transit through Telegram,
+  so the setting is opt-in and documented.
