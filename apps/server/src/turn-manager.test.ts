@@ -13,6 +13,29 @@ function event(type: string, sessionId: string): StreamEvent {
 }
 
 describe('TurnManager', () => {
+  it('distingue la sorgente e notifica il testo finale', async () => {
+    const completions: Array<{ source: string; text: string }> = [];
+    const manager = new TurnManager({
+      maxConcurrent: 1,
+      onTurnComplete: completion => {
+        completions.push({ source: completion.turn.source, text: completion.text });
+      },
+      agentService: {
+        sendMessage: vi.fn(async (sessionId: string, _text: string, onEvent: (event: StreamEvent) => void) => {
+          onEvent({ type: 'message_update', sessionId, timestamp: Date.now(), payload: { assistantMessageEvent: { type: 'text_delta', delta: 'Risposta' } } });
+        }),
+        abort: vi.fn(async () => undefined),
+      },
+    });
+    manager.start('s1', 'web');
+    manager.startTelegram('s2', 'telegram');
+    await vi.waitFor(() => expect(completions).toHaveLength(2));
+    expect(completions).toEqual([
+      { source: 'web', text: 'Risposta' },
+      { source: 'telegram', text: 'Risposta' },
+    ]);
+  });
+
   it('esegue al massimo due turni e accoda gli altri', async () => {
     const gates = new Map<string, ReturnType<typeof deferred>>();
     const calls: string[] = [];

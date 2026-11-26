@@ -10,6 +10,7 @@ import {
 } from '../lib/api';
 import { useI18n } from '../i18n';
 import { ConfirmDialog } from './ConfirmDialog';
+import { TelegramInboundPanel } from './TelegramInboundPanel';
 
 interface AccountForm {
   label: string;
@@ -33,6 +34,7 @@ export function TelegramAdminPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [chatsFor, setChatsFor] = useState<string | null>(null);
   const [chats, setChats] = useState<TelegramChat[]>([]);
+  const [inboundFor, setInboundFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,6 +158,7 @@ export function TelegramAdminPanel() {
     try {
       await deleteTelegramAccount(deleteTarget.id);
       if (editingId === deleteTarget.id) { setEditingId(null); setForm(null); }
+      if (inboundFor === deleteTarget.id) setInboundFor(null);
       setDeleteTarget(null);
       await load();
       setMessage(t('Account Telegram eliminato.'));
@@ -185,37 +188,43 @@ export function TelegramAdminPanel() {
         {!loading && accounts.length > 0 && (
           <div className="telegram-account-list">
             {accounts.map(account => (
-              <div className={`telegram-account${account.enabled ? '' : ' is-disabled'}`} key={account.id}>
-                <div className="telegram-account-main">
-                  <div className="telegram-account-head">
-                    <strong>{account.label}</strong>
-                    <span className={`automation-pill${account.tokenConfigured && account.chatId ? ' is-ok' : ''}`}>{account.tokenConfigured && account.chatId ? t('Configurato') : t('Da configurare')}</span>
-                    {!account.enabled && <span className="automation-status">{t('Disattivato')}</span>}
-                  </div>
-                  <div className="telegram-account-meta">
-                    <span>{t('Chat ID')}: <code>{account.chatId || '—'}</code></span>
-                    <span>{account.tokenSource === 'environment' ? t('Token da ambiente') : account.tokenConfigured ? t('Token nel secret store') : t('Token mancante')}</span>
-                  </div>
-                  {chatsFor === account.id && chats.length > 0 && (
-                    <div className="automation-discovery">
-                      {chats.map(chat => (
-                        <button type="button" key={chat.id} onClick={() => void chooseChat(account, chat)}>
-                          <strong>{chat.label}</strong><span>{chat.id} · {chat.type}</span>
-                        </button>
-                      ))}
+              <div className="telegram-account-entry" key={account.id}>
+                <div className={`telegram-account${account.enabled ? '' : ' is-disabled'}`}>
+                  <div className="telegram-account-main">
+                    <div className="telegram-account-head">
+                      <strong>{account.label}</strong>
+                      <span className={`automation-pill${account.tokenConfigured && account.chatId ? ' is-ok' : ''}`}>{account.tokenConfigured && account.chatId ? t('Configurato') : t('Da configurare')}</span>
+                      {!account.enabled && <span className="automation-status">{t('Disattivato')}</span>}
                     </div>
-                  )}
+                    <div className="telegram-account-meta">
+                      <span>{t('Chat ID')}: <code>{account.chatId || '—'}</code></span>
+                      <span>{account.tokenSource === 'environment' ? t('Token da ambiente') : account.tokenConfigured ? t('Token nel secret store') : t('Token mancante')}</span>
+                    </div>
+                    {chatsFor === account.id && chats.length > 0 && (
+                      <div className="automation-discovery">
+                        {chats.map(chat => (
+                          <button type="button" key={chat.id} onClick={() => void chooseChat(account, chat)}>
+                            <strong>{chat.label}</strong><span>{chat.id} · {chat.type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="telegram-account-actions">
+                    <label className="admin-toggle automation-toggle">
+                      <input type="checkbox" checked={account.enabled} disabled={busyId === account.id} onChange={() => void toggleEnabled(account)} />
+                      <span>{t('Attivo')}</span>
+                    </label>
+                    <button type="button" onClick={() => void discover(account)} disabled={busyId === account.id || !account.tokenConfigured}>{t('Cerca chat')}</button>
+                    <button type="button" onClick={() => void test(account)} disabled={busyId === account.id || !account.tokenConfigured || !account.chatId}>{t('Invia test')}</button>
+                    <button type="button" onClick={() => setInboundFor(current => current === account.id ? null : account.id)}>{t('Ingresso')}</button>
+                    <button type="button" onClick={() => startEdit(account)}>{t('Modifica')}</button>
+                    <button type="button" className="is-danger" onClick={() => setDeleteTarget(account)}>{t('Elimina')}</button>
+                  </div>
                 </div>
-                <div className="telegram-account-actions">
-                  <label className="admin-toggle automation-toggle">
-                    <input type="checkbox" checked={account.enabled} disabled={busyId === account.id} onChange={() => void toggleEnabled(account)} />
-                    <span>{t('Attivo')}</span>
-                  </label>
-                  <button type="button" onClick={() => void discover(account)} disabled={busyId === account.id || !account.tokenConfigured}>{t('Cerca chat')}</button>
-                  <button type="button" onClick={() => void test(account)} disabled={busyId === account.id || !account.tokenConfigured || !account.chatId}>{t('Invia test')}</button>
-                  <button type="button" onClick={() => startEdit(account)}>{t('Modifica')}</button>
-                  <button type="button" className="is-danger" onClick={() => setDeleteTarget(account)}>{t('Elimina')}</button>
-                </div>
+                {inboundFor === account.id && (
+                  <TelegramInboundPanel account={account} onClose={() => setInboundFor(null)} />
+                )}
               </div>
             ))}
           </div>

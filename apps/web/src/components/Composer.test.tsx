@@ -25,3 +25,11 @@ test('mostra l’icona non interattiva del profilo agente vicino agli strumenti'
   expect(markup).toContain('composer-agent');
   expect(markup).not.toContain('aria-label="Chat con Commercialista" role="button"');
 });
+
+test('mostra il pulsante di condivisione Telegram accanto agli strumenti', () => {
+  const markup = renderToStaticMarkup(
+    <Composer onSend={() => undefined} onAbort={() => undefined} onToggleWeb={() => undefined} onTelegramShare={() => undefined} telegramShareActive />,
+  );
+  expect(markup).toContain('telegram-share-toggle is-active');
+  expect(markup).toContain('Condivisione Telegram attiva');
+});

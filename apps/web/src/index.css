@@ -1867,6 +1867,43 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
   .telegram-account-actions { justify-content: flex-start; }
 }
 
+/* Telegram inbound bridge */
+.telegram-account-entry { display: flex; flex-direction: column; gap: 7px; }
+.telegram-inbound-panel { display: flex; flex-direction: column; gap: 11px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-muted); }
+.telegram-inbound-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.telegram-inbound-head h4 { margin: 0 0 3px; color: var(--text); font-size: 12px; }
+.telegram-inbound-head .admin-card-description { margin: 0; font-size: 10px; }
+.telegram-inbound-head button { height: 25px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 9px; cursor: pointer; }
+.telegram-inbound-status { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; color: var(--muted); font-size: 10px; }
+.telegram-inbound-status button { height: 24px; padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-soft); font-size: 9px; cursor: pointer; }
+.telegram-inbound-status button:disabled { opacity: .55; cursor: wait; }
+.telegram-inbound-pill { padding: 2px 7px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-soft); font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.telegram-inbound-pill.is-running { border-color: color-mix(in srgb, #0f8a6a 38%, var(--border)); background: color-mix(in srgb, #0f8a6a 10%, var(--surface)); color: #0f8a6a; }
+.telegram-inbound-pill.is-starting, .telegram-inbound-pill.is-paused { border-color: color-mix(in srgb, #ca8a04 38%, var(--border)); background: color-mix(in srgb, #ca8a04 10%, var(--surface)); color: #a16207; }
+.telegram-inbound-pill.is-error, .telegram-inbound-pill.is-conflict { border-color: color-mix(in srgb, var(--danger) 38%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); color: var(--danger); }
+.telegram-inbound-error { padding: 7px 8px; border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border)); border-radius: 7px; background: color-mix(in srgb, var(--danger) 7%, var(--surface)); color: var(--danger); font-size: 10px; }
+.telegram-inbound-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.telegram-inbound-block { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.telegram-inbound-block h5 { margin: 0 0 5px; color: var(--text); font-size: 11px; }
+.telegram-inbound-block .admin-grid-2 { margin-top: 6px; gap: 8px; }
+.telegram-inbound-block .admin-actions { margin-top: 8px; }
+.telegram-inbound-list { display: flex; flex-direction: column; }
+.telegram-inbound-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.telegram-inbound-row:last-child { border-bottom: 0; }
+.telegram-inbound-row strong { display: block; font-size: 11px; }
+.telegram-inbound-row span { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+.telegram-inbound-row button { height: 24px; padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-muted); color: var(--text-soft); font-size: 9px; cursor: pointer; flex: 0 0 auto; }
+.telegram-inbound-row button.is-danger { color: var(--danger); }
+.telegram-inbound-row button:disabled { opacity: .55; cursor: wait; }
+.telegram-pairing-code { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin: 8px 0; }
+.telegram-pairing-code code { padding: 6px 8px; border-radius: 7px; background: var(--surface-muted); color: var(--text); font-size: 14px; letter-spacing: .05em; user-select: all; }
+.telegram-pairing-code small { color: var(--muted); font-size: 9px; }
+.telegram-pairing-code a { color: var(--accent); font-size: 10px; font-weight: 600; }
+@media (max-width: 760px) {
+  .telegram-inbound-grid { grid-template-columns: 1fr; }
+  .telegram-inbound-head { flex-direction: column; }
+}
+
 /* All automations entry */
 .sidebar-automations-link { display: flex; align-items: center; gap: 7px; width: calc(100% - 24px); height: 30px; margin: -3px 12px 8px; padding: 0 9px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-soft); font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
 .sidebar-automations-link:hover { border-color: var(--border); background: var(--surface-muted); color: var(--text); }
@@ -1939,3 +1976,17 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .monitor-settings { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
 .export-admin { display: flex; flex-direction: column; gap: 14px; }
 .export-admin .admin-field-note { margin-top: 10px; line-height: 1.45; }
+
+/* Web chat → Telegram sharing */
+.telegram-share-toggle.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+.telegram-share-dialog { width: min(520px, 100%); }
+.telegram-share-dialog .admin-field-note { margin: 8px 0 12px; font-size: 12px; line-height: 1.5; }
+.telegram-share-dialog .admin-label { margin-top: 10px; }
+.telegram-share-dialog .admin-toggle { margin: 10px 0 6px; }
+.telegram-share-modes { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; padding: 0; border: 0; }
+.telegram-share-modes legend { margin-bottom: 2px; color: var(--text-soft); font-size: 11px; font-weight: 700; }
+.telegram-share-modes label { display: flex; align-items: flex-start; gap: 8px; color: var(--text-soft); font-size: 11px; }
+.telegram-share-modes input { margin-top: 2px; accent-color: var(--accent); }
+.telegram-share-modes strong { display: block; color: var(--text); font-size: 11px; }
+.telegram-share-modes small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.telegram-share-dialog .dialog-actions .delete-confirm-button { border-color: var(--accent); background: var(--accent); }

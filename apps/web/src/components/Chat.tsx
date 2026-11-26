@@ -12,12 +12,13 @@ import { McpPanel } from './McpPanel';
 import { SaveMemoryDialog } from './SaveMemoryDialog';
 import { AgentProfilePicker } from './AgentProfilePicker';
 import { ConfirmDialog } from './ConfirmDialog';
+import { TelegramShareDialog } from './TelegramShareDialog';
 import { useSessionTurn } from '../hooks/useSessionTurn';
 import { canAutoOpenSidePanel, mergeArtifacts, mergeWebSources, readPanelToolUpdate } from '../lib/chat-panel-events';
 import { useI18n } from '../i18n';
-import { DEFAULT_SESSION_CONTEXT, type AgentProfileSummary, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionAgentInfo, type SessionContextSettings, type WebSource } from '@memora/shared';
+import { DEFAULT_SESSION_CONTEXT, type AgentProfileSummary, type ChatArtifact, type ChatAttachment, type ProjectFileInfo, type ProjectRecord, type SessionAgentInfo, type SessionContextSettings, type TelegramSharePatch, type TelegramShareView, type WebSource } from '@memora/shared';
 import type { ChatMessage, SSEEvent, TurnInfo, TurnStatus, WebStatus } from '../lib/api';
-import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, refreshSessionAgent, setSessionAgent, setSessionWeb, startTurn, updateSessionContext, uploadChatAttachment } from '../lib/api';
+import { abortSession, attachArtifactToSession, attachProjectFileToSession, createArtifactPreviewAttachment, createSessionPdf, deleteChatAttachment, getSessionContext, getSessionWeb, getTelegramShare, getWebStatus, importArtifactIntoProject, isSessionNotFoundError, listSessionArtifacts, listWebSources, refreshSessionAgent, setSessionAgent, setSessionWeb, startTurn, updateSessionContext, updateTelegramShare, uploadChatAttachment } from '../lib/api';
 
 interface MemorySource { relativePath: string; category: string; heading: string | null; startLine: number; endLine: number; }
 export type DisplayChatMessage = ChatMessage & { id: string; streaming?: boolean };
@@ -102,6 +103,11 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
   const [composerFocus, setComposerFocus] = useState(0);
   const [webStatus, setWebStatus] = useState<WebStatus | null>(null);
   const [webEnabled, setWebEnabled] = useState(false);
+  const [telegramShare, setTelegramShare] = useState<TelegramShareView | null>(null);
+  const [telegramShareOpen, setTelegramShareOpen] = useState(false);
+  const [telegramShareLoading, setTelegramShareLoading] = useState(false);
+  const [telegramShareSaving, setTelegramShareSaving] = useState(false);
+  const [telegramShareError, setTelegramShareError] = useState<string | null>(null);
   const [webSources, setWebSources] = useState<WebSource[]>([]);
   const [webSourcesLoading, setWebSourcesLoading] = useState(false);
   const [webSourcesError, setWebSourcesError] = useState<string | null>(null);
@@ -297,6 +303,45 @@ export function Chat({ sessionId, messages, onStartTurn, onStreamingUpdate, onTu
       setAttachmentError(err instanceof Error ? err.message : String(err));
     }
   }, [sessionId, webEnabled]);
+
+  useEffect(() => {
+    setTelegramShare(null);
+    setTelegramShareOpen(false);
+    setTelegramShareError(null);
+    if (!sessionId) return;
+    let cancelled = false;
+    setTelegramShareLoading(true);
+    void getTelegramShare(sessionId)
+      .then(view => { if (!cancelled) setTelegramShare(view); })
+      .catch(error => { if (!cancelled) setTelegramShareError(error instanceof Error ? error.message : String(error)); })
+      .finally(() => { if (!cancelled) setTelegramShareLoading(false); });
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  const saveTelegramShare = useCallback(async (patch: TelegramSharePatch) => {
+    if (!sessionId) return;
+    setTelegramShareSaving(true);
+    setTelegramShareError(null);
+    try {
+      setTelegramShare(await updateTelegramShare(sessionId, patch));
+      setTelegramShareOpen(false);
+    } catch (error) {
+      setTelegramShareError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTelegramShareSaving(false);
+    }
+  }, [sessionId]);
+
+  const openTelegramShare = useCallback(() => {
+    setTelegramShareOpen(true);
+    setTelegramShareError(null);
+    if (!sessionId) return;
+    setTelegramShareLoading(true);
+    void getTelegramShare(sessionId)
+      .then(view => setTelegramShare(view))
+      .catch(error => setTelegramShareError(error instanceof Error ? error.message : String(error)))
+      .finally(() => setTelegramShareLoading(false));
+  }, [sessionId]);
 
   useEffect(() => {
     setAttachments([]);
@@ -725,6 +770,8 @@ function messageTitle(content: string, html: string | null, t: (source: string) 
         webEnabled={webEnabled}
         webAvailable={Boolean(webStatus?.configured)}
         onToggleWeb={() => void toggleWeb()}
+        telegramShareActive={Boolean(telegramShare?.share)}
+        onTelegramShare={openTelegramShare}
         agent={selectedAgent}
         agentSaving={agentSaving}
       />
@@ -764,6 +811,16 @@ function messageTitle(content: string, html: string | null, t: (source: string) 
         >
           <p>{t('Verrà applicata la versione corrente del profilo dal prossimo messaggio. La cronologia della chat resta invariata.')}</p>
         </ConfirmDialog>
+      )}
+      {telegramShareOpen && sessionId && (
+        <TelegramShareDialog
+          view={telegramShare}
+          loading={telegramShareLoading}
+          busy={telegramShareSaving}
+          error={telegramShareError}
+          onClose={() => { if (!telegramShareSaving) setTelegramShareOpen(false); }}
+          onSave={patch => saveTelegramShare(patch)}
+        />
       )}
       {panelOpen && (
         <ChatSidePanel

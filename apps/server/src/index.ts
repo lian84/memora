@@ -16,6 +16,12 @@ import { AutomationScheduler } from './automation-scheduler.js';
 import { AutomationRunner } from './automation-runner.js';
 import { registerAutomationRoutes } from './automation-routes.js';
 import { TelegramService, TelegramStore } from './telegram.js';
+import { TelegramBindingStore } from './telegram-bindings.js';
+import { TelegramInboundService } from './telegram-inbound.js';
+import { registerTelegramInboundRoutes } from './telegram-inbound-routes.js';
+import { TelegramShareStore } from './telegram-shares.js';
+import { TelegramMirrorService } from './telegram-mirror.js';
+import { registerTelegramShareRoutes } from './telegram-share-routes.js';
 import { BackupService } from './backup.js';
 import { registerBackupRoutes } from './backup-routes.js';
 import { RcloneService } from './rclone.js';
@@ -241,6 +247,10 @@ const agentService = new AgentService({
 
 const telegramStore = new TelegramStore({ dataDir, warn: message => app.log.warn(message) });
 await telegramStore.load();
+const telegramBindings = new TelegramBindingStore({ dataDir, warn: message => app.log.warn(message) });
+await telegramBindings.load();
+const telegramShares = new TelegramShareStore({ dataDir, warn: message => app.log.warn(message) });
+await telegramShares.load();
 const telegramService = new TelegramService(telegramStore);
 const updateService = new UpdateService({
   dataDir,
@@ -273,21 +283,34 @@ const automationScheduler = new AutomationScheduler({
   log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations'),
 });
 
+const turnReadStore = new TurnReadStore(dataDir);
+await turnReadStore.load();
+const telegramMirror = new TelegramMirrorService({
+  telegram: telegramService,
+  shares: telegramShares,
+  sessions: agentService,
+  accounts: telegramStore,
+  bindings: telegramBindings,
+  reads: turnReadStore,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'telegram-mirror'),
+});
 const turnManager = new TurnManager({
   agentService,
   maxConcurrent: initialSettings.chat.maxConcurrentTurns ?? 2,
   persistencePath: path.join(dataDir, 'config', 'turns.json'),
+  onTurnComplete: completion => telegramMirror.onTurnComplete(completion),
 });
 await turnManager.load();
-const turnReadStore = new TurnReadStore(dataDir);
-await turnReadStore.load();
 
+const telegramInboundHolder: { current?: TelegramInboundService } = {};
 const backupService = new BackupService({
   dataDir,
   appVersion: memoraVersion,
   log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'backup'),
   isIdle: () => turnManager.isIdle()
     && automationScheduler.isIdle()
+    && telegramMirror.isIdle()
+    && (telegramInboundHolder.current?.isIdle() ?? true)
     && (memoryWriterQueue?.getStats().queued ?? 0) === 0
     && (memoryWriterQueue?.getStats().running ?? 0) === 0,
 });
@@ -300,6 +323,18 @@ const rcloneService = new RcloneService({
 });
 await rcloneService.load();
 backupService.setAfterBackup(record => rcloneService.afterBackup(record));
+telegramInboundHolder.current = new TelegramInboundService({
+  telegram: telegramService,
+  accounts: telegramStore,
+  bindings: telegramBindings,
+  turns: turnManager,
+  sessions: agentService,
+  reads: turnReadStore,
+  attachments: chatAttachmentStore,
+  log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'telegram-inbound'),
+  canProcess: () => !backupService.isMaintenance(),
+});
+const telegramInbound = telegramInboundHolder.current;
 const monitorService = new MonitorService({
   dataDir,
   getBackupStatus: () => backupService.getStatus(),
@@ -346,7 +381,9 @@ const catalog = new ModelCatalogService({
   getApiKey: provider => secretStore.getKey(provider),
 });
 
-registerAutomationRoutes(app, { store: automationStore, scheduler: automationScheduler, telegramStore, telegram: telegramService, log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations') });
+registerTelegramInboundRoutes(app, { accounts: telegramStore, bindings: telegramBindings, inbound: telegramInbound, shares: telegramShares });
+registerTelegramShareRoutes(app, { accounts: telegramStore, bindings: telegramBindings, shares: telegramShares, inbound: telegramInbound, sessions: agentService });
+registerAutomationRoutes(app, { store: automationStore, scheduler: automationScheduler, telegramStore, telegram: telegramService, inbound: telegramInbound, mirror: telegramMirror, log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations') });
 
 registerAdminRoutes(app, {
   store: settingsStore,
@@ -523,6 +560,9 @@ app.delete<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) =
     const result = await agentService.deleteSession(req.params.id);
     await chatAttachmentStore.removeSession(req.params.id);
     await agentService.removeArtifacts(req.params.id);
+    await telegramShares.remove(req.params.id).catch(error => {
+      app.log.warn({ error: error instanceof Error ? error.message : String(error) }, 'telegram share cleanup failed');
+    });
     return reply.send({ ...result, deleted: true });
   } catch (err) {
     if (err instanceof AgentServiceError && err.code === 'session_not_found') {
@@ -1363,6 +1403,8 @@ const shutdown = async (signal: string) => {
   if (shuttingDown) return;
   shuttingDown = true;
   app.log.info({ signal }, 'shutting down');
+  await telegramMirror.stop();
+  await telegramInbound.stop();
   automationScheduler.stop();
   backupService.stop();
   updateService.stop();
@@ -1387,6 +1429,7 @@ process.once('SIGINT', () => { void shutdown('SIGINT'); });
 const start = async () => {
   try {
     await app.listen({ host, port });
+    await telegramInbound.start();
     automationScheduler.start();
     backupService.start();
     updateService.start();

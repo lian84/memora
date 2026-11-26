@@ -5,6 +5,8 @@ import type { ChatAttachmentContext, StreamEvent } from '@memora/shared';
 
 export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted' | 'interrupted';
 
+export type TurnSource = 'web' | 'telegram';
+
 export interface TurnInfo {
   turnId: string;
   sessionId: string;
@@ -16,6 +18,14 @@ export interface TurnInfo {
   text?: string;
   firstSeq: number;
   lastSeq: number;
+  /** Client che ha originato il turno; i vecchi turni sono `web`. */
+  source: TurnSource;
+}
+
+export interface TurnCompletion {
+  turn: TurnInfo;
+  /** Testo assistant accumulato dagli eventi del turno. */
+  text: string;
 }
 
 interface Turn extends TurnInfo {
@@ -49,6 +59,23 @@ interface TurnManagerOptions {
   maxBufferedEvents?: number;
   persistencePath?: string;
   agentService: TurnAgentService;
+  /** Notifica i turni terminali, inclusi quelli avviati dalla web UI. */
+  onTurnComplete?: (completion: TurnCompletion) => void | Promise<void>;
+}
+
+
+function extractAssistantText(turn: Turn): string {
+  let text = '';
+  for (const entry of turn.events) {
+    if (entry.event.type !== 'message_update') continue;
+    const payload = entry.event.payload;
+    if (!payload || typeof payload !== 'object') continue;
+    const assistantEvent = (payload as { assistantMessageEvent?: unknown }).assistantMessageEvent;
+    if (!assistantEvent || typeof assistantEvent !== 'object') continue;
+    const value = assistantEvent as { type?: unknown; delta?: unknown };
+    if (value.type === 'text_delta' && typeof value.delta === 'string') text += value.delta;
+  }
+  return text.slice(-200_000);
 }
 
 /**
@@ -63,6 +90,7 @@ export class TurnManager {
   private readonly maxBufferedEvents: number;
   private readonly agentService: TurnAgentService;
   private readonly persistencePath?: string;
+  private readonly onTurnComplete?: (completion: TurnCompletion) => void | Promise<void>;
   private persistChain: Promise<void> = Promise.resolve();
   private readonly turns = new Map<string, Turn>();
   private readonly latestBySession = new Map<string, string>();
@@ -73,6 +101,7 @@ export class TurnManager {
   constructor(options: TurnManagerOptions) {
     this.agentService = options.agentService;
     this.persistencePath = options.persistencePath;
+    this.onTurnComplete = options.onTurnComplete;
     this.maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
     this.maxBufferedEvents = Math.max(50, options.maxBufferedEvents ?? 2000);
   }
@@ -121,6 +150,7 @@ export class TurnManager {
           events: [],
           subscribers: new Set(),
           abortRequested: false,
+          source: item.source === 'telegram' ? 'telegram' : 'web',
           ...(interrupted ? { error: 'server_restart' } : item.error ? { error: item.error } : {}),
         };
         this.turns.set(turn.turnId, turn);
@@ -132,6 +162,21 @@ export class TurnManager {
   }
 
   start(sessionId: string, text: string, attachments: ChatAttachmentContext[] = [], editEntryId?: string): TurnInfo {
+    return this.createTurn(sessionId, text, attachments, editEntryId, 'web');
+  }
+
+  /** Turno originato dal bridge Telegram; il mirror web deve ignorarlo. */
+  startTelegram(sessionId: string, text: string, attachments: ChatAttachmentContext[] = []): TurnInfo {
+    return this.createTurn(sessionId, text, attachments, undefined, 'telegram');
+  }
+
+  private createTurn(
+    sessionId: string,
+    text: string,
+    attachments: ChatAttachmentContext[] = [],
+    editEntryId: string | undefined,
+    source: TurnSource,
+  ): TurnInfo {
     const turn: Turn = {
       turnId: `turn-${randomUUID()}`,
       sessionId,
@@ -143,6 +188,7 @@ export class TurnManager {
       text,
       attachments,
       ...(editEntryId ? { editEntryId } : {}),
+      source,
       events: [],
       subscribers: new Set(),
       abortRequested: false,
@@ -234,6 +280,7 @@ export class TurnManager {
       text: turn.text,
       firstSeq: turn.firstSeq,
       lastSeq: turn.lastSeq,
+      source: turn.source,
     };
   }
 
@@ -268,6 +315,14 @@ export class TurnManager {
       timestamp: Date.now(),
       payload: { turnId: turn.turnId, status, ...(error ? { error } : {}) },
     });
+    if (this.onTurnComplete) {
+      const completion: TurnCompletion = { turn: this.toInfo(turn), text: extractAssistantText(turn) };
+      try {
+        void Promise.resolve(this.onTurnComplete(completion)).catch(() => undefined);
+      } catch {
+        // Un observer difettoso non deve interrompere la chiusura del turno.
+      }
+    }
     this.prune();
     this.persist();
   }

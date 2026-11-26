@@ -1502,6 +1502,14 @@ export class AgentService {
     return Boolean(await this.findSessionFile(sessionId));
   }
 
+  /** Indica se una sessione esistente è archiviata; le bozze non lo sono. */
+  async getSessionArchived(sessionId: SessionId): Promise<boolean> {
+    const sessionFile = await this.findSessionFile(sessionId);
+    if (!sessionFile) return false;
+    const meta = await this.readSessionMeta(sessionId, sessionFile);
+    return meta.archived;
+  }
+
   /** Modifica una domanda e crea un nuovo ramo, poi invia il testo corretto. */
   async editUserMessage(
     sessionId: SessionId,

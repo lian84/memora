@@ -34,6 +34,12 @@ import {
   type TelegramChat,
   type TelegramAccountInput,
   type TelegramAccountView,
+  type TelegramAllowedUser,
+  type TelegramSharePatch,
+  type TelegramShareView,
+  type TelegramInboundAdminView,
+  type TelegramInboundPatch,
+  type TelegramPairingCodeView,
   type BackupRecord,
   type BackupSchedule,
   type BackupStatus,
@@ -146,6 +152,7 @@ export interface ChatMessage {
 export type TurnStatus = 'queued' | 'running' | 'completed' | 'failed' | 'aborted' | 'interrupted';
 
 export interface TurnInfo {
+  source?: 'web' | 'telegram';
   turnId: string;
   sessionId: string;
   status: TurnStatus;
@@ -1082,6 +1089,56 @@ export async function discoverTelegramChats(accountId: string): Promise<Telegram
   const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/discover`, { method: 'POST' });
   const data = await res.json() as { chats: TelegramChat[] };
   return data.chats;
+}
+
+export async function getTelegramInbound(accountId: string): Promise<TelegramInboundAdminView> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound`);
+  return res.json() as Promise<TelegramInboundAdminView>;
+}
+
+export async function updateTelegramInbound(accountId: string, patch: TelegramInboundPatch): Promise<TelegramInboundAdminView> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound`, { method: 'PATCH', body: JSON.stringify(patch) });
+  return res.json() as Promise<TelegramInboundAdminView>;
+}
+
+export async function createTelegramPairing(accountId: string): Promise<TelegramPairingCodeView> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound/pairing`, { method: 'POST' });
+  const data = await res.json() as { pairing: TelegramPairingCodeView };
+  return data.pairing;
+}
+
+export async function clearTelegramPairing(accountId: string): Promise<TelegramInboundAdminView> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound/pairing`, { method: 'DELETE' });
+  return res.json() as Promise<TelegramInboundAdminView>;
+}
+
+export async function addTelegramInboundUser(accountId: string, input: { id: string | number; label?: string }): Promise<TelegramAllowedUser> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound/users`, { method: 'POST', body: JSON.stringify(input) });
+  const data = await res.json() as { user: TelegramAllowedUser };
+  return data.user;
+}
+
+export async function removeTelegramInboundUser(accountId: string, userId: string | number): Promise<{ removed: boolean }> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound/users/${encodeURIComponent(String(userId))}`, { method: 'DELETE' });
+  return res.json() as Promise<{ removed: boolean }>;
+}
+
+export async function removeTelegramInboundBinding(accountId: string, userId: string | number): Promise<{ removed: boolean }> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound/bindings/${encodeURIComponent(String(userId))}`, { method: 'DELETE' });
+  return res.json() as Promise<{ removed: boolean }>;
+}
+
+export async function getTelegramShare(sessionId: string): Promise<TelegramShareView> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/telegram-share`);
+  return res.json() as Promise<TelegramShareView>;
+}
+
+export async function updateTelegramShare(sessionId: string, patch: TelegramSharePatch): Promise<TelegramShareView> {
+  const res = await request(`/api/sessions/${encodeURIComponent(sessionId)}/telegram-share`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  return res.json() as Promise<TelegramShareView>;
 }
 
 
