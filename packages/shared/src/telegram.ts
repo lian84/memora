@@ -180,6 +180,8 @@ export interface TelegramTopicBinding {
   threadId: string;
   sessionId: string;
   title: string;
+  /** Progetto della sessione; assente = nessun progetto esplicito. */
+  projectId?: string;
   titleSource: TelegramTopicTitleSource;
   createdAt: number;
   updatedAt: number;
@@ -197,6 +199,8 @@ export interface TelegramGroup {
   allowedUsers: string[];
   defaultProjectId: string | null;
   defaultAgentProfileId: string | null;
+  /** Mostra `[Nome progetto]` davanti al titolo dei topic secondari. */
+  showProjectInTopicTitle: boolean;
   generalSessionId?: string;
   /** Ultimo turno avviato nel topic General. */
   generalLastTurnId?: string;
@@ -212,13 +216,22 @@ export interface TelegramGroupInput {
   allowedUsers: string[];
   defaultProjectId?: string | null;
   defaultAgentProfileId?: string | null;
+  showProjectInTopicTitle?: boolean;
   generalSessionId?: string | null;
+}
+
+/** Modifiche alle impostazioni di un gruppo forum. */
+export interface TelegramGroupPatch {
+  defaultProjectId?: string | null;
+  defaultAgentProfileId?: string | null;
+  showProjectInTopicTitle?: boolean;
 }
 
 export interface TelegramTopicInput {
   threadId: string;
   sessionId: string;
   title: string;
+  projectId?: string | null;
   titleSource?: TelegramTopicTitleSource;
 }
 

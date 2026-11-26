@@ -4,6 +4,7 @@ import path from 'node:path';
 import type {
   TelegramGroup,
   TelegramGroupInput,
+  TelegramGroupPatch,
   TelegramTopicBinding,
   TelegramTopicInput,
   TelegramTopicTitleSource,
@@ -187,6 +188,9 @@ export class TelegramGroupStore {
     const chatId = validChatId(input.chatId);
     const groups = this.account(account);
     const existing = groups.get(chatId);
+    if (input.showProjectInTopicTitle !== undefined && typeof input.showProjectInTopicTitle !== 'boolean') {
+      throw new TelegramGroupError('invalid_telegram_topic_title', 'Impostazione titolo topic non valida');
+    }
     const allowedUsers = [...new Set((input.allowedUsers ?? []).map(validUserId))];
     if (allowedUsers.length === 0 || allowedUsers.length > 20) {
       throw new TelegramGroupError('invalid_telegram_group_users', 'La allowlist del gruppo non è valida');
@@ -210,6 +214,7 @@ export class TelegramGroupStore {
       defaultAgentProfileId: input.defaultAgentProfileId === undefined
         ? existing?.defaultAgentProfileId ?? null
         : validOptionalSlug(input.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido'),
+      showProjectInTopicTitle: input.showProjectInTopicTitle ?? existing?.showProjectInTopicTitle ?? false,
       ...(generalSessionId ? { generalSessionId } : {}),
       ...(generalSessionId && existing?.generalSessionId === generalSessionId && existing.generalLastTurnId
         ? { generalLastTurnId: existing.generalLastTurnId }
@@ -220,6 +225,29 @@ export class TelegramGroupStore {
       topics: existing?.topics ?? {},
     };
     groups.set(chatId, group);
+    await this.persist();
+    return copyGroup(group);
+  }
+
+  async updateSettings(accountId: string, chatId: string, patch: TelegramGroupPatch): Promise<TelegramGroup> {
+    const group = this.requireGroup(accountId, chatId);
+    if (patch.defaultProjectId !== undefined) {
+      group.defaultProjectId = patch.defaultProjectId === null || patch.defaultProjectId === ''
+        ? null
+        : validOptionalSlug(patch.defaultProjectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido');
+    }
+    if (patch.defaultAgentProfileId !== undefined) {
+      group.defaultAgentProfileId = patch.defaultAgentProfileId === null || patch.defaultAgentProfileId === ''
+        ? null
+        : validOptionalSlug(patch.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido');
+    }
+    if (patch.showProjectInTopicTitle !== undefined) {
+      if (typeof patch.showProjectInTopicTitle !== 'boolean') {
+        throw new TelegramGroupError('invalid_telegram_topic_title', 'Impostazione titolo topic non valida');
+      }
+      group.showProjectInTopicTitle = patch.showProjectInTopicTitle;
+    }
+    group.updatedAt = this.now();
     await this.persist();
     return copyGroup(group);
   }
@@ -297,10 +325,16 @@ export class TelegramGroupStore {
     const sessionId = validSessionId(input.sessionId);
     const existing = group.topics[threadId];
     const now = this.now();
+    const projectId = input.projectId === undefined
+      ? existing?.projectId
+      : input.projectId === null || input.projectId === ''
+        ? null
+        : validOptionalSlug(input.projectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido');
     const topic: TelegramTopicBinding = {
       threadId,
       sessionId,
       title: validTitle(input.title, existing?.title ?? `Topic ${threadId}`),
+      ...(projectId ? { projectId } : {}),
       titleSource: input.titleSource === undefined ? existing?.titleSource ?? 'manual' : validTitleSource(input.titleSource),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -425,10 +459,17 @@ export class TelegramGroupStore {
           if (!THREAD_ID_PATTERN.test(threadId) || threadId === '0' || !isRecord(topicValue)) continue;
           try {
             const sessionId = validSessionId(topicValue.sessionId);
+            let projectId: string | undefined;
+            try {
+              projectId = topicValue.projectId === undefined || topicValue.projectId === null
+                ? undefined
+                : validOptionalSlug(topicValue.projectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido') ?? undefined;
+            } catch { projectId = undefined; }
             topics[threadId] = {
               threadId,
               sessionId,
               title: validTitle(topicValue.title, `Topic ${threadId}`),
+              ...(projectId ? { projectId } : {}),
               titleSource: validTitleSource(topicValue.titleSource),
               createdAt: typeof topicValue.createdAt === 'number' && Number.isFinite(topicValue.createdAt) ? topicValue.createdAt : this.now(),
               updatedAt: typeof topicValue.updatedAt === 'number' && Number.isFinite(topicValue.updatedAt) ? topicValue.updatedAt : this.now(),
@@ -451,6 +492,7 @@ export class TelegramGroupStore {
         allowedUsers,
         defaultProjectId: validOptionalSlug(value.defaultProjectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido'),
         defaultAgentProfileId: validOptionalSlug(value.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido'),
+        showProjectInTopicTitle: value.showProjectInTopicTitle === true,
         ...(generalSessionId ? { generalSessionId } : {}),
         ...(typeof value.generalLastTurnId === 'string' && TURN_ID_PATTERN.test(value.generalLastTurnId) ? { generalLastTurnId: value.generalLastTurnId } : {}),
         ...(typeof value.generalPendingTurnId === 'string' && TURN_ID_PATTERN.test(value.generalPendingTurnId) ? { generalPendingTurnId: value.generalPendingTurnId } : {}),

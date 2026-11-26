@@ -1895,6 +1895,10 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .telegram-inbound-row button { height: 24px; padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-muted); color: var(--text-soft); font-size: 9px; cursor: pointer; flex: 0 0 auto; }
 .telegram-inbound-row button.is-danger { color: var(--danger); }
 .telegram-inbound-row button:disabled { opacity: .55; cursor: wait; }
+.telegram-group-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 9px; margin-top: 8px; }
+.telegram-group-settings .admin-toggle { grid-column: 1 / -1; }
+.telegram-group-settings > button { justify-self: start; }
+.telegram-inbound-row a { color: var(--accent); }
 .telegram-pairing-code { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin: 8px 0; }
 .telegram-pairing-code code { padding: 6px 8px; border-radius: 7px; background: var(--surface-muted); color: var(--text); font-size: 14px; letter-spacing: .05em; user-select: all; }
 .telegram-pairing-code small { color: var(--muted); font-size: 9px; }

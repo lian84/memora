@@ -4,6 +4,7 @@ import type {
   ProjectRecord,
   TelegramAccountView,
   TelegramGroup,
+  TelegramGroupPatch,
   TelegramInboundAdminView,
   TelegramPairingCodeView,
   TelegramPollerStatus,
@@ -21,6 +22,8 @@ import {
   removeTelegramGroup,
   removeTelegramInboundBinding,
   removeTelegramInboundUser,
+  resyncTelegramGroupTopics,
+  updateTelegramGroup,
   updateTelegramInbound,
 } from '../lib/api';
 import { useI18n } from '../i18n';
@@ -274,6 +277,42 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     }
   };
 
+  const updateGroup = async (chatId: string, patch: TelegramGroupPatch, success: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const updated = await updateTelegramGroup(account.id, chatId, patch);
+      setGroups(current => current.map(group => group.chatId === chatId ? updated : group));
+      setMessage(success);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resyncGroup = async (chatId: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await resyncTelegramGroupTopics(account.id, chatId);
+      setMessage(t('Titoli riallineati: {updated}. Errori: {failed}.', { updated: result.updated, failed: result.failed }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const projectLabel = (projectId?: string | null): string => {
+    if (!projectId) return '—';
+    return projects.find(project => project.id === projectId)?.name ?? projectId;
+  };
+
+  const activeProjects = projects.filter(project => project.status === 'active');
+
   const status = data?.status;
   const statusLabel = status ? t(STATUS_LABELS[status.status]) : '—';
 
@@ -404,6 +443,9 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
             <p className="admin-field-note">
               {t('Usa un supergruppo privato con Topics attivi, solo proprietario e bot. Il topic General è la sessione predefinita; ogni topic secondario è una sessione.')}
             </p>
+            <p className="admin-field-note">
+              {t('Il progetto predefinito vale per General e per i nuovi topic; se non è impostato usa il default dell’account. Con /new progetto Titolo puoi usare un altro progetto; il prefisso si applica ai nuovi topic e a /rename, mentre Riallinea titoli aggiorna quelli esistenti.')}
+            </p>
             {groupPairing ? (
               <div className="telegram-pairing-code">
                 <code>{groupPairing.code}</code>
@@ -422,31 +464,73 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
               <p className="admin-field-note">{t('Nessun gruppo associato. Genera un codice e invialo in General.')}</p>
             ) : (
               <div className="telegram-inbound-list">
-                {groups.map(group => (
-                  <div className="telegram-inbound-row" key={group.chatId}>
-                    <div>
-                      <strong>{group.title}</strong>
-                      <span>
-                        <code>{group.chatId}</code> · {group.isForum ? t('Forum') : t('Non forum')} · {t('Aggiornato')}: {formatTimestamp(group.updatedAt)}
-                      </span>
-                      <span>
-                        {t('General')}: {group.generalSessionId ? <a href={telegramGroupLink(group.chatId, '1')} target="_blank" rel="noopener noreferrer">{t('apri')} ↗</a> : t('non ancora avviato')}
-                      </span>
-                      {Object.values(group.topics).length > 0 && (
+                {groups.map(group => {
+                  const effectiveProjectId = group.defaultProjectId ?? data.inbound.settings.defaultProjectId;
+                  const defaultProject = projectLabel(effectiveProjectId);
+                  const defaultProjectMissing = Boolean(group.defaultProjectId && !activeProjects.some(project => project.id === group.defaultProjectId));
+                  const defaultAgentMissing = Boolean(group.defaultAgentProfileId && !agents.some(agent => agent.id === group.defaultAgentProfileId));
+                  return (
+                    <div className="telegram-inbound-row" key={group.chatId}>
+                      <div>
+                        <strong>{group.title}</strong>
                         <span>
-                          {t('Topic')}: {Object.values(group.topics).map((topic, index) => (
-                            <span key={topic.threadId}>
-                              {index > 0 ? ' · ' : ''}
-                              <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a>
-                            </span>
-                          ))}
+                          <code>{group.chatId}</code> · {group.isForum ? t('Forum') : t('Non forum')} · {t('Aggiornato')}: {formatTimestamp(group.updatedAt)}
                         </span>
-                      )}
-                      <span>{t('Utenti autorizzati')}: {group.allowedUsers.join(', ')}</span>
+                        <span>
+                          {t('General')}: {group.generalSessionId ? <a href={telegramGroupLink(group.chatId, '1')} target="_blank" rel="noopener noreferrer">{t('apri')} ↗</a> : t('non ancora avviato')} · {t('Progetto')}: {defaultProject}
+                        </span>
+                        {Object.values(group.topics).length > 0 && (
+                          <span>
+                            {t('Topic')}: {Object.values(group.topics).map((topic, index) => (
+                              <span key={topic.threadId}>
+                                {index > 0 ? ' · ' : ''}
+                                <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a> ({projectLabel(topic.projectId ?? effectiveProjectId)})
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        <span>{t('Utenti autorizzati')}: {group.allowedUsers.join(', ')}</span>
+                        <div className="telegram-group-settings">
+                          <label className="admin-label">{t('Progetto del gruppo')}
+                            <select
+                              value={group.defaultProjectId ?? ''}
+                              disabled={saving}
+                              onChange={event => void updateGroup(group.chatId, { defaultProjectId: event.target.value || null }, t('Progetto del gruppo salvato.'))}
+                            >
+                              <option value="">{t('Default dell’account')}</option>
+                              {defaultProjectMissing && <option value={group.defaultProjectId ?? ''}>{group.defaultProjectId}</option>}
+                              {activeProjects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                            </select>
+                          </label>
+                          <label className="admin-label">{t('Profilo agente del gruppo')}
+                            <select
+                              value={group.defaultAgentProfileId ?? ''}
+                              disabled={saving}
+                              onChange={event => void updateGroup(group.chatId, { defaultAgentProfileId: event.target.value || null }, t('Profilo agente del gruppo salvato.'))}
+                            >
+                              <option value="">{t('Default dell’account')}</option>
+                              {defaultAgentMissing && <option value={group.defaultAgentProfileId ?? ''}>{group.defaultAgentProfileId}</option>}
+                              {agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+                            </select>
+                          </label>
+                          <label className="admin-toggle">
+                            <input
+                              type="checkbox"
+                              checked={group.showProjectInTopicTitle}
+                              disabled={saving}
+                              onChange={event => void updateGroup(group.chatId, { showProjectInTopicTitle: event.target.checked }, t('Impostazione prefisso aggiornata.'))}
+                            />
+                            <span>{t('Mostra il progetto nei titoli dei topic')}</span>
+                          </label>
+                          <button type="button" onClick={() => void resyncGroup(group.chatId)} disabled={saving}>
+                            {t('Riallinea titoli')}
+                          </button>
+                        </div>
+                      </div>
+                      <button type="button" className="is-danger" onClick={() => void removeGroup(group.chatId)} disabled={saving}>{t('Revoca')}</button>
                     </div>
-                    <button type="button" className="is-danger" onClick={() => void removeGroup(group.chatId)} disabled={saving}>{t('Revoca')}</button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import fastify from 'fastify';
 import { TelegramStore } from './telegram.js';
 import { TelegramBindingStore } from './telegram-bindings.js';
@@ -25,9 +25,10 @@ async function fixture() {
   await bindings.addAllowedUser(account.id, { id: 42, label: 'Luca' });
   const groups = new TelegramGroupStore({ dataDir });
   await groups.load();
+  const inbound = { syncGroupTopicTitles: vi.fn(async () => ({ updated: 1, failed: 0 })) };
   const app = fastify();
-  registerTelegramGroupRoutes(app, { accounts, bindings, groups });
-  return { app, account, groups };
+  registerTelegramGroupRoutes(app, { accounts, bindings, groups, inbound });
+  return { app, account, groups, inbound };
 }
 
 describe('telegram group routes', () => {
@@ -42,6 +43,25 @@ describe('telegram group routes', () => {
     const pairing = await app.inject({ method: 'POST', url: `/api/admin/telegram/accounts/${account.id}/groups/pairing` });
     expect(pairing.statusCode).toBe(201);
     expect(pairing.json().pairing.code).toMatch(/^[A-Za-z0-9_-]{16,128}$/);
+
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: `/api/admin/telegram/accounts/${account.id}/groups/-100123`,
+      payload: { defaultProjectId: 'lavoro', showProjectInTopicTitle: true },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().group).toMatchObject({ defaultProjectId: 'lavoro', showProjectInTopicTitle: true });
+
+    const invalid = await app.inject({
+      method: 'PATCH',
+      url: `/api/admin/telegram/accounts/${account.id}/groups/-100123`,
+      payload: { defaultProjectId: 'Non Valido' },
+    });
+    expect(invalid.statusCode).toBe(400);
+
+    const resync = await app.inject({ method: 'POST', url: `/api/admin/telegram/accounts/${account.id}/groups/-100123/topics/resync` });
+    expect(resync.statusCode).toBe(200);
+    expect(resync.json()).toEqual({ updated: 1, failed: 0 });
 
     const removed = await app.inject({ method: 'DELETE', url: `/api/admin/telegram/accounts/${account.id}/groups/-100123` });
     expect(removed.statusCode).toBe(200);

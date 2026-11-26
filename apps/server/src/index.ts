@@ -336,6 +336,7 @@ telegramInboundHolder.current = new TelegramInboundService({
   reads: turnReadStore,
   attachments: chatAttachmentStore,
   groups: telegramGroups,
+  projects: projectStore,
   log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'telegram-inbound'),
   canProcess: () => !backupService.isMaintenance(),
 });
@@ -387,7 +388,7 @@ const catalog = new ModelCatalogService({
 });
 
 registerTelegramInboundRoutes(app, { accounts: telegramStore, bindings: telegramBindings, inbound: telegramInbound, shares: telegramShares });
-registerTelegramGroupRoutes(app, { accounts: telegramStore, bindings: telegramBindings, groups: telegramGroups });
+registerTelegramGroupRoutes(app, { accounts: telegramStore, bindings: telegramBindings, groups: telegramGroups, inbound: telegramInbound });
 registerTelegramShareRoutes(app, { accounts: telegramStore, bindings: telegramBindings, shares: telegramShares, inbound: telegramInbound, sessions: agentService });
 registerAutomationRoutes(app, { store: automationStore, scheduler: automationScheduler, telegramStore, telegram: telegramService, inbound: telegramInbound, mirror: telegramMirror, groups: telegramGroups, log: (event, details) => app.log.info({ event, ...(details ?? {}) }, 'automations') });
 

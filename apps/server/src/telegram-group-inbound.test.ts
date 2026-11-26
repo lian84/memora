@@ -247,6 +247,10 @@ class FakeSessions implements TelegramInboundSessionService {
     return this.archived.has(sessionId);
   }
 
+  async getSessionProjectId(sessionId: string): Promise<string | undefined> {
+    return this.sessions.get(sessionId)?.projectId;
+  }
+
   async listSessions(onlyArchived = false, includeArchived = false): Promise<TelegramInboundSessionInfo[]> {
     const list = [...this.sessions.values()];
     if (includeArchived) return list;
@@ -377,6 +381,11 @@ async function setupGroup(options: { inboundEnabled?: boolean } = {}) {
   const groups = new TelegramGroupStore({ dataDir });
   await groups.load();
   const transport = new FakeTransport();
+  const projects = { list: vi.fn(async () => [
+    { id: 'memora', name: 'Memora' },
+    { id: 'lavoro', name: 'Lavoro' },
+    { id: 'casa', name: 'Casa' },
+  ]) };
   const sessions = new FakeSessions();
   const turns = new FakeTurns();
   const attachments = new FakeAttachments();
@@ -386,6 +395,7 @@ async function setupGroup(options: { inboundEnabled?: boolean } = {}) {
     accounts,
     bindings,
     groups,
+    projects,
     turns,
     sessions,
     reads,
@@ -395,7 +405,7 @@ async function setupGroup(options: { inboundEnabled?: boolean } = {}) {
     maxBackoffMs: 50,
   });
   services.push(service);
-  return { dataDir, accounts, account, bindings, groups, transport, sessions, turns, attachments, reads, service };
+  return { dataDir, accounts, account, bindings, groups, projects, transport, sessions, turns, attachments, reads, service };
 }
 
 async function waitForTurn(ctx: Awaited<ReturnType<typeof setupGroup>>, count = 1) {
@@ -411,6 +421,7 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.start();
     await vi.waitFor(() => expect(ctx.groups.get(ctx.account.id, '-100123')).toBeDefined());
     expect(ctx.groups.get(ctx.account.id, '-100123')?.allowedUsers).toEqual(['42']);
+    expect(ctx.groups.get(ctx.account.id, '-100123')?.showProjectInTopicTitle).toBe(true);
     expect(ctx.bindings.isAllowed(ctx.account.id, 42)).toBe(false);
     expect(ctx.bindings.get(ctx.account.id).pairing.active).toBe(false);
     expect(ctx.transport.sent.some(item => item.text.includes('Gruppo associato'))).toBe(true);
@@ -501,6 +512,22 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.stop();
   });
 
+  it('recupera il progetto dei topic creati prima del metadata', async () => {
+    const ctx = await setupGroup();
+    ctx.sessions.addSession({ sessionId: 'sess_legacy', name: 'Legacy', projectId: 'casa' });
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+    });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', { threadId: '55', sessionId: 'sess_legacy', title: 'Legacy' });
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.projectId).toBe('casa'));
+    await ctx.service.stop();
+  });
+
   it('collega un topic creato manualmente e instrada messaggi, typing e risposta', async () => {
     const ctx = await setupGroup();
     await ctx.groups.upsert(ctx.account.id, {
@@ -547,6 +574,24 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.stop();
   });
 
+  it('non rinomina un topic sconosciuto al primo messaggio', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    ctx.transport.updates.push(groupMessage({ text: 'Ciao', threadId: 77 }));
+    await ctx.service.start();
+    await waitForTurn(ctx);
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '77')).toMatchObject({ title: 'Topic 77', projectId: 'lavoro' });
+    expect(ctx.transport.editedTopics.some(item => item.threadId === 77)).toBe(false);
+    await ctx.service.stop();
+  });
+
   it('crea un nuovo topic e una sessione con /new da General', async () => {
     const ctx = await setupGroup();
     await ctx.groups.upsert(ctx.account.id, {
@@ -563,6 +608,168 @@ describe('Telegram group and forum topics', () => {
     expect(topic?.title).toBe('Preventivo');
     expect(ctx.sessions.created).toHaveLength(1);
     await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Topic creato') && item.threadId === undefined)).toBe(true));
+    await ctx.service.stop();
+  });
+
+  it('elenca i progetti disponibili', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/projects' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('lavoro') && item.text.includes('Casa'))).toBe(true));
+    expect(ctx.transport.sent.some(item => item.text.includes('default'))).toBe(true);
+    await ctx.service.stop();
+  });
+
+  it('crea un topic nel progetto scelto con /new e applica il prefisso', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/new casa Preventivo' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Casa] Preventivo', ctx.account.id));
+    const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
+    expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'casa' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    expect(ctx.transport.sent.some(item => item.text.includes('Progetto: Casa'))).toBe(true);
+    await ctx.service.stop();
+  });
+
+  it('usa il progetto predefinito del gruppo per /new senza progetto', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/new Preventivo' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Lavoro] Preventivo', ctx.account.id));
+    const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
+    expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'lavoro' });
+    await ctx.service.stop();
+  });
+
+  it('non aggiunge il prefisso quando il gruppo lo disabilita', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'casa',
+      showProjectInTopicTitle: false,
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/new Preventivo' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', 'Preventivo', ctx.account.id));
+    const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
+    expect(topic?.projectId).toBe('casa');
+    await ctx.service.stop();
+  });
+
+  it('applica il prefisso a un topic creato manualmente', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'casa',
+      showProjectInTopicTitle: true,
+    });
+    ctx.transport.updates.push(topicCreatedMessage(55, 'Spese'));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.editedTopics).toContainEqual({ chatId: '-100123', threadId: 55, name: '[Casa] Spese' }));
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')).toMatchObject({ title: 'Spese', projectId: 'casa' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    await ctx.service.stop();
+  });
+
+  it('rimuove il prefisso quando il titolo del topic viene modificato a mano', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'casa',
+      showProjectInTopicTitle: true,
+    });
+    ctx.sessions.addSession({ sessionId: 'sess_topic', name: 'Spese' });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', {
+      threadId: '55',
+      sessionId: 'sess_topic',
+      title: 'Spese',
+      projectId: 'casa',
+    });
+    const update = groupMessage({ threadId: 55 });
+    (update.message as Record<string, unknown>).forum_topic_edited = { name: '[Casa] Spese nuove' };
+    ctx.transport.updates.push(update);
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.title).toBe('Spese nuove'));
+    await ctx.service.stop();
+  });
+
+  it('rinomina sessione e topic mantenendo il prefisso del progetto', async () => {
+    const ctx = await setupGroup();
+    ctx.sessions.addSession({ sessionId: 'sess_topic', name: 'Vecchio titolo', messageCount: 2 });
+    ctx.sessions.messages.set('sess_topic', [{ role: 'user', content: 'Ciao' }]);
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', {
+      threadId: '55',
+      sessionId: 'sess_topic',
+      title: 'Vecchio titolo',
+      projectId: 'casa',
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/rename Nuovo titolo', threadId: 55 }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.editedTopics).toContainEqual({ chatId: '-100123', threadId: 55, name: '[Casa] Nuovo titolo' }));
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.title).toBe('Nuovo titolo');
+    await ctx.service.stop();
+  });
+
+  it('riallinea i titoli dei topic esistenti', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    ctx.sessions.addSession({ sessionId: 'sess_lavoro', name: 'Preventivo' });
+    ctx.sessions.addSession({ sessionId: 'sess_casa', name: 'Spese' });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', { threadId: '55', sessionId: 'sess_lavoro', title: 'Preventivo', projectId: 'lavoro' });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', { threadId: '56', sessionId: 'sess_casa', title: 'Spese', projectId: 'casa' });
+    await expect(ctx.service.syncGroupTopicTitles(ctx.account.id, '-100123')).resolves.toEqual({ updated: 2, failed: 0 });
+    expect(ctx.transport.editedTopics).toEqual([
+      { chatId: '-100123', threadId: 55, name: '[Lavoro] Preventivo' },
+      { chatId: '-100123', threadId: 56, name: '[Casa] Spese' },
+    ]);
     await ctx.service.stop();
   });
 
@@ -660,6 +867,32 @@ describe('Telegram group and forum topics', () => {
     ctx.turns.running(turn.turnId);
     ctx.turns.complete(turn.turnId, 'completed', 'Documento analizzato');
     await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Documento analizzato') && item.threadId === 55)).toBe(true));
+    await ctx.service.stop();
+  });
+
+  it('mantiene il progetto del topic quando la sessione viene sostituita', async () => {
+    const ctx = await setupGroup();
+    ctx.sessions.addSession({ sessionId: 'sess_archived', name: 'Archiviata' });
+    ctx.sessions.archived.add('sess_archived');
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', {
+      threadId: '55',
+      sessionId: 'sess_archived',
+      title: 'Spese',
+      projectId: 'casa',
+    });
+    ctx.transport.updates.push(groupMessage({ text: 'Continuiamo', threadId: 55 }));
+    await ctx.service.start();
+    const turn = await waitForTurn(ctx);
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')).toMatchObject({ sessionId: turn.sessionId, projectId: 'casa' });
     await ctx.service.stop();
   });
 

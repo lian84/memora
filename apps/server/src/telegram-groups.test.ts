@@ -34,16 +34,16 @@ describe('TelegramGroupStore', () => {
       defaultProjectId: 'lavoro',
       defaultAgentProfileId: 'sviluppatore',
     });
-    expect(group).toMatchObject({ chatId: GROUP, title: 'Memora Lavoro', isForum: true, allowedUsers: ['42'], defaultProjectId: 'lavoro' });
+    expect(group).toMatchObject({ chatId: GROUP, title: 'Memora Lavoro', isForum: true, allowedUsers: ['42'], defaultProjectId: 'lavoro', showProjectInTopicTitle: false });
 
     await store.setGeneralSession(ACCOUNT, GROUP, 'sess_general');
-    await store.putTopic(ACCOUNT, GROUP, { threadId: '17', sessionId: 'sess_topic', title: 'Preventivo' });
-    expect(store.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ sessionId: 'sess_topic', title: 'Preventivo', titleSource: 'manual' });
+    await store.putTopic(ACCOUNT, GROUP, { threadId: '17', sessionId: 'sess_topic', title: 'Preventivo', projectId: 'lavoro' });
+    expect(store.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ sessionId: 'sess_topic', projectId: 'lavoro', title: 'Preventivo', titleSource: 'manual' });
     expect((await fs.stat(store.filePath)).mode & 0o777).toBe(0o600);
 
     const reloaded = await storeAt(dataDir);
     expect(reloaded.get(ACCOUNT, GROUP)).toMatchObject({ generalSessionId: 'sess_general' });
-    expect(reloaded.getTopic(ACCOUNT, GROUP, '17')?.sessionId).toBe('sess_topic');
+    expect(reloaded.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ sessionId: 'sess_topic', projectId: 'lavoro' });
   });
 
   it('aggiorna lo stato del turno e trova il topic per sessione', async () => {
@@ -67,6 +67,25 @@ describe('TelegramGroupStore', () => {
     await store.putTopic(ACCOUNT, GROUP, { threadId: '18', sessionId: 'sess_delete', title: 'Delete' });
     expect(await store.removeTopicsForSession('sess_delete')).toBe(1);
     expect(store.getTopic(ACCOUNT, GROUP, '18')).toBeUndefined();
+  });
+
+  it('aggiorna progetto, profilo e prefisso del gruppo', async () => {
+    const store = await storeAt(await tempDir());
+    await store.upsert(ACCOUNT, { chatId: GROUP, title: 'Gruppo', isForum: true, allowedUsers: ['42'] });
+    const updated = await store.updateSettings(ACCOUNT, GROUP, {
+      defaultProjectId: 'lavoro',
+      defaultAgentProfileId: 'sviluppatore',
+      showProjectInTopicTitle: true,
+    });
+    expect(updated).toMatchObject({
+      defaultProjectId: 'lavoro',
+      defaultAgentProfileId: 'sviluppatore',
+      showProjectInTopicTitle: true,
+    });
+    const cleared = await store.updateSettings(ACCOUNT, GROUP, { defaultProjectId: null, showProjectInTopicTitle: false });
+    expect(cleared.defaultProjectId).toBeNull();
+    expect(cleared.showProjectInTopicTitle).toBe(false);
+    await expect(store.updateSettings(ACCOUNT, GROUP, { defaultProjectId: 'Non Valido' })).rejects.toMatchObject({ code: 'invalid_telegram_project_id' });
   });
 
   it('aggiorna le impostazioni del gruppo senza perdere i topic', async () => {
