@@ -27,6 +27,7 @@ import {
   type TelegramCommandScope,
   type TelegramDocument,
   type TelegramFile,
+  type TelegramForumTopicIcon,
   type TelegramStore,
 } from './telegram.js';
 
@@ -53,8 +54,10 @@ export interface TelegramInboundTransport {
   downloadFile?(filePath: string, accountId?: string, maxBytes?: number): Promise<Buffer>;
   getMe(accountId?: string): Promise<TelegramBotInfo>;
   setMyCommands?(commands: TelegramCommand[], accountId?: string, options?: { languageCode?: string; scope?: TelegramCommandScope }): Promise<void>;
-  createForumTopic?(chatId: string, name: string, accountId?: string): Promise<TelegramForumTopic>;
-  editForumTopic?(chatId: string, threadId: number, name: string, accountId?: string): Promise<void>;
+  createForumTopic?(chatId: string, name: string, accountId?: string, options?: { iconCustomEmojiId?: string }): Promise<TelegramForumTopic>;
+  editForumTopic?(chatId: string, threadId: number, name: string, accountId?: string, options?: { iconCustomEmojiId?: string }): Promise<void>;
+  setForumTopicIcon?(chatId: string, threadId: number, iconCustomEmojiId: string, accountId?: string): Promise<void>;
+  getForumTopicIconStickers?(accountId?: string): Promise<TelegramForumTopicIcon[]>;
   getChat?(chatId: string, accountId?: string): Promise<TelegramChatInfo>;
   getChatMember?(chatId: string, userId: string | number, accountId?: string): Promise<TelegramChatMemberInfo>;
 }
@@ -445,6 +448,7 @@ export class TelegramInboundService {
   private readonly projects?: TelegramInboundProjects;
   private readonly bridges = new Map<string, TurnBridge>();
   private readonly groupChoices = new Map<string, GroupSessionChoice>();
+  private readonly topicIcons = new Map<string, string | null>();
   /** Topic creati via API: evita che il service message crei una seconda sessione. */
   private readonly pendingTopicCreations = new Set<string>();
   private readonly typingTimers = new Set<NodeJS.Timeout>();
@@ -510,6 +514,7 @@ export class TelegramInboundService {
   async refreshAccount(accountId: string): Promise<void> {
     await this.stopAccount(accountId);
     this.botInfo.delete(accountId);
+    this.topicIcons.delete(accountId);
     if (!this.stopping) await this.startAccount(accountId);
   }
 
@@ -518,6 +523,7 @@ export class TelegramInboundService {
     await this.stopAccount(accountId);
     await this.bindings.removeAccount(accountId);
     this.botInfo.delete(accountId);
+    this.topicIcons.delete(accountId);
     this.observedChats.delete(accountId);
     const counterPrefix = `${accountId}:`;
     for (const key of this.incomingCounters.keys()) {
@@ -1137,15 +1143,18 @@ export class TelegramInboundService {
       await this.safeReply(accountId, chatId, '⚠️ Non è stato possibile collegare il topic alla sessione.', threadId);
       return;
     }
-    if (group.showProjectInTopicTitle && projectId) {
-      const formatted = await this.topicTitle(group, title, projectId);
-      if (formatted !== rawName) {
-        try {
-          await this.telegram.editForumTopic?.(chatId, Number(threadId), formatted, accountId);
-        } catch (error) {
-          this.log('telegram_topic_prefix_failed', { accountId, code: errorCode(error) ?? 'internal' });
-        }
+    const iconCustomEmojiId = await this.ensureTopicIcon(accountId);
+    const formatted = group.showProjectInTopicTitle && projectId
+      ? await this.topicTitle(group, title, projectId)
+      : undefined;
+    if (formatted && formatted !== rawName && this.telegram.editForumTopic) {
+      try {
+        await this.editTopicName(accountId, chatId, Number(threadId), formatted, iconCustomEmojiId);
+      } catch (error) {
+        this.log('telegram_topic_prefix_failed', { accountId, code: errorCode(error) ?? 'internal' });
       }
+    } else if (iconCustomEmojiId) {
+      await this.applyTopicIcon(accountId, chatId, Number(threadId), iconCustomEmojiId);
     }
     if (cleanName) this.pendingTitles.set(sessionId, cleanName);
     const project = await this.projectName(projectId);
@@ -1357,6 +1366,8 @@ export class TelegramInboundService {
         ...(projectId ? { projectId } : {}),
         titleSource: 'manual',
       });
+      const iconCustomEmojiId = await this.ensureTopicIcon(context.accountId);
+      await this.applyTopicIcon(context.accountId, context.chatId, Number(context.threadId), iconCustomEmojiId);
       return { sessionId: created };
     }
 
@@ -1443,17 +1454,67 @@ export class TelegramInboundService {
     return formatTelegramTopicTitle(baseTitle, name, group.showProjectInTopicTitle);
   }
 
+  private async ensureTopicIcon(accountId: string): Promise<string | undefined> {
+    if (this.topicIcons.has(accountId)) return this.topicIcons.get(accountId) ?? undefined;
+    const getIcons = this.telegram.getForumTopicIconStickers;
+    if (!getIcons) {
+      this.topicIcons.set(accountId, null);
+      return undefined;
+    }
+    try {
+      const icons = await getIcons.call(this.telegram, accountId);
+      const checkmark = icons.find(icon => icon.emoji === '✅')
+        ?? icons.find(icon => icon.emoji === '✔️' || icon.emoji === '✔' || icon.emoji === '☑️' || icon.emoji === '☑')
+        ?? icons.find(icon => icon.emoji?.includes('✅') || icon.emoji?.includes('✔'));
+      this.topicIcons.set(accountId, checkmark?.customEmojiId ?? null);
+      if (!checkmark) this.log('telegram_topic_icon_missing', { accountId });
+      return checkmark?.customEmojiId;
+    } catch (error) {
+      this.log('telegram_topic_icon_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      return undefined;
+    }
+  }
+
+  private async editTopicName(
+    accountId: string,
+    chatId: string,
+    threadId: number,
+    name: string,
+    iconCustomEmojiId?: string,
+  ): Promise<void> {
+    if (!this.telegram.editForumTopic) return;
+    try {
+      await this.telegram.editForumTopic(chatId, threadId, name, accountId, {
+        ...(iconCustomEmojiId ? { iconCustomEmojiId } : {}),
+      });
+    } catch (error) {
+      if (!iconCustomEmojiId) throw error;
+      this.log('telegram_topic_icon_failed', { accountId, code: errorCode(error) ?? 'internal' });
+      await this.telegram.editForumTopic(chatId, threadId, name, accountId);
+    }
+  }
+
+  private async applyTopicIcon(accountId: string, chatId: string, threadId: number, iconCustomEmojiId?: string): Promise<void> {
+    if (!iconCustomEmojiId || !this.telegram.setForumTopicIcon) return;
+    try {
+      await this.telegram.setForumTopicIcon(chatId, threadId, iconCustomEmojiId, accountId);
+    } catch (error) {
+      this.log('telegram_topic_icon_failed', { accountId, code: errorCode(error) ?? 'internal' });
+    }
+  }
+
   async syncGroupTopicTitles(accountId: string, chatId: string): Promise<{ updated: number; failed: number }> {
     if (!this.groups) throw new Error('groups_unavailable');
     if (!this.telegram.editForumTopic) throw new Error('telegram_topics_unavailable');
     const group = this.groups.get(accountId, chatId);
     if (!group) throw new Error('group_not_found');
+    const iconCustomEmojiId = await this.ensureTopicIcon(accountId);
     let updated = 0;
     let failed = 0;
     for (const topic of Object.values(group.topics)) {
       const formatted = await this.topicTitle(group, topic.title, topic.projectId);
       try {
-        await this.telegram.editForumTopic(chatId, Number(topic.threadId), formatted, accountId);
+        await this.editTopicName(accountId, chatId, Number(topic.threadId), formatted, iconCustomEmojiId);
         updated += 1;
       } catch (error) {
         failed += 1;
@@ -1623,9 +1684,19 @@ export class TelegramInboundService {
       }
     }
     const topicName = await this.topicTitle(context.group, title, projectId);
+    const iconCustomEmojiId = await this.ensureTopicIcon(context.accountId);
     let topic: TelegramForumTopic;
     try {
-      topic = await this.telegram.createForumTopic(context.chatId, topicName, context.accountId);
+      if (iconCustomEmojiId) {
+        try {
+          topic = await this.telegram.createForumTopic(context.chatId, topicName, context.accountId, { iconCustomEmojiId });
+        } catch (error) {
+          this.log('telegram_topic_icon_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+          topic = await this.telegram.createForumTopic(context.chatId, topicName, context.accountId);
+        }
+      } else {
+        topic = await this.telegram.createForumTopic(context.chatId, topicName, context.accountId);
+      }
     } catch (error) {
       this.log('telegram_topic_create_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
       await this.safeReply(
@@ -1828,8 +1899,9 @@ export class TelegramInboundService {
         const topic = this.groups.getTopic(context.accountId, context.chatId, context.threadId);
         const projectId = topic?.projectId ?? this.defaultProjectId(group, context.accountId);
         const formatted = await this.topicTitle(group, title, projectId);
+        const iconCustomEmojiId = await this.ensureTopicIcon(context.accountId);
         try {
-          await this.telegram.editForumTopic(context.chatId, Number(context.threadId), formatted, context.accountId);
+          await this.editTopicName(context.accountId, context.chatId, Number(context.threadId), formatted, iconCustomEmojiId);
           await this.groups.updateTopicTitle(context.accountId, context.chatId, context.threadId, title);
         } catch (error) {
           topicUpdated = false;

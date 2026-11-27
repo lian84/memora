@@ -372,6 +372,34 @@ describe('TelegramService', () => {
     expect(JSON.parse(String((fetchMock.mock.calls[4]?.[1] as RequestInit).body))).toMatchObject({ chat_id: '-100123', user_id: '42' });
   });
 
+  it('legge e applica le icone dei topic', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => {
+      const url = String(args[0]);
+      if (url.includes('/getForumTopicIconStickers')) {
+        return new Response(JSON.stringify({ ok: true, result: [{ custom_emoji_id: '123456', emoji: '✅' }] }), { status: 200 });
+      }
+      if (url.includes('/createForumTopic')) {
+        return new Response(JSON.stringify({ ok: true, result: { message_thread_id: 17, name: 'Preventivo' } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 });
+    });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await expect(service.getForumTopicIconStickers(account.id)).resolves.toEqual([{ customEmojiId: '123456', emoji: '✅' }]);
+    await service.createForumTopic('-100123', 'Preventivo', account.id, { iconCustomEmojiId: '123456' });
+    await service.editForumTopic('-100123', 17, 'Preventivo 2', account.id, { iconCustomEmojiId: '123456' });
+    await service.setForumTopicIcon('-100123', 17, '123456', account.id);
+    const createBody = JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    const editBody = JSON.parse(String((fetchMock.mock.calls[2]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    const iconBody = JSON.parse(String((fetchMock.mock.calls[3]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(createBody).toMatchObject({ chat_id: '-100123', name: 'Preventivo', icon_custom_emoji_id: '123456' });
+    expect(editBody).toMatchObject({ chat_id: '-100123', message_thread_id: 17, name: 'Preventivo 2', icon_custom_emoji_id: '123456' });
+    expect(iconBody).toMatchObject({ chat_id: '-100123', message_thread_id: 17, icon_custom_emoji_id: '123456' });
+    expect(iconBody).not.toHaveProperty('name');
+  });
+
   it('riconosce un conflitto webhook e annulla il long polling', async () => {
     const store = new TelegramStore({ dataDir: await tempDir() });
     await store.load();

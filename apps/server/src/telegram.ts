@@ -67,6 +67,18 @@ function validTopicName(value: unknown): string {
   return name;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validCustomEmojiId(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || !/^\d{1,32}$/.test(value.trim())) {
+    throw new TelegramError('invalid_telegram_icon', 'Icona topic Telegram non valida');
+  }
+  return value.trim();
+}
+
 function validMessageThreadId(value: unknown): number | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
@@ -352,6 +364,11 @@ export type TelegramCommandScope =
   | { type: 'default' | 'all_private_chats' | 'all_group_chats' | 'all_chat_administrators' }
   | { type: 'chat' | 'chat_administrators'; chatId: string }
   | { type: 'chat_member'; chatId: string; userId: string };
+
+export interface TelegramForumTopicIcon {
+  customEmojiId: string;
+  emoji?: string;
+}
 
 export interface TelegramMessageOptions {
   parseMode?: 'HTML';
@@ -714,13 +731,20 @@ export class TelegramService {
     };
   }
 
-  async createForumTopic(chatId: string, name: string, accountId?: string): Promise<TelegramForumTopic> {
+  async createForumTopic(
+    chatId: string,
+    name: string,
+    accountId?: string,
+    options: { iconCustomEmojiId?: string } = {},
+  ): Promise<TelegramForumTopic> {
     const target = this.validTarget(chatId);
     const topicName = validTopicName(name);
+    const iconCustomEmojiId = validCustomEmojiId(options.iconCustomEmojiId);
     const { token } = this.tokenFor(accountId);
     const result = await this.request<{ message_thread_id?: number; name?: string }>(token, 'createForumTopic', {
       chat_id: target,
       name: topicName,
+      ...(iconCustomEmojiId ? { icon_custom_emoji_id: iconCustomEmojiId } : {}),
     });
     if (typeof result?.message_thread_id !== 'number' || !Number.isSafeInteger(result.message_thread_id) || result.message_thread_id <= 0) {
       throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
@@ -728,17 +752,58 @@ export class TelegramService {
     return { threadId: String(result.message_thread_id), name: typeof result.name === 'string' ? result.name : topicName };
   }
 
-  async editForumTopic(chatId: string, threadId: number, name: string, accountId?: string): Promise<void> {
+  async editForumTopic(
+    chatId: string,
+    threadId: number,
+    name: string,
+    accountId?: string,
+    options: { iconCustomEmojiId?: string } = {},
+  ): Promise<void> {
     const target = this.validTarget(chatId);
     const thread = validMessageThreadId(threadId);
     if (!thread) throw new TelegramError('invalid_telegram_thread_id', 'ID topic Telegram non valido');
     const topicName = validTopicName(name);
+    const iconCustomEmojiId = validCustomEmojiId(options.iconCustomEmojiId);
     const { token } = this.tokenFor(accountId);
     await this.request(token, 'editForumTopic', {
       chat_id: target,
       message_thread_id: thread,
       name: topicName,
+      ...(iconCustomEmojiId ? { icon_custom_emoji_id: iconCustomEmojiId } : {}),
     });
+  }
+
+  async setForumTopicIcon(chatId: string, threadId: number, iconCustomEmojiId: string, accountId?: string): Promise<void> {
+    const target = this.validTarget(chatId);
+    const thread = validMessageThreadId(threadId);
+    if (!thread) throw new TelegramError('invalid_telegram_thread_id', 'ID topic Telegram non valido');
+    const icon = validCustomEmojiId(iconCustomEmojiId);
+    if (!icon) throw new TelegramError('invalid_telegram_icon', 'Icona topic Telegram non valida');
+    const { token } = this.tokenFor(accountId);
+    await this.request(token, 'editForumTopic', {
+      chat_id: target,
+      message_thread_id: thread,
+      icon_custom_emoji_id: icon,
+    });
+  }
+
+  async getForumTopicIconStickers(accountId?: string): Promise<TelegramForumTopicIcon[]> {
+    const { token } = this.tokenFor(accountId);
+    const result = await this.request<unknown>(token, 'getForumTopicIconStickers', {});
+    if (!Array.isArray(result)) throw new TelegramError('telegram_invalid_response', 'Risposta Telegram non valida', 502);
+    const icons: TelegramForumTopicIcon[] = [];
+    for (const item of result) {
+      if (!isRecord(item)) continue;
+      const customEmojiId = typeof item.custom_emoji_id === 'string' && /^\d{1,32}$/.test(item.custom_emoji_id)
+        ? item.custom_emoji_id
+        : '';
+      if (!customEmojiId) continue;
+      icons.push({
+        customEmojiId,
+        ...(typeof item.emoji === 'string' ? { emoji: item.emoji } : {}),
+      });
+    }
+    return icons;
   }
 
   async closeForumTopic(chatId: string, threadId: number, accountId?: string): Promise<void> {

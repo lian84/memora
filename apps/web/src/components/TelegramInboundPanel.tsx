@@ -546,7 +546,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                               </select>
                             </label>
                             <p className="admin-field-note">
-                              {t('Il prefisso vale per i nuovi topic e /rename; Riallinea titoli aggiorna quelli esistenti.')}
+                              {t('Il prefisso e l’icona valgono per i nuovi topic e /rename; Riallinea titoli e icone aggiorna quelli esistenti.')}
                             </p>
                             <label className="admin-toggle">
                               <input
@@ -558,7 +558,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                               <span>{t('Mostra il progetto nei titoli dei topic')}</span>
                             </label>
                             <button type="button" onClick={() => void resyncGroup(group.chatId)} disabled={saving}>
-                              {t('Riallinea titoli')}
+                              {t('Riallinea titoli e icone')}
                             </button>
                           </div>
                         </details>

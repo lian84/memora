@@ -45,6 +45,7 @@ class FakeTransport implements TelegramInboundTransport {
   typing: Array<{ chatId: string; accountId?: string; threadId?: number }> = [];
   createdTopics: Array<{ chatId: string; name: string; threadId: string }> = [];
   editedTopics: Array<{ chatId: string; threadId: number; name: string }> = [];
+  appliedIcons: Array<{ chatId: string; threadId: number; icon: string }> = [];
   setMyCommands = vi.fn(async (
     _commands: Array<{ command: string; description: string }>,
     _accountId?: string,
@@ -63,13 +64,24 @@ class FakeTransport implements TelegramInboundTransport {
   }));
   getChat = vi.fn(async (): Promise<TelegramChatInfo> => this.chatInfo);
   getChatMember = vi.fn(async (): Promise<TelegramChatMemberInfo> => this.chatMember);
-  createForumTopic = vi.fn(async (_chatId: string, name: string): Promise<TelegramForumTopic> => {
+  createForumTopic = vi.fn(async (
+    chatId: string,
+    name: string,
+    _accountId?: string,
+    options?: { iconCustomEmojiId?: string },
+  ): Promise<TelegramForumTopic> => {
     const threadId = String(50 + this.createdTopics.length + 1);
-    this.createdTopics.push({ chatId: _chatId, name, threadId });
+    this.createdTopics.push({ chatId, name, threadId });
+    if (options?.iconCustomEmojiId) this.appliedIcons.push({ chatId, threadId: Number(threadId), icon: options.iconCustomEmojiId });
     return { threadId, name };
   });
-  editForumTopic = vi.fn(async (chatId: string, threadId: number, name: string): Promise<void> => {
+  setForumTopicIcon = vi.fn(async (chatId: string, threadId: number, icon: string): Promise<void> => {
+    this.appliedIcons.push({ chatId, threadId, icon });
+  });
+  getForumTopicIconStickers = vi.fn(async () => [{ customEmojiId: 'check-1', emoji: '✅' }]);
+  editForumTopic = vi.fn(async (chatId: string, threadId: number, name: string, _accountId?: string, options?: { iconCustomEmojiId?: string }): Promise<void> => {
     this.editedTopics.push({ chatId, threadId, name });
+    if (options?.iconCustomEmojiId) this.appliedIcons.push({ chatId, threadId, icon: options.iconCustomEmojiId });
   });
   getUpdates = vi.fn(async (_accountId: string | undefined, options: { signal?: AbortSignal }): Promise<Array<Record<string, unknown>>> => {
     if (this.updates.length > 0) return this.updates.splice(0);
@@ -594,6 +606,7 @@ describe('Telegram group and forum topics', () => {
     await waitForTurn(ctx);
     expect(ctx.groups.getTopic(ctx.account.id, '-100123', '77')).toMatchObject({ title: 'Topic 77', projectId: 'lavoro' });
     expect(ctx.transport.editedTopics.some(item => item.threadId === 77)).toBe(false);
+    expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: 77, icon: 'check-1' });
     await ctx.service.stop();
   });
 
@@ -607,7 +620,7 @@ describe('Telegram group and forum topics', () => {
     });
     ctx.transport.updates.push(groupMessage({ text: '/new Preventivo' }));
     await ctx.service.start();
-    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', 'Preventivo', ctx.account.id));
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', 'Preventivo', ctx.account.id, { iconCustomEmojiId: 'check-1' }));
     await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', '51')).toBeDefined());
     const topic = ctx.groups.getTopic(ctx.account.id, '-100123', '51');
     expect(topic?.title).toBe('Preventivo');
@@ -690,10 +703,11 @@ describe('Telegram group and forum topics', () => {
     });
     ctx.transport.updates.push(groupMessage({ text: '/new casa Preventivo' }));
     await ctx.service.start();
-    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Casa] Preventivo', ctx.account.id));
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Casa] Preventivo', ctx.account.id, { iconCustomEmojiId: 'check-1' }));
     const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
     expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'casa' });
     expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: Number(ctx.transport.createdTopics[0]!.threadId), icon: 'check-1' });
     expect(ctx.transport.sent.some(item => item.text.includes('Progetto: Casa'))).toBe(true);
     await ctx.service.stop();
   });
@@ -710,7 +724,7 @@ describe('Telegram group and forum topics', () => {
     });
     ctx.transport.updates.push(groupMessage({ text: '/new Preventivo' }));
     await ctx.service.start();
-    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Lavoro] Preventivo', ctx.account.id));
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Lavoro] Preventivo', ctx.account.id, { iconCustomEmojiId: 'check-1' }));
     const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
     expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'lavoro' });
     await ctx.service.stop();
@@ -728,7 +742,7 @@ describe('Telegram group and forum topics', () => {
     });
     ctx.transport.updates.push(groupMessage({ text: '/new Preventivo' }));
     await ctx.service.start();
-    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', 'Preventivo', ctx.account.id));
+    await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', 'Preventivo', ctx.account.id, { iconCustomEmojiId: 'check-1' }));
     const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
     expect(topic?.projectId).toBe('casa');
     await ctx.service.stop();
@@ -749,6 +763,7 @@ describe('Telegram group and forum topics', () => {
     await vi.waitFor(() => expect(ctx.transport.editedTopics).toContainEqual({ chatId: '-100123', threadId: 55, name: '[Casa] Spese' }));
     expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')).toMatchObject({ title: 'Spese', projectId: 'casa' });
     expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: 55, icon: 'check-1' });
     await ctx.service.stop();
   });
 
@@ -799,6 +814,7 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.start();
     await vi.waitFor(() => expect(ctx.transport.editedTopics).toContainEqual({ chatId: '-100123', threadId: 55, name: '[Casa] Nuovo titolo' }));
     expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.title).toBe('Nuovo titolo');
+    expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: 55, icon: 'check-1' });
     await ctx.service.stop();
   });
 
@@ -820,6 +836,10 @@ describe('Telegram group and forum topics', () => {
     expect(ctx.transport.editedTopics).toEqual([
       { chatId: '-100123', threadId: 55, name: '[Lavoro] Preventivo' },
       { chatId: '-100123', threadId: 56, name: '[Casa] Spese' },
+    ]);
+    expect(ctx.transport.appliedIcons).toEqual([
+      { chatId: '-100123', threadId: 55, icon: 'check-1' },
+      { chatId: '-100123', threadId: 56, icon: 'check-1' },
     ]);
     await ctx.service.stop();
   });
@@ -856,6 +876,7 @@ describe('Telegram group and forum topics', () => {
     await vi.waitFor(() => expect(ctx.transport.editedTopics).toContainEqual({ chatId: '-100123', threadId: 55, name: 'Nuovo titolo' }));
     expect(ctx.sessions.renames).toContainEqual({ sessionId: 'sess_topic', title: 'Nuovo titolo' });
     expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.title).toBe('Nuovo titolo');
+    expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: 55, icon: 'check-1' });
     await ctx.service.stop();
   });
 
