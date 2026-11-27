@@ -2567,8 +2567,8 @@ can still create one group per project.
   truth remains `projectId`.
 - Add a per-group `showProjectInTopicTitle` flag, enabled for newly paired
   groups and disabled for migrated groups. It applies to new topics and
-  `/rename`; existing topics are updated only by an explicit **Sync titles**
-  action.
+  `/rename`; existing topics are updated only by an explicit **Sync titles and
+  icons** action.
 - General is never prefixed. Prefix length is bounded by Telegram's 128-character
   topic limit; the base title remains stored without the prefix.
 - Manual topic title edits strip the known prefix and update the base title, but
@@ -2625,3 +2625,37 @@ commands and understand General versus topic behavior.
 - If `setMyCommands` fails, the bot logs the failure but continues serving
   messages; `/help` remains available.
 - A future inline keyboard can be added without changing the command semantics.
+
+---
+## ADR-074 — Default checkmark icon for forum topics
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+Telegram assigns a default forum-topic icon (the cloud shown by clients). The
+project prefix is text and cannot replace the icon. Users asked for a consistent,
+nicer icon on every secondary topic.
+
+### Decision
+
+- Query `getForumTopicIconStickers` for the account and choose a checkmark
+  custom emoji when available, caching the selected custom emoji ID per account.
+- Apply the icon when creating a bot-created topic, when binding a manually
+  created topic, on `/rename`, and on the explicit **Sync titles and icons**
+  action.
+- Set the icon only on secondary topics; General keeps its native icon.
+- Keep the existing project-title prefix and its per-group toggle unchanged.
+- If the icon list or the custom emoji is unavailable, keep the Telegram default
+  and log the condition; topic operations continue normally.
+- Store no icon metadata in the group registry. Telegram is the display source;
+  a later sync re-applies the default icon.
+
+### Consequences
+
+- Every topic managed by the bot gets the same checkmark icon unless Telegram
+  does not provide it.
+- Existing topics need one explicit sync after the change; new and renamed
+  topics receive it automatically.
+- The icon is presentation only and never changes project metadata or access.
+- A bot/account token change clears the cached icon ID.

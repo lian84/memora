@@ -7,7 +7,7 @@ messages run in the same Pi sessions, memory and projects used by the web UI.
 This document covers setup, commands, attachments, security and limitations.
 
 Related: [`FEATURES.md`](FEATURES.md), [`ADMINISTRATION.md`](ADMINISTRATION.md),
-[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073).
+[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074).
 
 ## Requirements
 
@@ -73,9 +73,16 @@ for newly paired groups and disabled for groups saved before this option existed
 
 The prefix applies to new secondary topics and to `/rename`. When the prefix is
 enabled, a leading `[label]` is treated as managed presentation and is stripped
-from the stored base title. It is never applied to General. Use **Sync titles** in the group panel to update existing topics
-after changing the option. The project ID remains the source of truth; the title
-is only presentation. Project renames therefore require a title sync.
+from the stored base title. It is never applied to General. Use **Sync titles
+and icons** in the group panel to update existing topics after changing the
+option. The project ID remains the source of truth; the title is only
+presentation. Project renames therefore require a title sync.
+
+Secondary topics also receive a default checkmark icon when Telegram exposes one
+through `getForumTopicIconStickers`. The icon is applied to newly created and
+manually created topics, on `/rename`, and by **Sync titles and icons**. General
+keeps its native icon. If Telegram does not provide the checkmark icon, the
+default icon remains.
 
 Requirements:
 

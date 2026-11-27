@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074).
 
 ## Requisiti
 
@@ -77,7 +77,7 @@ che esistesse questa opzione:
 
 Il prefisso vale per i nuovi topic secondari e per `/rename`. Quando il prefisso
 è attivo, un `[etichetta]` iniziale è considerato presentazione gestita e viene
-rimosso dal titolo base salvato. Non viene mai applicato a General. Dopo aver cambiato l’opzione usa **Riallinea titoli** nel
+rimosso dal titolo base salvato. Non viene mai applicato a General. Dopo aver cambiato l’opzione usa **Riallinea titoli e icone** nel
 pannello del gruppo per aggiornare i topic esistenti. L’ID progetto resta la
 fonte di verità; il titolo è solo presentazione. Se rinomini un progetto serve un
 riallineamento dei titoli.

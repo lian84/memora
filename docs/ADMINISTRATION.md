@@ -71,8 +71,8 @@ Telegram, so no public port, webhook or TLS certificate is required.
   commands, while the native Telegram group menu shows short descriptions. The
   group panel sets the default project/agent profile
   and the optional project prefix; `/new <project-id> <title>` can override the
-  project per topic. **Sync titles** updates existing topic titles after a prefix
-  change. The admin panel lists groups, topics, General, their projects and the
+  project per topic. **Sync titles and icons** updates existing topic titles and applies the
+  default checkmark icon after a prefix change. The admin panel lists groups, topics, General, their projects and the
   allowed group users.
 - State is stored in `config/telegram-inbound.json` and
   `config/telegram-groups.json` with mode `0600`. They contain no tokens or

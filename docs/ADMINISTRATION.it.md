@@ -75,7 +75,8 @@ verso Telegram, quindi non servono porte pubbliche, webhook o certificati TLS.
   pannello del gruppo imposta progetto e
   profilo agente predefiniti e il prefisso progetto opzionale; `/new
   <id-progetto> <titolo>` può usare un progetto diverso per topic. **Riallinea
-  titoli** aggiorna i titoli esistenti dopo un cambio di prefisso. Il pannello
+  titoli e icone** aggiorna i titoli esistenti e applica l’icona a spunta dopo un
+  cambio di prefisso. Il pannello
   elenca gruppi, topic, General, i progetti e gli utenti autorizzati del gruppo.
 - Lo stato è in `config/telegram-inbound.json` e `config/telegram-groups.json`
   con permessi `0600`. Non contengono token né testo dei messaggi; i backup

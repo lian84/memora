@@ -2429,7 +2429,7 @@ separazione visiva può comunque creare un gruppo per progetto.
 - Aggiungere un flag per gruppo `showProjectInTopicTitle`, attivo per i gruppi
   appena associati e disattivo per quelli migrati. Vale per i nuovi topic e per
   `/rename`; i topic esistenti si aggiornano solo con l’azione esplicita
-  **Riallinea titoli**.
+  **Riallinea titoli e icone**.
 - General non ha mai il prefisso. La lunghezza rispetta il limite Telegram di 128
   caratteri; il titolo base resta salvato senza prefisso.
 - Le modifiche manuali del titolo rimuovono il prefisso noto e aggiornano il
@@ -2488,3 +2488,38 @@ scoprire i comandi e capire la differenza tra General e topic.
   messaggi; `/help` resta disponibile.
 - Una futura tastiera inline può essere aggiunta senza cambiare la semantica dei
   comandi.
+
+---
+## ADR-074 — Icona a spunta predefinita per i topic forum
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Telegram assegna ai topic forum un’icona predefinita (la nuvola mostrata dai
+client). Il prefisso progetto è testo e non può sostituire l’icona. Gli utenti
+hanno chiesto un’icona più gradevole e coerente su tutti i topic secondari.
+
+### Decisione
+
+- Interrogare `getForumTopicIconStickers` per l’account e scegliere una spunta
+  custom emoji quando disponibile, memorizzando l’ID per account.
+- Applicare l’icona alla creazione dei topic del bot, al collegamento di un topic
+  creato manualmente, a `/rename` e all’azione esplicita **Riallinea titoli e
+  icone**.
+- Applicarla solo ai topic secondari; General mantiene l’icona nativa.
+- Lasciare invariati il prefisso progetto e il relativo toggle per gruppo.
+- Se l’elenco icone o la spunta non sono disponibili, mantenere l’icona
+  predefinita di Telegram e registrare la condizione; le operazioni sui topic
+  continuano normalmente.
+- Non salvare metadata dell’icona nel registry dei gruppi. Telegram è la fonte
+  di visualizzazione; un riallineamento successivo riapplica l’icona predefinita.
+
+### Conseguenze
+
+- Ogni topic gestito dal bot riceve la stessa icona a spunta, salvo indisponibilità
+  da parte di Telegram.
+- I topic esistenti richiedono un riallineamento esplicito dopo la modifica; i
+  topic nuovi e rinominati la ricevono automaticamente.
+- L’icona è solo presentazione e non cambia progetto o permessi.
+- Un cambio di token/account azzera l’ID icona memorizzato.
