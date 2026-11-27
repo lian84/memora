@@ -182,6 +182,8 @@ export interface TelegramTopicBinding {
   title: string;
   /** Progetto della sessione; assente = nessun progetto esplicito. */
   projectId?: string;
+  /** Profilo agente della sessione; assente = profilo predefinito. */
+  agentProfileId?: string;
   titleSource: TelegramTopicTitleSource;
   createdAt: number;
   updatedAt: number;
@@ -232,6 +234,7 @@ export interface TelegramTopicInput {
   sessionId: string;
   title: string;
   projectId?: string | null;
+  agentProfileId?: string | null;
   titleSource?: TelegramTopicTitleSource;
 }
 

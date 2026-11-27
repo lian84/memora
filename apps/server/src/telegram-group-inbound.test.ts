@@ -221,6 +221,7 @@ class FakeSessions implements TelegramInboundSessionService {
   readonly artifacts = new Map<string, TelegramInboundArtifactInfo[]>();
   readonly archived = new Set<string>();
   readonly created: Array<{ projectId?: string; agentProfileId?: string }> = [];
+  readonly agentProfiles = new Map<string, string>();
   readonly renames: Array<{ sessionId: string; title: string }> = [];
   private counter = 0;
 
@@ -247,6 +248,7 @@ class FakeSessions implements TelegramInboundSessionService {
     const sessionId = `sess_${++this.counter}`;
     this.addSession({ sessionId, name: undefined, firstMessage: '', messageCount: 0, modified: new Date(), ...(projectId ? { projectId } : {}) });
     this.created.push({ ...(projectId ? { projectId } : {}), ...(agentProfileId ? { agentProfileId } : {}) });
+    if (agentProfileId) this.agentProfiles.set(sessionId, agentProfileId);
     this.messages.set(sessionId, []);
     return { sessionId };
   }
@@ -266,6 +268,17 @@ class FakeSessions implements TelegramInboundSessionService {
 
   async getSessionProjectId(sessionId: string): Promise<string | undefined> {
     return this.sessions.get(sessionId)?.projectId;
+  }
+
+  async getSessionAgentProfileId(sessionId: string): Promise<string | undefined> {
+    return this.agentProfiles.get(sessionId);
+  }
+
+  async listAgentProfiles(): Promise<Array<{ id: string; name: string }>> {
+    return [
+      { id: 'sviluppatore', name: 'Sviluppatore' },
+      { id: 'memo-base', name: 'Memo base' },
+    ];
   }
 
   async listSessions(onlyArchived = false, includeArchived = false): Promise<TelegramInboundSessionInfo[]> {
@@ -532,6 +545,7 @@ describe('Telegram group and forum topics', () => {
   it('recupera il progetto dei topic creati prima del metadata', async () => {
     const ctx = await setupGroup();
     ctx.sessions.addSession({ sessionId: 'sess_legacy', name: 'Legacy', projectId: 'casa' });
+    ctx.sessions.agentProfiles.set('sess_legacy', 'sviluppatore');
     await ctx.groups.upsert(ctx.account.id, {
       chatId: '-100123',
       title: 'Memora',
@@ -542,6 +556,7 @@ describe('Telegram group and forum topics', () => {
     await ctx.groups.putTopic(ctx.account.id, '-100123', { threadId: '55', sessionId: 'sess_legacy', title: 'Legacy' });
     await ctx.service.start();
     await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.projectId).toBe('casa'));
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.agentProfileId).toBe('sviluppatore');
     await ctx.service.stop();
   });
 
@@ -641,6 +656,7 @@ describe('Telegram group and forum topics', () => {
       expect.objectContaining({ command: 'commands' }),
       expect.objectContaining({ command: 'new' }),
       expect.objectContaining({ command: 'projects' }),
+      expect.objectContaining({ command: 'agents' }),
     ]));
     await ctx.service.stop();
   });
@@ -669,6 +685,7 @@ describe('Telegram group and forum topics', () => {
     const general = ctx.transport.sent.find(item => item.text.includes('Comandi del gruppo') && item.threadId === undefined);
     const topic = ctx.transport.sent.find(item => item.text.includes('Comandi del gruppo') && item.threadId === 55);
     expect(general?.text).toContain('Lavoro');
+    expect(general?.text).toContain('agents');
     expect(topic?.text).toContain('Preventivo');
     expect(topic?.text).toContain('Casa');
     expect(topic?.text).toContain('solo da General');
@@ -701,14 +718,93 @@ describe('Telegram group and forum topics', () => {
       defaultProjectId: 'lavoro',
       showProjectInTopicTitle: true,
     });
-    ctx.transport.updates.push(groupMessage({ text: '/new casa Preventivo' }));
+    ctx.transport.updates.push(groupMessage({ text: '/new *casa Preventivo' }));
     await ctx.service.start();
     await vi.waitFor(() => expect(ctx.transport.createForumTopic).toHaveBeenCalledWith('-100123', '[Casa] Preventivo', ctx.account.id, { iconCustomEmojiId: 'check-1' }));
     const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
     expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'casa' });
-    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa', agentProfileId: 'sviluppatore' });
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId)?.agentProfileId).toBe('sviluppatore');
     expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: Number(ctx.transport.createdTopics[0]!.threadId), icon: 'check-1' });
     expect(ctx.transport.sent.some(item => item.text.includes('Progetto: Casa'))).toBe(true);
+    await ctx.service.stop();
+  });
+
+  it('crea un topic con progetto e agente espliciti', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      defaultAgentProfileId: 'memo-base',
+      showProjectInTopicTitle: true,
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/new *casa [Sviluppatore] Preventivo' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId)).toBeDefined());
+    const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
+    expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'casa', agentProfileId: 'sviluppatore' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa', agentProfileId: 'sviluppatore' });
+    expect(ctx.transport.sent.some(item => item.text.includes('Agente: Sviluppatore'))).toBe(true);
+    await ctx.service.stop();
+  });
+
+  it('sceglie solo l’agente mantenendo il progetto predefinito', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      defaultAgentProfileId: 'memo-base',
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/new [Sviluppatore] Preventivo' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.createdTopics).toHaveLength(1));
+    const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
+    expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'lavoro', agentProfileId: 'sviluppatore' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'lavoro', agentProfileId: 'sviluppatore' });
+    await ctx.service.stop();
+  });
+
+  it('usa il progetto e l’agente predefiniti quando non specificati', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      defaultAgentProfileId: 'memo-base',
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/new Preventivo' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.createdTopics).toHaveLength(1));
+    const topic = ctx.groups.getTopic(ctx.account.id, '-100123', ctx.transport.createdTopics[0]!.threadId);
+    expect(topic).toMatchObject({ title: 'Preventivo', projectId: 'lavoro', agentProfileId: 'memo-base' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'lavoro', agentProfileId: 'memo-base' });
+    await ctx.service.stop();
+  });
+
+  it('elenca i profili agente e rifiuta un agente sconosciuto', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+    });
+    ctx.transport.updates.push(groupMessage({ text: '/agents' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('sviluppatore') && item.text.includes('Sviluppatore'))).toBe(true));
+
+    ctx.transport.updates.push(groupMessage({ text: '/new [Agente inesistente] Titolo' }));
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Profilo agente non trovato'))).toBe(true));
+    expect(ctx.transport.createdTopics).toHaveLength(0);
     await ctx.service.stop();
   });
 
@@ -762,7 +858,8 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.start();
     await vi.waitFor(() => expect(ctx.transport.editedTopics).toContainEqual({ chatId: '-100123', threadId: 55, name: '[Casa] Spese' }));
     expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')).toMatchObject({ title: 'Spese', projectId: 'casa' });
-    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
+    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa', agentProfileId: 'sviluppatore' });
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.agentProfileId).toBe('sviluppatore');
     expect(ctx.transport.appliedIcons).toContainEqual({ chatId: '-100123', threadId: 55, icon: 'check-1' });
     await ctx.service.stop();
   });

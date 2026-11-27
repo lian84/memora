@@ -330,11 +330,17 @@ export class TelegramGroupStore {
       : input.projectId === null || input.projectId === ''
         ? null
         : validOptionalSlug(input.projectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido');
+    const agentProfileId = input.agentProfileId === undefined
+      ? existing?.agentProfileId
+      : input.agentProfileId === null || input.agentProfileId === ''
+        ? null
+        : validOptionalSlug(input.agentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido');
     const topic: TelegramTopicBinding = {
       threadId,
       sessionId,
       title: validTitle(input.title, existing?.title ?? `Topic ${threadId}`),
       ...(projectId ? { projectId } : {}),
+      ...(agentProfileId ? { agentProfileId } : {}),
       titleSource: input.titleSource === undefined ? existing?.titleSource ?? 'manual' : validTitleSource(input.titleSource),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -465,11 +471,18 @@ export class TelegramGroupStore {
                 ? undefined
                 : validOptionalSlug(topicValue.projectId, 'invalid_telegram_project_id', 'Progetto Telegram non valido') ?? undefined;
             } catch { projectId = undefined; }
+            let agentProfileId: string | undefined;
+            try {
+              agentProfileId = topicValue.agentProfileId === undefined || topicValue.agentProfileId === null
+                ? undefined
+                : validOptionalSlug(topicValue.agentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido') ?? undefined;
+            } catch { agentProfileId = undefined; }
             topics[threadId] = {
               threadId,
               sessionId,
               title: validTitle(topicValue.title, `Topic ${threadId}`),
               ...(projectId ? { projectId } : {}),
+              ...(agentProfileId ? { agentProfileId } : {}),
               titleSource: validTitleSource(topicValue.titleSource),
               createdAt: typeof topicValue.createdAt === 'number' && Number.isFinite(topicValue.createdAt) ? topicValue.createdAt : this.now(),
               updatedAt: typeof topicValue.updatedAt === 'number' && Number.isFinite(topicValue.updatedAt) ? topicValue.updatedAt : this.now(),

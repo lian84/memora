@@ -94,6 +94,8 @@ export interface TelegramInboundSessionService {
   resumeSession(sessionId: string): Promise<unknown>;
   getSessionArchived?(sessionId: string): Promise<boolean>;
   getSessionProjectId?(sessionId: string): Promise<string | undefined>;
+  getSessionAgentProfileId?(sessionId: string): Promise<string | undefined>;
+  listAgentProfiles?(): Promise<TelegramInboundAgentInfo[]>;
   listSessions(onlyArchived?: boolean, includeArchived?: boolean): Promise<TelegramInboundSessionInfo[]>;
   getSessionMessages(sessionId: string): Promise<Array<{ role: string; content: string }>>;
   renameSession(sessionId: string, name: string): Promise<unknown>;
@@ -129,6 +131,12 @@ export interface TelegramInboundProjectInfo {
   id: string;
   name: string;
   status?: string;
+}
+
+/** Profilo agente selezionabile nella creazione di un topic. */
+export interface TelegramInboundAgentInfo {
+  id: string;
+  name: string;
 }
 
 /** Superficie minima del registry progetti usata dal bridge. */
@@ -227,7 +235,8 @@ const GROUP_COMMANDS: TelegramCommand[] = [
   { command: 'commands', description: 'Elenco dei comandi del gruppo' },
   { command: 'start', description: 'Associa il gruppo con un codice' },
   { command: 'projects', description: 'Elenca i progetti disponibili' },
-  { command: 'new', description: 'Crea un topic e una sessione (solo General)' },
+  { command: 'agents', description: 'Elenca i profili agente disponibili' },
+  { command: 'new', description: 'Crea un topic/sessione (*progetto [agente], solo General)' },
   { command: 'sessions', description: 'Elenca le sessioni del gruppo' },
   { command: 'switch', description: 'Apri il topic di una sessione' },
   { command: 'current', description: 'Mostra la sessione del topic corrente' },
@@ -596,7 +605,7 @@ export class TelegramInboundService {
     if (this.stopping) return;
     await this.stopAccount(accountId);
     if (!this.shouldRun(accountId)) return;
-    await this.backfillGroupTopicProjects(accountId);
+    await this.backfillGroupTopicMetadata(accountId);
     await this.notifyInterrupted(accountId);
     void this.ensureGroupCommands(accountId);
 
@@ -703,8 +712,8 @@ export class TelegramInboundService {
     }
   }
 
-  /** Backfill dei topic creati prima del progetto per topic. */
-  private async backfillGroupTopicProjects(accountId: string): Promise<void> {
+  /** Backfill dei metadata dei topic creati prima del progetto/agente per topic. */
+  private async backfillGroupTopicMetadata(accountId: string): Promise<void> {
     if (!this.groups || !this.sessions?.getSessionProjectId) return;
     let groups;
     try {
@@ -714,15 +723,19 @@ export class TelegramInboundService {
     }
     for (const group of groups) {
       for (const topic of Object.values(group.topics)) {
-        if (topic.projectId) continue;
+        if (topic.projectId && topic.agentProfileId) continue;
         try {
-          const projectId = await this.sessions.getSessionProjectId(topic.sessionId);
-          if (!projectId) continue;
+          const projectId = topic.projectId ?? await this.sessions.getSessionProjectId(topic.sessionId);
+          const agentProfileId = topic.agentProfileId ?? (this.sessions.getSessionAgentProfileId
+            ? await this.sessions.getSessionAgentProfileId(topic.sessionId)
+            : undefined);
+          if (!projectId && !agentProfileId) continue;
           await this.groups.putTopic(accountId, group.chatId, {
             threadId: topic.threadId,
             sessionId: topic.sessionId,
             title: topic.title,
-            projectId,
+            ...(projectId ? { projectId } : {}),
+            ...(agentProfileId ? { agentProfileId } : {}),
             titleSource: topic.titleSource,
           });
         } catch (error) {
@@ -1097,7 +1110,7 @@ export class TelegramInboundService {
     await this.safeReply(
       accountId,
       chatId,
-      '**Gruppo associato a Memora.**\n\nIl topic General è la sessione predefinita. Usa `/new [progetto] [titolo]` da General per creare un topic-sessione, `/projects` per i progetti e `/help` per i comandi.',
+      '**Gruppo associato a Memora.**\n\nIl topic General è la sessione predefinita. Usa `/new *progetto [agente] Titolo` da General per creare un topic-sessione, `/projects` e `/agents` per gli elenchi.',
       threadId,
     );
   }
@@ -1122,9 +1135,10 @@ export class TelegramInboundService {
     const cleanName = group.showProjectInTopicTitle ? stripAnyTelegramTopicPrefix(name) : name;
     const title = cleanName || `Topic ${threadId}`;
     const projectId = this.defaultProjectId(group, accountId);
+    const agentProfileId = this.defaultAgentProfileId(group, accountId);
     let sessionId: string;
     try {
-      sessionId = await this.createGroupSession(group, accountId, projectId);
+      sessionId = await this.createGroupSession(group, accountId, projectId, agentProfileId);
     } catch (error) {
       this.log('telegram_group_topic_session_failed', { accountId, code: errorCode(error) ?? 'internal' });
       await this.safeReply(accountId, chatId, '⚠️ Topic creato, ma non è stato possibile creare la sessione. Riprova a scrivere qui.', threadId);
@@ -1136,6 +1150,7 @@ export class TelegramInboundService {
         sessionId,
         title,
         ...(projectId ? { projectId } : {}),
+        ...(agentProfileId ? { agentProfileId } : {}),
         titleSource: 'manual',
       });
     } catch (error) {
@@ -1188,6 +1203,9 @@ export class TelegramInboundService {
         return;
       case 'projects':
         await this.groupShowProjects(context);
+        return;
+      case 'agents':
+        await this.groupShowAgents(context);
         return;
       case 'new':
         await this.groupNewTopic(context, args);
@@ -1320,34 +1338,38 @@ export class TelegramInboundService {
       const topic = this.groups.getTopic(context.accountId, context.chatId, context.threadId);
       if (topic) {
         const projectId = topic.projectId ?? this.defaultProjectId(group, context.accountId);
-        if (!topic.projectId && projectId) {
+        const agentProfileId = topic.agentProfileId ?? this.defaultAgentProfileId(group, context.accountId);
+        if ((!topic.projectId && projectId) || (!topic.agentProfileId && agentProfileId)) {
           await this.groups.putTopic(context.accountId, context.chatId, {
             threadId: context.threadId,
             sessionId: topic.sessionId,
             title: topic.title,
-            projectId,
+            ...(projectId ? { projectId } : {}),
+            ...(agentProfileId ? { agentProfileId } : {}),
             titleSource: topic.titleSource,
           });
         }
         if (!(await this.sessions.hasSession(topic.sessionId))) {
-          const created = await this.createGroupSession(group, context.accountId, projectId);
+          const created = await this.createGroupSession(group, context.accountId, projectId, agentProfileId);
           await this.groups.putTopic(context.accountId, context.chatId, {
             threadId: context.threadId,
             sessionId: created,
             title: topic.title,
             ...(projectId ? { projectId } : {}),
+            ...(agentProfileId ? { agentProfileId } : {}),
             titleSource: topic.titleSource,
           });
           return { sessionId: created, notice: 'ℹ️ La sessione precedente non esiste più; ne ho aperta una nuova in questo topic.' };
         }
         const archived = this.sessions.getSessionArchived ? await this.sessions.getSessionArchived(topic.sessionId) : false;
         if (archived) {
-          const created = await this.createGroupSession(group, context.accountId, projectId);
+          const created = await this.createGroupSession(group, context.accountId, projectId, agentProfileId);
           await this.groups.putTopic(context.accountId, context.chatId, {
             threadId: context.threadId,
             sessionId: created,
             title: topic.title,
             ...(projectId ? { projectId } : {}),
+            ...(agentProfileId ? { agentProfileId } : {}),
             titleSource: topic.titleSource,
           });
           return { sessionId: created, notice: 'ℹ️ La sessione precedente era archiviata; ne ho aperta una nuova in questo topic.' };
@@ -1357,13 +1379,15 @@ export class TelegramInboundService {
       }
 
       const projectId = this.defaultProjectId(group, context.accountId);
-      const created = await this.createGroupSession(group, context.accountId, projectId);
+      const agentProfileId = this.defaultAgentProfileId(group, context.accountId);
+      const created = await this.createGroupSession(group, context.accountId, projectId, agentProfileId);
       const title = `Topic ${context.threadId}`;
       await this.groups.putTopic(context.accountId, context.chatId, {
         threadId: context.threadId,
         sessionId: created,
         title,
         ...(projectId ? { projectId } : {}),
+        ...(agentProfileId ? { agentProfileId } : {}),
         titleSource: 'manual',
       });
       const iconCustomEmojiId = await this.ensureTopicIcon(context.accountId);
@@ -1373,13 +1397,13 @@ export class TelegramInboundService {
 
     if (group.generalSessionId) {
       if (!(await this.sessions.hasSession(group.generalSessionId))) {
-        const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId));
+        const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId), this.defaultAgentProfileId(group, context.accountId));
         await this.groups.setGeneralSession(context.accountId, context.chatId, created);
         return { sessionId: created, notice: 'ℹ️ La sessione General non esiste più; ne ho aperta una nuova.' };
       }
       const archived = this.sessions.getSessionArchived ? await this.sessions.getSessionArchived(group.generalSessionId) : false;
       if (archived) {
-        const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId));
+        const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId), this.defaultAgentProfileId(group, context.accountId));
         await this.groups.setGeneralSession(context.accountId, context.chatId, created);
         return { sessionId: created, notice: 'ℹ️ La sessione General era archiviata; ne ho aperta una nuova.' };
       }
@@ -1387,7 +1411,7 @@ export class TelegramInboundService {
       return { sessionId: group.generalSessionId };
     }
 
-    const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId));
+    const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId), this.defaultAgentProfileId(group, context.accountId));
     await this.groups.setGeneralSession(context.accountId, context.chatId, created);
     return { sessionId: created };
   }
@@ -1396,7 +1420,16 @@ export class TelegramInboundService {
     return group.defaultProjectId ?? this.bindings.get(accountId).settings.defaultProjectId ?? undefined;
   }
 
-  private async createGroupSession(group: TelegramGroup, accountId?: string, projectId?: string): Promise<string> {
+  private defaultAgentProfileId(group: TelegramGroup, accountId: string): string | undefined {
+    return group.defaultAgentProfileId ?? this.bindings.get(accountId).settings.defaultAgentProfileId ?? undefined;
+  }
+
+  private async createGroupSession(
+    group: TelegramGroup,
+    accountId?: string,
+    projectId?: string,
+    agentProfileId?: string,
+  ): Promise<string> {
     if (!this.sessions) throw new Error('sessions_unavailable');
     const settings = accountId ? this.bindings.get(accountId).settings : undefined;
     const created = await this.sessions.createSession(
@@ -1404,10 +1437,37 @@ export class TelegramInboundService {
       undefined,
       undefined,
       projectId ?? group.defaultProjectId ?? settings?.defaultProjectId ?? undefined,
-      group.defaultAgentProfileId ?? settings?.defaultAgentProfileId ?? undefined,
+      agentProfileId ?? group.defaultAgentProfileId ?? settings?.defaultAgentProfileId ?? undefined,
       { autoTitle: true },
     );
     return created.sessionId;
+  }
+
+  private async availableAgents(): Promise<TelegramInboundAgentInfo[]> {
+    if (!this.sessions?.listAgentProfiles) return [];
+    try {
+      return await this.sessions.listAgentProfiles();
+    } catch {
+      return [];
+    }
+  }
+
+  private async agentName(agentProfileId?: string): Promise<string | undefined> {
+    if (!agentProfileId) return undefined;
+    const agent = (await this.availableAgents()).find(item => item.id === agentProfileId);
+    return agent?.name ?? agentProfileId;
+  }
+
+  private async resolveAgentProfile(nameOrId: string): Promise<{ agent?: TelegramInboundAgentInfo; error?: string }> {
+    const agents = await this.availableAgents();
+    if (agents.length === 0) return { error: 'Nessun profilo agente disponibile.' };
+    const query = nameOrId.trim().toLowerCase();
+    const byId = agents.find(agent => agent.id.toLowerCase() === query);
+    if (byId) return { agent: byId };
+    const byName = agents.filter(agent => agent.name.toLowerCase() === query);
+    if (byName.length === 1 && byName[0]) return { agent: byName[0] };
+    if (byName.length > 1) return { error: 'Più profili hanno questo nome. Usa l’ID del profilo con /agents.' };
+    return { error: `Profilo agente non trovato: ${nameOrId}. Usa /agents per l’elenco.` };
   }
 
   private async allProjects(): Promise<TelegramInboundProjectInfo[]> {
@@ -1433,18 +1493,36 @@ export class TelegramInboundService {
     args: string,
     group: TelegramGroup,
     accountId: string,
-  ): Promise<{ projectId?: string; title: string }> {
-    const text = args.trim();
-    const [first = '', ...rest] = text.split(/\s+/).filter(Boolean);
-    const token = first.replace(/^@/, '');
-    if (token) {
-      const projects = await this.allProjects();
-      const project = projects.find(item => item.id.toLowerCase() === token.toLowerCase());
-      if (project) return { projectId: project.id, title: rest.join(' ') };
+  ): Promise<{ projectId?: string; agentProfileId?: string; title: string; error?: string }> {
+    let rest = args.trim();
+    let projectId: string | undefined;
+    if (rest.startsWith('*')) {
+      const match = /^\*([^\s]+)(?:\s+|$)/.exec(rest);
+      const token = match?.[1]?.trim() ?? '';
+      if (!match || !token) return { title: rest, error: 'Uso: `/new *progetto [agente] Titolo`' };
+      const project = (await this.allProjects()).find(item => item.id.toLowerCase() === token.toLowerCase());
+      if (!project) {
+        return { title: rest, error: `Progetto non trovato: ${token}. Usa /projects per l’elenco.` };
+      }
+      projectId = project.id;
+      rest = rest.slice(match[0].length).trim();
     }
+
+    let agentProfileId: string | undefined;
+    const agentMatch = /^\[([^\]]{1,80})\](?:\s+|$)/.exec(rest);
+    if (agentMatch) {
+      const requestedAgent = agentMatch[1]?.trim() ?? '';
+      if (!requestedAgent) return { title: rest, error: 'Nome agente vuoto.' };
+      const resolved = await this.resolveAgentProfile(requestedAgent);
+      if (resolved.error || !resolved.agent) return { title: rest, error: resolved.error ?? 'Profilo agente non valido.' };
+      agentProfileId = resolved.agent.id;
+      rest = rest.slice(agentMatch[0].length).trim();
+    }
+
     return {
-      ...(this.defaultProjectId(group, accountId) ? { projectId: this.defaultProjectId(group, accountId) } : {}),
-      title: text,
+      projectId: projectId ?? this.defaultProjectId(group, accountId),
+      agentProfileId: agentProfileId ?? this.defaultAgentProfileId(group, accountId),
+      title: rest,
     };
   }
 
@@ -1580,12 +1658,14 @@ export class TelegramInboundService {
       `Contesto: <b>${escapeTelegramHtml(context.threadId ? current?.topic?.title ?? `Topic ${context.threadId}` : 'General')}</b>`,
       `Sessione: ${escapeTelegramHtml(sessionTitleText)}`,
       `Progetto: ${project ? escapeTelegramHtml(project) : 'nessuno'}`,
+      `Agente: ${escapeTelegramHtml((await this.agentName(current?.topic?.agentProfileId ?? this.defaultAgentProfileId(group, context.accountId))) ?? 'Memo base')}`,
       `Prefisso progetto: ${group.showProjectInTopicTitle ? 'attivo' : 'disattivato'}`,
       '',
       '<code>/help</code> — questo aiuto contestuale',
       '<code>/commands</code> — alias di /help',
       '<code>/projects</code> — elenca i progetti disponibili',
-      '<code>/new [progetto] [titolo]</code> — crea un topic e una sessione (solo General)',
+      '<code>/agents</code> — elenca i profili agente disponibili',
+      '<code>/new *progetto [agente] Titolo</code> — crea un topic/sessione (solo General)',
       '<code>/sessions</code> — elenca General e i topic del gruppo',
       '<code>/switch N</code> — apre il link del topic della sessione N',
       '<code>/current</code> — sessione del topic corrente',
@@ -1609,9 +1689,13 @@ export class TelegramInboundService {
     const topicCount = Object.keys(group.topics).length;
     const label = context.threadId ? current?.topic?.title ?? `Topic ${context.threadId}` : 'General';
     const defaultProjectId = this.defaultProjectId(group, context.accountId);
+    const defaultAgentId = this.defaultAgentProfileId(group, context.accountId);
     const currentProjectId = current?.topic?.projectId ?? defaultProjectId;
+    const currentAgentId = current?.topic?.agentProfileId ?? defaultAgentId;
     const defaultProject = await this.projectName(defaultProjectId);
     const currentProject = await this.projectName(currentProjectId);
+    const defaultAgent = await this.agentName(defaultAgentId);
+    const currentAgent = await this.agentName(currentAgentId);
     await this.safeSendHtml(context.accountId, context.chatId, [
       '<b>Memora · Gruppo Telegram</b>',
       '',
@@ -1622,9 +1706,11 @@ export class TelegramInboundService {
       `Topic collegati: ${topicCount}`,
       `General: ${group.generalSessionId ? 'attivo' : 'non ancora avviato'}`,
       `Progetto predefinito: ${defaultProject ? escapeTelegramHtml(defaultProject) : 'nessuno'}`,
+      `Agente predefinito: ${defaultAgent ? escapeTelegramHtml(defaultAgent) : 'Memo base'}`,
       `Prefisso progetto nei topic: ${group.showProjectInTopicTitle ? 'sì' : 'no'}`,
       `Contesto: ${escapeTelegramHtml(label)}`,
       `Progetto: ${currentProject ? escapeTelegramHtml(currentProject) : 'nessuno'}`,
+      `Agente: ${currentAgent ? escapeTelegramHtml(currentAgent) : 'Memo base'}`,
       `Sessione: ${current ? `<code>${escapeTelegramHtml(current.sessionId.slice(0, 20))}…</code>` : 'nessuna'}`,
       ...(active && (active.status === 'running' || active.status === 'queued') ? [`Turno: ${escapeTelegramHtml(active.status)}`] : []),
     ].join('\n'), context.threadId);
@@ -1648,7 +1734,29 @@ export class TelegramInboundService {
       ].filter(Boolean);
       lines.push(`<code>${escapeTelegramHtml(project.id)}</code> — ${escapeTelegramHtml(project.name)}${markers.length ? ` · ${markers.join(', ')}` : ''}`);
     }
-    lines.push('', 'Uso: <code>/new progetto Titolo</code> da General.');
+    lines.push('', 'Uso: <code>/new *progetto [agente] Titolo</code> da General.');
+    await this.safeSendHtml(context.accountId, context.chatId, lines.join('\n'), context.threadId);
+  }
+
+  private async groupShowAgents(context: GroupContext): Promise<void> {
+    const agents = await this.availableAgents();
+    if (agents.length === 0) {
+      await this.safeReply(context.accountId, context.chatId, 'Nessun profilo agente disponibile.', context.threadId);
+      return;
+    }
+    const group = this.groups?.get(context.accountId, context.chatId) ?? context.group;
+    const defaultAgentId = this.defaultAgentProfileId(group, context.accountId);
+    const current = this.groupSession(context);
+    const currentAgentId = current?.topic?.agentProfileId ?? defaultAgentId;
+    const lines = ['<b>Profili agente</b>', ''];
+    for (const agent of agents) {
+      const markers = [
+        agent.id === defaultAgentId ? 'default' : '',
+        agent.id === currentAgentId ? 'corrente' : '',
+      ].filter(Boolean);
+      lines.push(`<code>${escapeTelegramHtml(agent.id)}</code> — ${escapeTelegramHtml(agent.name)}${markers.length ? ` · ${markers.join(', ')}` : ''}`);
+    }
+    lines.push('', 'Uso: <code>/new *progetto [agente] Titolo</code> da General.');
     await this.safeSendHtml(context.accountId, context.chatId, lines.join('\n'), context.threadId);
   }
 
@@ -1657,7 +1765,7 @@ export class TelegramInboundService {
       await this.safeReply(
         context.accountId,
         context.chatId,
-        'Crea nuove sessioni da **General** con `/new [progetto] [titolo]`; questo topic è già collegato a una sessione.',
+        'Crea nuove sessioni da **General** con `/new *progetto [agente] Titolo`; questo topic è già collegato a una sessione.',
         context.threadId,
       );
       return;
@@ -1667,10 +1775,15 @@ export class TelegramInboundService {
       return;
     }
     const parsed = await this.parseNewTopicArgs(args, context.group, context.accountId);
+    if (parsed.error) {
+      await this.safeReply(context.accountId, context.chatId, parsed.error, context.threadId);
+      return;
+    }
     const normalizedTitle = normalizeTitle(parsed.title);
     const requestedTitle = context.group.showProjectInTopicTitle ? stripAnyTelegramTopicPrefix(normalizedTitle) : normalizedTitle;
     const title = requestedTitle || 'Nuova sessione';
     const projectId = parsed.projectId;
+    const agentProfileId = parsed.agentProfileId;
     if (projectId && this.projects) {
       const projects = await this.availableProjects();
       if (!projects.some(project => project.id === projectId)) {
@@ -1717,7 +1830,7 @@ export class TelegramInboundService {
     try {
       let sessionId: string;
       try {
-        sessionId = await this.createGroupSession(context.group, context.accountId, projectId);
+        sessionId = await this.createGroupSession(context.group, context.accountId, projectId, agentProfileId);
       } catch (error) {
         this.log('telegram_group_topic_session_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
         await this.safeReply(context.accountId, context.chatId, '⚠️ Topic creato, ma non è stato possibile creare la sessione. Scrivi nel topic per riprovare.', context.threadId);
@@ -1729,6 +1842,7 @@ export class TelegramInboundService {
           sessionId,
           title,
           ...(projectId ? { projectId } : {}),
+          ...(agentProfileId ? { agentProfileId } : {}),
           titleSource: 'manual',
         });
       } catch (error) {
@@ -1742,10 +1856,11 @@ export class TelegramInboundService {
     }
     const link = groupLink(context.chatId, threadId);
     const project = await this.projectName(projectId);
+    const agent = await this.agentName(agentProfileId);
     await this.safeSendHtml(
       context.accountId,
       context.chatId,
-      `<b>Topic creato</b>\n<a href="${link}">${escapeTelegramHtml(topic.name || topicName)}</a>${project ? `\nProgetto: ${escapeTelegramHtml(project)}` : ''}\nScrivi nel topic per iniziare.`,
+      `<b>Topic creato</b>\n<a href="${link}">${escapeTelegramHtml(topic.name || topicName)}</a>${project ? `\nProgetto: ${escapeTelegramHtml(project)}` : ''}${agent ? `\nAgente: ${escapeTelegramHtml(agent)}` : ''}\nScrivi nel topic per iniziare.`,
       context.threadId,
     );
   }
@@ -1755,17 +1870,36 @@ export class TelegramInboundService {
     const group = this.groups.get(context.accountId, context.chatId);
     if (!group) return;
     const projects = await this.allProjects();
+    const agents = await this.availableAgents();
     const projectName = (id?: string): string | undefined => id
       ? projects.find(project => project.id === id)?.name ?? id
       : undefined;
+    const agentName = (id?: string): string | undefined => id
+      ? agents.find(agent => agent.id === id)?.name ?? id
+      : undefined;
     const defaultProjectId = this.defaultProjectId(group, context.accountId);
-    const entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean; projectId?: string }> = [];
+    const defaultAgentId = this.defaultAgentProfileId(group, context.accountId);
+    const entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean; projectId?: string; agentProfileId?: string }> = [];
     if (group.generalSessionId) {
-      entries.push({ sessionId: group.generalSessionId, title: 'General', general: true, ...(defaultProjectId ? { projectId: defaultProjectId } : {}) });
+      entries.push({
+        sessionId: group.generalSessionId,
+        title: 'General',
+        general: true,
+        ...(defaultProjectId ? { projectId: defaultProjectId } : {}),
+        ...(defaultAgentId ? { agentProfileId: defaultAgentId } : {}),
+      });
     }
     for (const topic of Object.values(group.topics).sort((a, b) => a.createdAt - b.createdAt)) {
       const projectId = topic.projectId ?? defaultProjectId;
-      entries.push({ sessionId: topic.sessionId, title: topic.title, threadId: topic.threadId, general: false, ...(projectId ? { projectId } : {}) });
+      const agentProfileId = topic.agentProfileId ?? defaultAgentId;
+      entries.push({
+        sessionId: topic.sessionId,
+        title: topic.title,
+        threadId: topic.threadId,
+        general: false,
+        ...(projectId ? { projectId } : {}),
+        ...(agentProfileId ? { agentProfileId } : {}),
+      });
     }
     this.groupChoices.set(`${context.accountId}:${context.chatId}`, { at: this.now(), entries: entries.map(entry => ({ sessionId: entry.sessionId, title: entry.title, ...(entry.threadId ? { threadId: entry.threadId } : {}), general: entry.general })) });
     if (entries.length === 0) {
@@ -1784,7 +1918,8 @@ export class TelegramInboundService {
         : entry.general ? '▸ ' : '';
       const link = entry.threadId ? ` · <a href="${groupLink(context.chatId, entry.threadId)}">apri</a>` : '';
       const project = entry.projectId ? ` · ${escapeTelegramHtml(projectName(entry.projectId) ?? entry.projectId)}` : '';
-      lines.push(`${index + 1}. ${marker}<b>${escapeTelegramHtml(entry.title)}</b>${project}${link}`);
+      const agent = entry.agentProfileId ? ` · ${escapeTelegramHtml(agentName(entry.agentProfileId) ?? entry.agentProfileId)}` : '';
+      lines.push(`${index + 1}. ${marker}<b>${escapeTelegramHtml(entry.title)}</b>${project}${agent}${link}`);
     });
     lines.push('', 'Usa <code>/switch N</code> per aprire il topic di una sessione.');
     await this.safeSendHtml(context.accountId, context.chatId, lines.join('\n'), context.threadId);
@@ -1847,13 +1982,19 @@ export class TelegramInboundService {
       }
       const group = this.groups?.get(context.accountId, context.chatId) ?? context.group;
       const projectId = current.topic?.projectId ?? session.projectId ?? this.defaultProjectId(group, context.accountId);
+      const sessionAgentId = this.sessions.getSessionAgentProfileId
+        ? await this.sessions.getSessionAgentProfileId(current.sessionId)
+        : undefined;
+      const agentProfileId = current.topic?.agentProfileId ?? sessionAgentId ?? this.defaultAgentProfileId(group, context.accountId);
       const project = await this.projectName(projectId);
+      const agent = await this.agentName(agentProfileId);
       await this.safeSendHtml(context.accountId, context.chatId, [
         '<b>Sessione corrente</b>',
         escapeTelegramHtml(sessionTitle(session)),
         `${session.messageCount} messaggi`,
         `Topic: ${escapeTelegramHtml(context.threadId ? current.topic?.title ?? `Topic ${context.threadId}` : 'General')}`,
         `Progetto: ${project ? escapeTelegramHtml(project) : 'nessuno'}`,
+        `Agente: ${agent ? escapeTelegramHtml(agent) : 'Memo base'}`,
       ].join('\n'), context.threadId);
     } catch (error) {
       this.log('telegram_current_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });

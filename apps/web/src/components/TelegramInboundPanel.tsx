@@ -509,7 +509,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                             {t('Topic')}: {Object.values(group.topics).map((topic, index) => (
                               <span key={topic.threadId}>
                                 {index > 0 ? ' · ' : ''}
-                                <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a> ({projectLabel(topic.projectId ?? effectiveProjectId)})
+                                <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a> ({projectLabel(topic.projectId ?? effectiveProjectId)} · {agentLabel(topic.agentProfileId ?? effectiveAgentId)})
                               </span>
                             ))}
                           </span>
