@@ -73,8 +73,8 @@ verso Telegram, quindi non servono porte pubbliche, webhook o certificati TLS.
   crea un topic solo da General; `/help` e `/commands` spiegano i comandi
   contestuali, mentre il menu nativo Telegram mostra descrizioni brevi. Il
   pannello del gruppo imposta progetto e
-  profilo agente predefiniti e il prefisso progetto opzionale; `/new
-  <id-progetto> <titolo>` può usare un progetto diverso per topic. **Riallinea
+  profilo agente predefiniti e il prefisso progetto opzionale; `/new *<id-progetto> [agente]
+  <titolo>` può usare progetto e agente diversi per topic. **Riallinea
   titoli e icone** aggiorna i titoli esistenti e applica l’icona a spunta dopo un
   cambio di prefisso. Il pannello
   elenca gruppi, topic, General, i progetti e gli utenti autorizzati del gruppo.

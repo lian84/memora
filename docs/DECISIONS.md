@@ -2659,3 +2659,40 @@ nicer icon on every secondary topic.
   topics receive it automatically.
 - The icon is presentation only and never changes project metadata or access.
 - A bot/account token change clears the cached icon ID.
+
+---
+## ADR-075 — Per-topic agent profile with optional /new syntax
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+The project is already selectable per topic. Agent profiles are fixed when a
+session is created, so choosing one later would not affect the running context.
+Users need a compact way to choose both without adding callback-based menus.
+
+### Decision
+
+- Store `agentProfileId` on each secondary topic, resolved from:
+  `topic override ?? group default ?? account inbound default`.
+- Use the resolved profile when creating the session. It cannot be changed after
+  the session has started; create a new topic/session instead.
+- Extend `/new` in General with optional prefixes:
+  `/new *<project-id> [agent] <title>`.
+  `*` marks the project and `[agent]` accepts an ID or a case-insensitive profile
+  name, including spaces. Both are optional; the title follows.
+- Add `/agents` to list profile IDs/names and the native group command menu.
+- Manual topics use the group defaults. Existing topics are backfilled from
+  session metadata on startup when available.
+- Invalid project/agent selections reject the command with an explanatory reply;
+  no topic or session is created.
+- Agent selection is display metadata in the group registry; the authoritative
+  profile is still applied by the AgentService at session creation.
+
+### Consequences
+
+- One topic can select project and agent independently from the group defaults.
+- The command remains readable without inline keyboards or callback state.
+- Agent and project are immutable per session, matching session semantics.
+- `/agents` and `/projects` expose the IDs needed by the syntax.
+- Manual-topic overrides require creating the topic with `/new` instead.

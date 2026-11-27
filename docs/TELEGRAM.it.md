@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075).
 
 ## Requisiti
 
@@ -48,7 +48,7 @@ per chat lunghe e progetti. Un supergruppo privato con Topics attivi è il
 workspace; **General** è la sessione predefinita e ogni topic secondario è una
 sessione Memora separata.
 
-### Progetti nel gruppo
+### Progetti e agenti nel gruppo
 
 Il **progetto è un metadata del topic/sessione**, non il titolo. Il prefisso nel
 titolo è solo una scelta di visualizzazione.
@@ -56,15 +56,16 @@ titolo è solo una scelta di visualizzazione.
 - Il gruppo ha un **progetto predefinito** usato da General e dai nuovi topic. Se
   il default del gruppo non è impostato, viene usato il default dell’account
   inbound.
-- `/new <id-progetto> <titolo>` crea un topic in un altro progetto.
-- I topic creati manualmente usano il progetto predefinito del gruppo.
-- Ogni topic salva il `projectId` risolto; cambiare il default del gruppo in
-  seguito vale solo per i nuovi topic e per General se non è ancora stata
-  creata. I topic creati prima di questo metadata vengono recuperati dal
-  progetto della sessione all’avvio, quando possibile.
-- Il progetto non si può cambiare su una sessione già esistente: crea un nuovo
-  topic/sessione. Cambiare il default del gruppo non migra General né le
-  sessioni dei topic esistenti.
+- `/new *<id-progetto> [agente] <titolo>` crea un topic in un altro progetto
+  e/o con un altro profilo agente. Progetto e agente sono entrambi opzionali.
+- I topic creati manualmente usano progetto e agente predefiniti del gruppo.
+- Ogni topic salva `projectId` e `agentProfileId` risolti; cambiare un default
+  del gruppo in seguito vale solo per i nuovi topic e per General se non è ancora
+  stata creata. I topic creati prima di questi metadata vengono recuperati dai
+  metadata della sessione all’avvio, quando possibile.
+- Progetto e profilo agente non si possono cambiare su una sessione già
+  esistente: crea un nuovo topic/sessione. Cambiare il default del gruppo non
+  migra General né le sessioni dei topic esistenti.
 - Usa un gruppo per progetto per una separazione visiva forte, oppure un solo
   gruppo con default e override per un’unica interfaccia Telegram.
 
@@ -81,6 +82,9 @@ rimosso dal titolo base salvato. Non viene mai applicato a General. Dopo aver ca
 pannello del gruppo per aggiornare i topic esistenti. L’ID progetto resta la
 fonte di verità; il titolo è solo presentazione. Se rinomini un progetto serve un
 riallineamento dei titoli.
+
+`/agents` elenca ID e nomi dei profili agente. La parte opzionale `[agente]` di
+`/new` accetta l’ID o il nome del profilo (case-insensitive, spazi ammessi).
 
 Requisiti:
 
@@ -114,7 +118,8 @@ Comandi nel gruppo:
 |---|---|
 | `/start <codice>` | Associa il gruppo da General |
 | `/projects` | Elenca ID e nomi dei progetti attivi |
-| `/new [id-progetto] [titolo]` | Crea un nuovo topic/sessione, anche in un altro progetto (solo General) |
+| `/agents` | Elenca ID e nomi dei profili agente |
+| `/new *[id-progetto] [agente] [titolo]` | Crea un topic/sessione con progetto e agente opzionali (solo General) |
 | `/sessions` | Elenca General e i topic del gruppo con il progetto |
 | `/switch N` | Invia il link al topic scelto; il topic resta collegato alla sua sessione |
 | `/current` | Mostra la sessione del topic corrente |
@@ -126,15 +131,19 @@ Comandi nel gruppo:
 
 Il bot registra un **menu comandi nativo Telegram** tramite `setMyCommands` con
 scope `all_group_chats`. I menu Telegram sono per chat, non per topic: tutti i
-topic di un gruppo vedono la stessa lista breve. `/help` e `/commands` sono
+topic di un gruppo vedono la stessa lista breve. Il menu include `/agents` e la
+forma di `/new` con progetto/agente opzionali. `/help` e `/commands` sono
 contestuali: riportano topic, progetto e sessione correnti e ricordano che
 `/new` è disponibile solo da General.
 
 Un topic creato manualmente da Telegram viene collegato a una nuova sessione
 quando il bot riceve `forum_topic_created`, usando il progetto predefinito del
 gruppo; se il messaggio di servizio va perso, il collegamento nasce al primo
-messaggio. Per scegliere un altro progetto usa `/new <id-progetto> <titolo>` da
-General. Risposte, typing, documenti e artefatti usano il `message_thread_id` del
+messaggio. Per scegliere un altro progetto e/o agente usa `/new *<id-progetto> [agente]
+<titolo>` da General. Il progetto è preceduto da `*`; il nome agente opzionale è
+tra parentesi quadre, quindi può contenere spazi. Esempi: `/new *casa
+Preventivo`, `/new [Sviluppatore] Preventivo`, `/new *casa [Sviluppatore]
+Preventivo`. Risposte, typing, documenti e artefatti usano il `message_thread_id` del
 topic. Il topic General non usa thread ID e non ha prefisso progetto.
 
 L’eliminazione di una sessione Memora rimuove il collegamento al gruppo/topic; il
@@ -296,8 +305,9 @@ PDF/Office vengono comunque consegnati in uscita.
 
 - I gruppi sono limitati a un forum privato con proprietario e bot; niente
   gruppi pubblici o permessi multi-utente.
-- Il progetto viene fissato alla creazione della sessione e non può essere
-  spostato. Il prefisso nel titolo è solo presentazione e si può riallineare.
+- Progetto e agente vengono fissati alla creazione della sessione e non possono
+  essere spostati. Il prefisso nel titolo è solo presentazione e si può
+  riallineare.
 - Un topic chiuso o eliminato mantiene il suo binding nel registry finché la
   sessione non viene eliminata o il gruppo non viene revocato; il recupero dei
   topic obsoleti è limitato.

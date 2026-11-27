@@ -2523,3 +2523,41 @@ hanno chiesto un’icona più gradevole e coerente su tutti i topic secondari.
   topic nuovi e rinominati la ricevono automaticamente.
 - L’icona è solo presentazione e non cambia progetto o permessi.
 - Un cambio di token/account azzera l’ID icona memorizzato.
+
+---
+## ADR-075 — Profilo agente per topic e sintassi /new opzionale
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Il progetto è già selezionabile per topic. I profili agente vengono fissati alla
+creazione della sessione, quindi sceglierli dopo non cambierebbe il contesto già
+avviato. Serve un modo compatto per scegliere entrambi senza menu callback.
+
+### Decisione
+
+- Salvare `agentProfileId` su ogni topic secondario, risolto con:
+  `override del topic ?? default del gruppo ?? default dell’account inbound`.
+- Usare il profilo risolto alla creazione della sessione. Non può essere cambiato
+  dopo l’avvio: per cambiarlo serve un nuovo topic/sessione.
+- Estendere `/new` in General con prefissi opzionali:
+  `/new *<id-progetto> [agente] <titolo>`.
+  `*` identifica il progetto; `[agente]` accetta ID o nome del profilo
+  case-insensitive, anche con spazi. Entrambi sono opzionali; segue il titolo.
+- Aggiungere `/agents` per elencare ID/nomi e includerlo nel menu comandi nativo.
+- I topic manuali usano i default del gruppo. I topic esistenti vengono recuperati
+  dai metadata della sessione all’avvio, quando possibile.
+- Progetto/agente non validi rifiutano il comando con una spiegazione; non
+  vengono creati topic o sessioni.
+- La selezione agente è metadata nel registry del gruppo; il profilo autorevole
+  resta applicato dall’AgentService alla creazione della sessione.
+
+### Conseguenze
+
+- Un topic può scegliere progetto e agente indipendentemente dai default del
+  gruppo.
+- Il comando resta leggibile senza tastiere inline o stato callback.
+- Progetto e agente sono immutabili per sessione, coerentemente con il modello.
+- `/agents` e `/projects` espongono gli ID necessari alla sintassi.
+- Per i topic manuali gli override richiedono la creazione con `/new`.

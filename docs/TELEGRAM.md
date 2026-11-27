@@ -7,7 +7,7 @@ messages run in the same Pi sessions, memory and projects used by the web UI.
 This document covers setup, commands, attachments, security and limitations.
 
 Related: [`FEATURES.md`](FEATURES.md), [`ADMINISTRATION.md`](ADMINISTRATION.md),
-[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074).
+[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075).
 
 ## Requirements
 
@@ -46,22 +46,23 @@ for long-running chats and projects. One private supergroup with Topics enabled
 is the workspace; **General** is the default session and each secondary topic is
 a separate Memora session.
 
-### Projects in a group
+### Projects and agents in a group
 
 The **project is metadata of the topic/session**, not the topic name. The title
 prefix is only a display option.
 
 - A group has a **default project** used by General and by new topics. If the
   group default is unset, the inbound account default is used.
-- `/new <project-id> <title>` creates a topic in another project.
-- Manual topics use the group default.
-- Each topic stores its resolved `projectId`; changing the group default later
-  affects only new topics and General sessions that do not exist yet. Topics
-  created before this metadata existed are backfilled from their session project
-  on startup when possible.
-- A project cannot be changed on a session that already exists. Create a new
-  topic/session instead. Changing the group default does not migrate existing
-  General or topic sessions.
+- `/new *<project-id> [agent] <title>` creates a topic in another project
+  and/or with another agent profile. Both project and agent are optional.
+- Manual topics use the group default project and agent.
+- Each topic stores its resolved `projectId` and `agentProfileId`; changing a
+  group default later affects only new topics and General sessions that do not
+  exist yet. Topics created before this metadata existed are backfilled from their
+  session metadata on startup when possible.
+- A project or agent profile cannot be changed on a session that already exists.
+  Create a new topic/session instead. Changing the group default does not migrate
+  existing General or topic sessions.
 - Use one group per project if you want strong visual separation; use one group
   with a default and overrides if you want a single Telegram workspace.
 
@@ -77,6 +78,10 @@ from the stored base title. It is never applied to General. Use **Sync titles
 and icons** in the group panel to update existing topics after changing the
 option. The project ID remains the source of truth; the title is only
 presentation. Project renames therefore require a title sync.
+
+`/agents` lists the agent profile IDs and names. The optional `[agent]` part of
+`/new` accepts either the ID or the profile name (case-insensitive, spaces
+allowed).
 
 Secondary topics also receive a default checkmark icon when Telegram exposes one
 through `getForumTopicIconStickers`. The icon is applied to newly created and
@@ -115,7 +120,8 @@ Group commands:
 |---|---|
 | `/start <code>` | Pair the group from General |
 | `/projects` | List active project IDs and names |
-| `/new [project-id] [title]` | Create a new topic/session, optionally in another project (General only) |
+| `/agents` | List agent profile IDs and names |
+| `/new *[project-id] [agent] [title]` | Create a new topic/session with optional project and agent (General only) |
 | `/sessions` | List General and the group topics, with their projects |
 | `/switch N` | Send the link to the selected topic; a topic stays bound to its session |
 | `/current` | Show the session of the current topic |
@@ -127,14 +133,19 @@ Group commands:
 
 The bot registers a **native Telegram group command menu** through
 `setMyCommands` with the `all_group_chats` scope. Telegram menus are per chat,
-not per topic: every topic in a group sees the same short command list.
+not per topic: every topic in a group sees the same short command list. The
+menu includes `/agents` and the optional-project/agent form of `/new`.
 `/help` and `/commands` are contextual: they report the current topic, project
 and session, and remind that `/new` is available only from General.
 
 A topic created manually from Telegram is bound to a new session when the bot
 receives `forum_topic_created`, using the group default project; if the service
 message is missed, the binding is created lazily on the first message. Use
-`/new <project-id> <title>` from General to choose another project explicitly.
+`/new *<project-id> [agent] <title>` from General to choose another project
+and/or agent explicitly. The project token starts with `*`; the optional agent
+name is in square brackets, so names with spaces are accepted. Examples:
+`/new *casa Preventivo`, `/new [Sviluppatore] Preventivo`,
+`/new *casa [Sviluppatore] Preventivo`.
 Replies, typing, documents and artifacts use the topic's `message_thread_id`.
 The General topic uses no thread ID and no project prefix.
 
@@ -294,8 +305,9 @@ still delivered outbound.
 
 - Groups are limited to a private forum with one owner and the bot; no public
   groups or multi-user permissions.
-- Project selection is fixed when the session is created; it cannot be moved to
-  another project. The title prefix is presentation only and can be resynced.
+- Project and agent selection are fixed when the session is created; they cannot
+  be moved to another project/profile. The title prefix is presentation only and
+  can be resynced.
 - A closed or deleted Telegram topic keeps its registry entry until the session is
   deleted or the group is removed; stale-topic recovery is limited.
 - No Telegram albums coalescing; each album item is a separate message.
