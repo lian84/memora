@@ -1,8 +1,6 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fastify, { type FastifyReply } from 'fastify';
-import fastifyStatic from '@fastify/static';
 import { AgentService } from '@memora/agent';
 import { AgentServiceError, REASONING_LEVELS, isOfficeArtifactKind, type MemoryCandidateStatus, type ProviderId, type ReasoningLevel, type RuntimeSettings, type SessionContextSettings } from '@memora/shared';
 import { MemoryWriterQueue } from './memory-writer-queue.js';
@@ -29,6 +27,7 @@ import { registerBackupRoutes } from './backup-routes.js';
 import { RcloneService } from './rclone.js';
 import { UpdateService } from './update-check.js';
 import { resolveAppVersion } from './version.js';
+import { registerWebStatic } from './web-static.js';
 import { registerUpdateRoutes } from './update-routes.js';
 import { MonitorService } from './monitor.js';
 import { registerMonitorRoutes } from './monitor-routes.js';
@@ -1364,27 +1363,7 @@ app.post<{ Params: { id: string } }>('/api/sessions/:id/abort', async (req, repl
 
 // --- Frontend production: Fastify serve la build React, senza Vite ---
 if (isProduction) {
-  const indexFile = path.join(webDistDir, 'index.html');
-  if (!fs.existsSync(indexFile)) {
-    throw new Error(`Frontend production build non trovata in ${webDistDir}. Esegui pnpm build.`);
-  }
-
-  await app.register(fastifyStatic, {
-    root: webDistDir,
-    prefix: '/',
-    wildcard: false,
-    index: ['index.html'],
-    cacheControl: false,
-    // @fastify/static v10 passa la FastifyReply: si usano gli header API di Fastify.
-    setHeaders(response, filePath) {
-      if (path.basename(filePath) === 'index.html') {
-        response.header('Cache-Control', 'no-cache');
-      } else {
-        response.header('Cache-Control', 'public, max-age=31536000, immutable');
-      }
-    },
-  });
-
+  await registerWebStatic(app, webDistDir);
   app.log.info({ webDistDir }, 'serving production frontend');
 }
 

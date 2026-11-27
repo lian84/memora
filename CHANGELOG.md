@@ -4,6 +4,11 @@ All notable changes to Memora are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Production frontend now serves Vite hashed assets created after startup, so a
+  new build no longer requires a service restart for new JavaScript/CSS bundles.
+
 ## [0.2.0] - 2026-11-27
 
 ### Added
