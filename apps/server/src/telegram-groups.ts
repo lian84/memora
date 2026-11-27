@@ -7,6 +7,7 @@ import type {
   TelegramGroupPatch,
   TelegramTopicBinding,
   TelegramTopicInput,
+  TelegramTopicState,
   TelegramTopicTitleSource,
 } from '@memora/shared';
 
@@ -342,6 +343,7 @@ export class TelegramGroupStore {
       ...(projectId ? { projectId } : {}),
       ...(agentProfileId ? { agentProfileId } : {}),
       titleSource: input.titleSource === undefined ? existing?.titleSource ?? 'manual' : validTitleSource(input.titleSource),
+      ...(existing?.state ? { state: existing.state } : {}),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
       ...(existing?.sessionId === sessionId && existing.pendingTurnId ? { pendingTurnId: existing.pendingTurnId } : {}),
@@ -374,6 +376,23 @@ export class TelegramGroupStore {
     topic.updatedAt = this.now();
     group.updatedAt = topic.updatedAt;
     await this.persist();
+    return copyTopic(topic);
+  }
+
+  async updateTopicState(accountId: string, chatId: string, threadId: string, state: TelegramTopicState): Promise<TelegramTopicBinding | undefined> {
+    const group = this.requireGroup(accountId, chatId);
+    const id = validThreadId(threadId);
+    const topic = group.topics[id];
+    if (!topic) return undefined;
+    if (state !== 'open' && state !== 'closed' && state !== 'deleted') {
+      throw new TelegramGroupError('invalid_telegram_topic_state', 'Stato topic Telegram non valido');
+    }
+    if (topic.state !== state) {
+      topic.state = state;
+      topic.updatedAt = this.now();
+      group.updatedAt = topic.updatedAt;
+      await this.persist();
+    }
     return copyTopic(topic);
   }
 
@@ -484,6 +503,7 @@ export class TelegramGroupStore {
               ...(projectId ? { projectId } : {}),
               ...(agentProfileId ? { agentProfileId } : {}),
               titleSource: validTitleSource(topicValue.titleSource),
+              ...(topicValue.state === 'closed' || topicValue.state === 'deleted' ? { state: topicValue.state } : {}),
               createdAt: typeof topicValue.createdAt === 'number' && Number.isFinite(topicValue.createdAt) ? topicValue.createdAt : this.now(),
               updatedAt: typeof topicValue.updatedAt === 'number' && Number.isFinite(topicValue.updatedAt) ? topicValue.updatedAt : this.now(),
               ...(typeof topicValue.pendingTurnId === 'string' && TURN_ID_PATTERN.test(topicValue.pendingTurnId) ? { pendingTurnId: topicValue.pendingTurnId } : {}),

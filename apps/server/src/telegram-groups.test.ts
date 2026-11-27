@@ -60,6 +60,13 @@ describe('TelegramGroupStore', () => {
     expect(store.get(ACCOUNT, GROUP)?.generalPendingTurnId).toBeUndefined();
     await store.updateTopicTitle(ACCOUNT, GROUP, '17', 'Titolo aggiornato');
     expect(store.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ title: 'Titolo aggiornato', titleSource: 'manual' });
+    await store.updateTopicState(ACCOUNT, GROUP, '17', 'closed');
+    expect(store.getTopic(ACCOUNT, GROUP, '17')?.state).toBe('closed');
+    await store.updateTopicState(ACCOUNT, GROUP, '17', 'deleted');
+    expect(store.getTopic(ACCOUNT, GROUP, '17')?.state).toBe('deleted');
+    await expect(store.updateTopicState(ACCOUNT, GROUP, '17', 'boh' as never)).rejects.toMatchObject({ code: 'invalid_telegram_topic_state' });
+    await store.updateTopicTitle(ACCOUNT, GROUP, '17', 'Titolo aggiornato');
+    expect(store.getTopic(ACCOUNT, GROUP, '17')).toMatchObject({ title: 'Titolo aggiornato', titleSource: 'manual' });
     await store.updateTopicTurn(ACCOUNT, GROUP, '17', { pendingTurnId: null });
     expect(store.getTopic(ACCOUNT, GROUP, '17')?.pendingTurnId).toBeUndefined();
     expect(await store.removeTopic(ACCOUNT, GROUP, '17')).toBe(true);

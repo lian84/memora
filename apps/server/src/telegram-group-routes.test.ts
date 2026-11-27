@@ -25,7 +25,7 @@ async function fixture() {
   await bindings.addAllowedUser(account.id, { id: 42, label: 'Luca' });
   const groups = new TelegramGroupStore({ dataDir });
   await groups.load();
-  const inbound = { syncGroupTopicTitles: vi.fn(async () => ({ updated: 1, failed: 0 })) };
+  const inbound = { syncGroupTopicTitles: vi.fn(async () => ({ updated: 1, failed: 0, closed: 0, deleted: 0, items: [{ threadId: '55', title: 'Topic', status: 'updated' as const }] })) };
   const app = fastify();
   registerTelegramGroupRoutes(app, { accounts, bindings, groups, inbound });
   return { app, account, groups, inbound };
@@ -61,7 +61,7 @@ describe('telegram group routes', () => {
 
     const resync = await app.inject({ method: 'POST', url: `/api/admin/telegram/accounts/${account.id}/groups/-100123/topics/resync` });
     expect(resync.statusCode).toBe(200);
-    expect(resync.json()).toEqual({ updated: 1, failed: 0 });
+    expect(resync.json()).toEqual({ updated: 1, failed: 0, closed: 0, deleted: 0, items: [{ threadId: '55', title: 'Topic', status: 'updated' }] });
 
     const removed = await app.inject({ method: 'DELETE', url: `/api/admin/telegram/accounts/${account.id}/groups/-100123` });
     expect(removed.statusCode).toBe(200);

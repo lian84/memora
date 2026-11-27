@@ -11,6 +11,9 @@ import type {
   TelegramForumTopic,
   TelegramGroup,
   TelegramInboundStatus,
+  TelegramTopicState,
+  TelegramTopicSyncItem,
+  TelegramTopicSyncResult,
   TelegramTopicBinding,
   TelegramPairingCodeView,
   TelegramPollerStatus,
@@ -175,6 +178,8 @@ export interface TelegramInboundDeps {
   attachments?: TelegramInboundAttachments;
   /** Registry dei gruppi forum e dei topic collegati alle sessioni. */
   groups?: TelegramGroupStore;
+  /** Pausa tra due edit Telegram nel riallineamento titoli/icone. */
+  topicSyncDelayMs?: number;
   /** Progetti disponibili per le sessioni dei gruppi. */
   projects?: TelegramInboundProjects;
 }
@@ -227,7 +232,7 @@ interface GroupContext {
 
 interface GroupSessionChoice {
   at: number;
-  entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean }>;
+  entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean; state?: TelegramTopicState }>;
 }
 
 const GROUP_COMMANDS: TelegramCommand[] = [
@@ -247,6 +252,7 @@ const GROUP_COMMANDS: TelegramCommand[] = [
 ];
 
 const MAX_OBSERVED_CHATS = 50;
+const TOPIC_SYNC_DELAY_MS = 250;
 const MAX_SESSION_CHOICES = 8;
 const SESSION_CHOICE_TTL_MS = 10 * 60_000;
 const TYPING_INTERVAL_MS = 4_000;
@@ -300,6 +306,15 @@ function timeOf(value: Date | number): number {
 
 function errorCode(error: unknown): string | undefined {
   return error && typeof error === 'object' && 'code' in error ? String((error as { code?: unknown }).code) : undefined;
+}
+
+function topicFailureState(error: unknown): Exclude<TelegramTopicState, 'open'> | null {
+  if (!(error instanceof TelegramError)) return null;
+  if (error.code !== 'telegram_api_error') return null;
+  const message = error.message;
+  if (/TOPIC_CLOSED|topic[^\n]*(closed|chiuso)/i.test(message)) return 'closed';
+  if (/message thread not found|thread[^\n]*(not found|deleted)|topic[^\n]*not found/i.test(message)) return 'deleted';
+  return null;
 }
 
 function messageThreadId(message: Record<string, unknown>): string | undefined {
@@ -455,6 +470,7 @@ export class TelegramInboundService {
   private readonly attachments?: TelegramInboundAttachments;
   private readonly groups?: TelegramGroupStore;
   private readonly projects?: TelegramInboundProjects;
+  private readonly topicSyncDelayMs: number;
   private readonly bridges = new Map<string, TurnBridge>();
   private readonly groupChoices = new Map<string, GroupSessionChoice>();
   private readonly topicIcons = new Map<string, string | null>();
@@ -487,6 +503,7 @@ export class TelegramInboundService {
     this.attachments = deps.attachments;
     this.groups = deps.groups;
     this.projects = deps.projects;
+    this.topicSyncDelayMs = Math.max(0, deps.topicSyncDelayMs ?? TOPIC_SYNC_DELAY_MS);
   }
 
   /** Avvia i poller degli account con ingresso e account abilitati. */
@@ -929,6 +946,15 @@ export class TelegramInboundService {
       await this.handleGroupTopicCreated(accountId, chatId, userId, message);
       return;
     }
+    if (isRecord(message.forum_topic_closed) || isRecord(message.forum_topic_reopened)) {
+      if (group && threadId && group.allowedUsers.includes(userId)) {
+        const state = isRecord(message.forum_topic_closed) ? 'closed' : 'open';
+        await this.groups.updateTopicState(accountId, chatId, threadId, state).catch(error => {
+          this.log('telegram_topic_state_failed', { accountId, code: errorCode(error) ?? 'internal' });
+        });
+      }
+      return;
+    }
     if (isRecord(message.forum_topic_edited)) {
       if (group && threadId && group.allowedUsers.includes(userId)) {
         const name = typeof message.forum_topic_edited.name === 'string' ? message.forum_topic_edited.name : '';
@@ -1167,6 +1193,7 @@ export class TelegramInboundService {
         await this.editTopicName(accountId, chatId, Number(threadId), formatted, iconCustomEmojiId);
       } catch (error) {
         this.log('telegram_topic_prefix_failed', { accountId, code: errorCode(error) ?? 'internal' });
+        await this.markTopicUnavailable(accountId, chatId, threadId, error);
       }
     } else if (iconCustomEmojiId) {
       await this.applyTopicIcon(accountId, chatId, Number(threadId), iconCustomEmojiId);
@@ -1581,25 +1608,74 @@ export class TelegramInboundService {
     }
   }
 
-  async syncGroupTopicTitles(accountId: string, chatId: string): Promise<{ updated: number; failed: number }> {
+  private async markTopicUnavailable(accountId: string, chatId: string, threadId: string, error: unknown): Promise<void> {
+    if (!this.groups) return;
+    const state = topicFailureState(error);
+    if (!state) return;
+    const previous = this.groups.getTopic(accountId, chatId, threadId);
+    if (!previous) return;
+    try {
+      await this.groups.updateTopicState(accountId, chatId, threadId, state);
+    } catch (updateError) {
+      this.log('telegram_topic_state_failed', { accountId, code: errorCode(updateError) ?? 'internal' });
+      return;
+    }
+    this.log('telegram_topic_unavailable', { accountId, threadId, state });
+    if (state === 'deleted' && previous.state !== 'deleted' && !this.stopping) {
+      await this.safeSendHtml(
+        accountId,
+        chatId,
+        `⚠️ Il topic <b>${escapeTelegramHtml(previous.title)}</b> non è più disponibile. La sessione resta nella web UI; crea un nuovo topic con <code>/new</code> da General.`,
+      );
+    }
+  }
+
+  private async delay(milliseconds: number): Promise<void> {
+    if (milliseconds <= 0) return;
+    await new Promise<void>(resolve => { setTimeout(resolve, milliseconds); });
+  }
+
+  async syncGroupTopicTitles(accountId: string, chatId: string): Promise<TelegramTopicSyncResult> {
     if (!this.groups) throw new Error('groups_unavailable');
     if (!this.telegram.editForumTopic) throw new Error('telegram_topics_unavailable');
     const group = this.groups.get(accountId, chatId);
     if (!group) throw new Error('group_not_found');
     const iconCustomEmojiId = await this.ensureTopicIcon(accountId);
+    const items: TelegramTopicSyncItem[] = [];
     let updated = 0;
     let failed = 0;
-    for (const topic of Object.values(group.topics)) {
+    let closed = 0;
+    let deleted = 0;
+    const topics = Object.values(group.topics).sort((a, b) => a.createdAt - b.createdAt);
+    for (const [index, topic] of topics.entries()) {
+      if (topic.state === 'deleted') {
+        deleted += 1;
+        failed += 1;
+        items.push({ threadId: topic.threadId, title: topic.title, status: 'deleted', error: 'Topic eliminato' });
+        continue;
+      }
       const formatted = await this.topicTitle(group, topic.title, topic.projectId);
       try {
         await this.editTopicName(accountId, chatId, Number(topic.threadId), formatted, iconCustomEmojiId);
         updated += 1;
+        items.push({ threadId: topic.threadId, title: topic.title, status: 'updated' });
       } catch (error) {
-        failed += 1;
-        this.log('telegram_topic_sync_failed', { accountId, code: errorCode(error) ?? 'internal' });
+        const state = topicFailureState(error);
+        if (state) {
+          await this.groups.updateTopicState(accountId, chatId, topic.threadId, state).catch(() => undefined);
+          if (state === 'closed') closed += 1;
+          if (state === 'deleted') deleted += 1;
+          failed += 1;
+          items.push({ threadId: topic.threadId, title: topic.title, status: state, error: state === 'closed' ? 'Topic chiuso' : 'Topic eliminato' });
+        } else {
+          failed += 1;
+          items.push({ threadId: topic.threadId, title: topic.title, status: 'failed', error: error instanceof Error ? error.message : 'Errore Telegram' });
+        }
+        this.log('telegram_topic_sync_failed', { accountId, threadId: topic.threadId, code: errorCode(error) ?? 'internal' });
       }
+      if (index < topics.length - 1) await this.delay(this.topicSyncDelayMs);
     }
-    return { updated, failed };
+    return { updated, failed, closed, deleted, items };
   }
 
   private async markGroupPendingTurn(context: GroupContext, sessionId: string, turnId: string): Promise<void> {
@@ -1711,6 +1787,7 @@ export class TelegramInboundService {
       `Contesto: ${escapeTelegramHtml(label)}`,
       `Progetto: ${currentProject ? escapeTelegramHtml(currentProject) : 'nessuno'}`,
       `Agente: ${currentAgent ? escapeTelegramHtml(currentAgent) : 'Memo base'}`,
+      ...(current?.topic?.state ? [`Topic: ${current.topic.state === 'closed' ? 'chiuso' : 'eliminato'}`] : []),
       `Sessione: ${current ? `<code>${escapeTelegramHtml(current.sessionId.slice(0, 20))}…</code>` : 'nessuna'}`,
       ...(active && (active.status === 'running' || active.status === 'queued') ? [`Turno: ${escapeTelegramHtml(active.status)}`] : []),
     ].join('\n'), context.threadId);
@@ -1879,7 +1956,7 @@ export class TelegramInboundService {
       : undefined;
     const defaultProjectId = this.defaultProjectId(group, context.accountId);
     const defaultAgentId = this.defaultAgentProfileId(group, context.accountId);
-    const entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean; projectId?: string; agentProfileId?: string }> = [];
+    const entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean; projectId?: string; agentProfileId?: string; state?: TelegramTopicState }> = [];
     if (group.generalSessionId) {
       entries.push({
         sessionId: group.generalSessionId,
@@ -1899,9 +1976,10 @@ export class TelegramInboundService {
         general: false,
         ...(projectId ? { projectId } : {}),
         ...(agentProfileId ? { agentProfileId } : {}),
+        ...(topic.state ? { state: topic.state } : {}),
       });
     }
-    this.groupChoices.set(`${context.accountId}:${context.chatId}`, { at: this.now(), entries: entries.map(entry => ({ sessionId: entry.sessionId, title: entry.title, ...(entry.threadId ? { threadId: entry.threadId } : {}), general: entry.general })) });
+    this.groupChoices.set(`${context.accountId}:${context.chatId}`, { at: this.now(), entries: entries.map(entry => ({ sessionId: entry.sessionId, title: entry.title, ...(entry.threadId ? { threadId: entry.threadId } : {}), general: entry.general, ...(entry.state ? { state: entry.state } : {}) })) });
     if (entries.length === 0) {
       await this.safeReply(
         context.accountId,
@@ -1916,10 +1994,11 @@ export class TelegramInboundService {
       const marker = context.threadId
         ? entry.threadId === context.threadId ? '▸ ' : ''
         : entry.general ? '▸ ' : '';
-      const link = entry.threadId ? ` · <a href="${groupLink(context.chatId, entry.threadId)}">apri</a>` : '';
+      const link = entry.threadId && entry.state !== 'deleted' ? ` · <a href="${groupLink(context.chatId, entry.threadId)}">apri</a>` : '';
       const project = entry.projectId ? ` · ${escapeTelegramHtml(projectName(entry.projectId) ?? entry.projectId)}` : '';
       const agent = entry.agentProfileId ? ` · ${escapeTelegramHtml(agentName(entry.agentProfileId) ?? entry.agentProfileId)}` : '';
-      lines.push(`${index + 1}. ${marker}<b>${escapeTelegramHtml(entry.title)}</b>${project}${agent}${link}`);
+      const state = entry.state === 'closed' ? ' · chiuso' : entry.state === 'deleted' ? ' · eliminato' : '';
+      lines.push(`${index + 1}. ${marker}<b>${escapeTelegramHtml(entry.title)}</b>${project}${agent}${state}${link}`);
     });
     lines.push('', 'Usa <code>/switch N</code> per aprire il topic di una sessione.');
     await this.safeSendHtml(context.accountId, context.chatId, lines.join('\n'), context.threadId);
@@ -1935,6 +2014,10 @@ export class TelegramInboundService {
     const selected = choice.entries[index - 1];
     if (!selected) {
       await this.safeReply(context.accountId, context.chatId, 'Sessione non valida.', context.threadId);
+      return;
+    }
+    if (selected.state === 'deleted') {
+      await this.safeReply(context.accountId, context.chatId, 'Il topic selezionato è stato eliminato. Crea un nuovo topic con `/new` da General.', context.threadId);
       return;
     }
     if (selected.threadId) {
@@ -1995,6 +2078,7 @@ export class TelegramInboundService {
         `Topic: ${escapeTelegramHtml(context.threadId ? current.topic?.title ?? `Topic ${context.threadId}` : 'General')}`,
         `Progetto: ${project ? escapeTelegramHtml(project) : 'nessuno'}`,
         `Agente: ${agent ? escapeTelegramHtml(agent) : 'Memo base'}`,
+        ...(current.topic?.state ? [`Topic: ${current.topic.state === 'closed' ? 'chiuso' : 'eliminato'}`] : []),
       ].join('\n'), context.threadId);
     } catch (error) {
       this.log('telegram_current_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
@@ -2047,6 +2131,7 @@ export class TelegramInboundService {
         } catch (error) {
           topicUpdated = false;
           this.log('telegram_topic_rename_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
+          await this.markTopicUnavailable(context.accountId, context.chatId, context.threadId, error);
         }
       } else {
         topicUpdated = false;
@@ -2441,6 +2526,7 @@ export class TelegramInboundService {
           sent += 1;
         } catch (error) {
           this.log('telegram_artifact_send_failed', { accountId: bridge.accountId, artifactId: artifact.id, code: errorCode(error) ?? 'internal' });
+          if (bridge.threadId) await this.markTopicUnavailable(bridge.accountId, bridge.chatId, bridge.threadId, error);
         }
       }
     } catch (error) {
@@ -2740,6 +2826,7 @@ export class TelegramInboundService {
         accountId,
         code: error instanceof TelegramError ? error.code : 'internal',
       });
+      if (threadId) await this.markTopicUnavailable(accountId, chatId, threadId, error);
       return false;
     }
   }
@@ -2762,6 +2849,7 @@ export class TelegramInboundService {
         accountId,
         code: error instanceof TelegramError ? error.code : 'internal',
       });
+      if (threadId) await this.markTopicUnavailable(accountId, chatId, threadId, error);
       return false;
     }
   }

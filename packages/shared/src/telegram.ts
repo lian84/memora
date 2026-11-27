@@ -175,6 +175,25 @@ export type TelegramPairingScope = 'private' | 'group';
 /** Origine del titolo di un topic; il titolo automatico non sovrascrive quello manuale. */
 export type TelegramTopicTitleSource = 'auto' | 'manual';
 
+/** Stato del topic Telegram rispetto alla conversazione. */
+export type TelegramTopicState = 'open' | 'closed' | 'deleted';
+
+export type TelegramTopicSyncStatus = 'updated' | 'closed' | 'deleted' | 'failed';
+
+export interface TelegramTopicSyncItem {
+  threadId: string;
+  title: string;
+  status: TelegramTopicSyncStatus;
+  error?: string;
+}
+export interface TelegramTopicSyncResult {
+  updated: number;
+  failed: number;
+  closed: number;
+  deleted: number;
+  items: TelegramTopicSyncItem[];
+}
+
 /** Collegamento tra un topic Telegram e una sessione Memora. */
 export interface TelegramTopicBinding {
   threadId: string;
@@ -185,6 +204,8 @@ export interface TelegramTopicBinding {
   /** Profilo agente della sessione; assente = profilo predefinito. */
   agentProfileId?: string;
   titleSource: TelegramTopicTitleSource;
+  /** Assente = open per compatibilità con i topic esistenti. */
+  state?: TelegramTopicState;
   createdAt: number;
   updatedAt: number;
   pendingTurnId?: string;

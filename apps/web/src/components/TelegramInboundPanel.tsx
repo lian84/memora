@@ -7,6 +7,7 @@ import type {
   TelegramGroupPatch,
   TelegramInboundAdminView,
   TelegramPairingCodeView,
+  TelegramTopicSyncResult,
   TelegramPollerStatus,
   TelegramReplyMode,
 } from '@memora/shared';
@@ -74,6 +75,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
   const [pairing, setPairing] = useState<TelegramPairingCodeView | null>(null);
   const [groupPairing, setGroupPairing] = useState<TelegramPairingCodeView | null>(null);
   const [groups, setGroups] = useState<TelegramGroup[]>([]);
+  const [syncReports, setSyncReports] = useState<Record<string, TelegramTopicSyncResult>>({});
   const [manualId, setManualId] = useState('');
   const [manualLabel, setManualLabel] = useState('');
   const [loading, setLoading] = useState(true);
@@ -312,7 +314,9 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     setMessage(null);
     try {
       const result = await resyncTelegramGroupTopics(account.id, chatId);
-      setMessage(t('Titoli riallineati: {updated}. Errori: {failed}.', { updated: result.updated, failed: result.failed }));
+      setSyncReports(current => ({ ...current, [chatId]: result }));
+      await load();
+      setMessage(t('Titoli e icone riallineati: {updated} aggiornati, {failed} errori.', { updated: result.updated, failed: result.failed }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -509,7 +513,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                             {t('Topic')}: {Object.values(group.topics).map((topic, index) => (
                               <span key={topic.threadId}>
                                 {index > 0 ? ' · ' : ''}
-                                <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a> ({projectLabel(topic.projectId ?? effectiveProjectId)} · {agentLabel(topic.agentProfileId ?? effectiveAgentId)})
+                                <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a> ({projectLabel(topic.projectId ?? effectiveProjectId)} · {agentLabel(topic.agentProfileId ?? effectiveAgentId)}){topic.state === 'closed' ? ` · ${t('chiuso')}` : topic.state === 'deleted' ? ` · ${t('eliminato')}` : ''}
                               </span>
                             ))}
                           </span>
@@ -562,6 +566,16 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                             </button>
                           </div>
                         </details>
+                        {syncReports[group.chatId] && (
+                          <div className="telegram-sync-report">
+                            <span>{t('Risultato riallineamento: {updated} aggiornati, {failed} errori.', { updated: syncReports[group.chatId].updated, failed: syncReports[group.chatId].failed })}</span>
+                            {syncReports[group.chatId].items.filter(item => item.status !== 'updated').map(item => (
+                              <span key={item.threadId}>
+                                {item.title}: {item.status === 'closed' ? t('chiuso') : item.status === 'deleted' ? t('eliminato') : t('fallito')}{item.error ? ` · ${item.error}` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <button type="button" className="is-danger" onClick={() => void removeGroup(group.chatId)} disabled={saving}>{t('Revoca')}</button>
                     </div>

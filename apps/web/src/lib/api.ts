@@ -42,6 +42,7 @@ import {
   type TelegramGroup,
   type TelegramGroupPatch,
   type TelegramPairingCodeView,
+  type TelegramTopicSyncResult,
   type BackupRecord,
   type BackupSchedule,
   type BackupStatus,
@@ -1145,9 +1146,9 @@ export async function updateTelegramGroup(accountId: string, chatId: string, pat
   return data.group;
 }
 
-export async function resyncTelegramGroupTopics(accountId: string, chatId: string): Promise<{ updated: number; failed: number }> {
+export async function resyncTelegramGroupTopics(accountId: string, chatId: string): Promise<TelegramTopicSyncResult> {
   const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/groups/${encodeURIComponent(chatId)}/topics/resync`, { method: 'POST' });
-  return res.json() as Promise<{ updated: number; failed: number }>;
+  return res.json() as Promise<TelegramTopicSyncResult>;
 }
 
 export async function createTelegramGroupPairing(accountId: string): Promise<TelegramPairingCodeView> {

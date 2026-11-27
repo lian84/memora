@@ -1905,6 +1905,8 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .telegram-group-settings .admin-toggle { grid-column: 1 / -1; }
 .telegram-group-settings > button { justify-self: start; }
 .telegram-inbound-row a { color: var(--accent); }
+.telegram-sync-report { display: flex; flex-direction: column; gap: 2px; margin-top: 7px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-muted); }
+.telegram-sync-report span { margin: 0; font-size: 9px; color: var(--text-soft); }
 .telegram-pairing-code { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin: 8px 0; }
 .telegram-pairing-code code { padding: 6px 8px; border-radius: 7px; background: var(--surface-muted); color: var(--text); font-size: 14px; letter-spacing: .05em; user-select: all; }
 .telegram-pairing-code small { color: var(--muted); font-size: 9px; }
