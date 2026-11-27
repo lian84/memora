@@ -348,6 +348,11 @@ export interface TelegramCommand {
   description: string;
 }
 
+export type TelegramCommandScope =
+  | { type: 'default' | 'all_private_chats' | 'all_group_chats' | 'all_chat_administrators' }
+  | { type: 'chat' | 'chat_administrators'; chatId: string }
+  | { type: 'chat_member'; chatId: string; userId: string };
+
 export interface TelegramMessageOptions {
   parseMode?: 'HTML';
   messageThreadId?: number;
@@ -786,7 +791,7 @@ export class TelegramService {
   async setMyCommands(
     commands: TelegramCommand[],
     accountId?: string,
-    options: { languageCode?: string } = {},
+    options: { languageCode?: string; scope?: TelegramCommandScope } = {},
   ): Promise<void> {
     if (!Array.isArray(commands) || commands.length > 100) {
       throw new TelegramError('invalid_telegram_commands', 'Elenco comandi Telegram non valido');
@@ -811,10 +816,18 @@ export class TelegramService {
     if (languageCode && !LANGUAGE_CODE_PATTERN.test(languageCode)) {
       throw new TelegramError('invalid_telegram_language_code', 'Codice lingua Telegram non valido');
     }
+    const scope = options.scope
+      ? {
+        type: options.scope.type,
+        ...('chatId' in options.scope ? { chat_id: options.scope.chatId } : {}),
+        ...('userId' in options.scope ? { user_id: options.scope.userId } : {}),
+      }
+      : undefined;
     const { token } = this.tokenFor(accountId);
     await this.request(token, 'setMyCommands', {
       commands: normalized,
       ...(languageCode ? { language_code: languageCode } : {}),
+      ...(scope ? { scope } : {}),
     });
   }
 

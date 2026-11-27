@@ -20,7 +20,15 @@ import { formatTelegramTopicTitle, stripAnyTelegramTopicPrefix } from './telegra
 import type { TelegramBindingStore } from './telegram-bindings.js';
 import type { TelegramGroupStore } from './telegram-groups.js';
 import { TelegramInboundError } from './telegram-bindings.js';
-import { TelegramError, type TelegramBotInfo, type TelegramDocument, type TelegramFile, type TelegramStore } from './telegram.js';
+import {
+  TelegramError,
+  type TelegramBotInfo,
+  type TelegramCommand,
+  type TelegramCommandScope,
+  type TelegramDocument,
+  type TelegramFile,
+  type TelegramStore,
+} from './telegram.js';
 
 export interface TelegramInboundTransport {
   getUpdates(
@@ -44,6 +52,7 @@ export interface TelegramInboundTransport {
   getFile?(fileId: string, accountId?: string): Promise<TelegramFile>;
   downloadFile?(filePath: string, accountId?: string, maxBytes?: number): Promise<Buffer>;
   getMe(accountId?: string): Promise<TelegramBotInfo>;
+  setMyCommands?(commands: TelegramCommand[], accountId?: string, options?: { languageCode?: string; scope?: TelegramCommandScope }): Promise<void>;
   createForumTopic?(chatId: string, name: string, accountId?: string): Promise<TelegramForumTopic>;
   editForumTopic?(chatId: string, threadId: number, name: string, accountId?: string): Promise<void>;
   getChat?(chatId: string, accountId?: string): Promise<TelegramChatInfo>;
@@ -209,6 +218,21 @@ interface GroupSessionChoice {
   at: number;
   entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean }>;
 }
+
+const GROUP_COMMANDS: TelegramCommand[] = [
+  { command: 'help', description: 'Aiuto con la spiegazione dei comandi' },
+  { command: 'commands', description: 'Elenco dei comandi del gruppo' },
+  { command: 'start', description: 'Associa il gruppo con un codice' },
+  { command: 'projects', description: 'Elenca i progetti disponibili' },
+  { command: 'new', description: 'Crea un topic e una sessione (solo General)' },
+  { command: 'sessions', description: 'Elenca le sessioni del gruppo' },
+  { command: 'switch', description: 'Apri il topic di una sessione' },
+  { command: 'current', description: 'Mostra la sessione del topic corrente' },
+  { command: 'rename', description: 'Rinomina sessione e topic' },
+  { command: 'stop', description: 'Interrompi la risposta corrente' },
+  { command: 'status', description: 'Stato del gruppo e della sessione' },
+  { command: 'ping', description: 'Verifica il bot' },
+];
 
 const MAX_OBSERVED_CHATS = 50;
 const MAX_SESSION_CHOICES = 8;
@@ -568,6 +592,7 @@ export class TelegramInboundService {
     if (!this.shouldRun(accountId)) return;
     await this.backfillGroupTopicProjects(accountId);
     await this.notifyInterrupted(accountId);
+    void this.ensureGroupCommands(accountId);
 
     const controller = new AbortController();
     const state: PollerState = {
@@ -764,6 +789,19 @@ export class TelegramInboundService {
           this.log('telegram_pending_clear_failed', { accountId, code: errorCode(error) ?? 'internal' });
         });
       }
+    }
+  }
+
+  /** Registra il menu comandi nativo per i gruppi; non è per-topic. */
+  private async ensureGroupCommands(accountId: string): Promise<void> {
+    const setCommands = this.telegram.setMyCommands;
+    if (!setCommands) return;
+    try {
+      await setCommands.call(this.telegram, GROUP_COMMANDS, accountId, {
+        scope: { type: 'all_group_chats' },
+      });
+    } catch (error) {
+      this.log('telegram_group_commands_failed', { accountId, code: errorCode(error) ?? 'internal' });
     }
   }
 
@@ -1049,6 +1087,7 @@ export class TelegramInboundService {
     }
 
     this.log('telegram_group_paired', { accountId });
+    void this.ensureGroupCommands(accountId);
     await this.safeReply(
       accountId,
       chatId,
@@ -1132,6 +1171,7 @@ export class TelegramInboundService {
         await this.safeReply(context.accountId, context.chatId, '🏓 pong', context.threadId);
         return;
       case 'help':
+      case 'commands':
         await this.groupShowHelp(context);
         return;
       case 'status':
@@ -1460,20 +1500,44 @@ export class TelegramInboundService {
   }
 
   private async groupShowHelp(context: GroupContext): Promise<void> {
-    await this.safeReply(context.accountId, context.chatId, [
-      '**Comandi del gruppo**',
+    const group = this.groups?.get(context.accountId, context.chatId) ?? context.group;
+    const current = this.groupSession(context);
+    const projectId = current?.topic?.projectId ?? this.defaultProjectId(group, context.accountId);
+    const project = await this.projectName(projectId);
+    let sessionTitleText = 'non ancora creata';
+    if (current && this.sessions) {
+      try {
+        const session = (await this.sessions.listSessions(false, true)).find(item => item.sessionId === current.sessionId);
+        if (session) sessionTitleText = sessionTitle(session);
+      } catch {
+        // L'help non deve fallire se la sessione non è leggibile.
+      }
+    }
+    const lines = [
+      '<b>Comandi del gruppo</b>',
       '',
-      '/projects — elenca i progetti disponibili',
-      '/new [progetto] [titolo] — crea un topic e una sessione (solo da General)',
-      '/sessions — elenca le sessioni del gruppo',
-      '/switch N — apre il topic della sessione N',
-      '/current — sessione di questo topic',
-      '/rename Titolo — rinomina sessione e topic',
-      '/stop — interrompe la risposta',
-      '/status — stato del gruppo',
-      '/ping — verifica il canale',
-      '/help — questo elenco',
-    ].join('\n'), context.threadId);
+      `Contesto: <b>${escapeTelegramHtml(context.threadId ? current?.topic?.title ?? `Topic ${context.threadId}` : 'General')}</b>`,
+      `Sessione: ${escapeTelegramHtml(sessionTitleText)}`,
+      `Progetto: ${project ? escapeTelegramHtml(project) : 'nessuno'}`,
+      `Prefisso progetto: ${group.showProjectInTopicTitle ? 'attivo' : 'disattivato'}`,
+      '',
+      '<code>/help</code> — questo aiuto contestuale',
+      '<code>/commands</code> — alias di /help',
+      '<code>/projects</code> — elenca i progetti disponibili',
+      '<code>/new [progetto] [titolo]</code> — crea un topic e una sessione (solo General)',
+      '<code>/sessions</code> — elenca General e i topic del gruppo',
+      '<code>/switch N</code> — apre il link del topic della sessione N',
+      '<code>/current</code> — sessione del topic corrente',
+      '<code>/rename Titolo</code> — rinomina sessione e topic',
+      '<code>/stop</code> — interrompe la risposta',
+      '<code>/status</code> — stato del gruppo e della sessione',
+      '<code>/ping</code> — verifica il bot',
+      '',
+      context.threadId
+        ? 'Il menu rapido si apre digitando <code>/</code>. <code>/new</code> è disponibile solo da General.'
+        : 'Il menu rapido si apre digitando <code>/</code>. Da General puoi creare nuovi topic con <code>/new</code>.',
+    ];
+    await this.safeSendHtml(context.accountId, context.chatId, lines.join('\n'), context.threadId);
   }
 
   private async groupShowStatus(context: GroupContext): Promise<void> {

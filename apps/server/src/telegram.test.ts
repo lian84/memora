@@ -199,6 +199,19 @@ describe('TelegramService', () => {
     expect(body).toEqual({ commands: [{ command: 'start', description: 'Avvia Memora' }], language_code: 'it' });
   });
 
+  it('invia lo scope dei comandi per i gruppi', async () => {
+    const store = new TelegramStore({ dataDir: await tempDir() });
+    await store.load();
+    const account = await store.createAccount({ label: 'Test', chatId: '42', token: '123:token' });
+    const fetchMock = vi.fn(async (...args: Parameters<typeof fetch>) => { void args; return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 }); });
+    const service = new TelegramService(store, fetchMock as unknown as typeof fetch);
+    await service.setMyCommands([{ command: 'help', description: 'Aiuto' }], account.id, {
+      scope: { type: 'all_group_chats' },
+    });
+    const body = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body.scope).toEqual({ type: 'all_group_chats' });
+  });
+
   it('valida i comandi prima di chiamare Telegram', async () => {
     const store = new TelegramStore({ dataDir: await tempDir() });
     await store.load();

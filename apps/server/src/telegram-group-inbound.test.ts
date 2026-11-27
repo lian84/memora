@@ -45,6 +45,11 @@ class FakeTransport implements TelegramInboundTransport {
   typing: Array<{ chatId: string; accountId?: string; threadId?: number }> = [];
   createdTopics: Array<{ chatId: string; name: string; threadId: string }> = [];
   editedTopics: Array<{ chatId: string; threadId: number; name: string }> = [];
+  setMyCommands = vi.fn(async (
+    _commands: Array<{ command: string; description: string }>,
+    _accountId?: string,
+    _options?: { scope?: { type: string } },
+  ): Promise<void> => { void _commands; void _accountId; void _options; });
   fileBuffer = Buffer.from('%PDF');
   getFile = vi.fn(async (fileId: string) => ({ fileId, filePath: 'files/report', size: this.fileBuffer.byteLength }));
   downloadFile = vi.fn(async () => this.fileBuffer);
@@ -608,6 +613,52 @@ describe('Telegram group and forum topics', () => {
     expect(topic?.title).toBe('Preventivo');
     expect(ctx.sessions.created).toHaveLength(1);
     await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Topic creato') && item.threadId === undefined)).toBe(true));
+    await ctx.service.stop();
+  });
+
+  it('registra il menu comandi nativo per i gruppi', async () => {
+    const ctx = await setupGroup();
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.setMyCommands).toHaveBeenCalled());
+    const [commands, accountId, options] = ctx.transport.setMyCommands.mock.calls[0] ?? [];
+    expect(accountId).toBe(ctx.account.id);
+    expect(options).toEqual({ scope: { type: 'all_group_chats' } });
+    expect(commands).toEqual(expect.arrayContaining([
+      expect.objectContaining({ command: 'help' }),
+      expect.objectContaining({ command: 'commands' }),
+      expect.objectContaining({ command: 'new' }),
+      expect.objectContaining({ command: 'projects' }),
+    ]));
+    await ctx.service.stop();
+  });
+
+  it('mostra l’aiuto contestuale in General e in un topic', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+      defaultProjectId: 'lavoro',
+      showProjectInTopicTitle: true,
+    });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', {
+      threadId: '55',
+      sessionId: 'sess_topic',
+      title: 'Preventivo',
+      projectId: 'casa',
+    });
+    ctx.sessions.addSession({ sessionId: 'sess_topic', name: 'Preventivo', projectId: 'casa' });
+    ctx.transport.updates.push(groupMessage({ text: '/help' }), groupMessage({ text: '/commands', threadId: 55 }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Comandi del gruppo') && item.threadId === undefined)).toBe(true));
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Comandi del gruppo') && item.threadId === 55)).toBe(true));
+    const general = ctx.transport.sent.find(item => item.text.includes('Comandi del gruppo') && item.threadId === undefined);
+    const topic = ctx.transport.sent.find(item => item.text.includes('Comandi del gruppo') && item.threadId === 55);
+    expect(general?.text).toContain('Lavoro');
+    expect(topic?.text).toContain('Preventivo');
+    expect(topic?.text).toContain('Casa');
+    expect(topic?.text).toContain('solo da General');
     await ctx.service.stop();
   });
 
