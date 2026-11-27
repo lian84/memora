@@ -15,6 +15,7 @@ import {
   type TelegramInboundSettings,
   type TelegramPairingCodeView,
   type TelegramPairingInput,
+  type TelegramPairingScope,
   type TelegramReplyMode,
 } from '@memora/shared';
 
@@ -31,6 +32,7 @@ interface StoredPairing {
   salt: string;
   createdAt: number;
   expiresAt: number;
+  scope: TelegramPairingScope;
 }
 
 interface PairingFailures {
@@ -273,7 +275,10 @@ export class TelegramBindingStore {
     return this.get(id);
   }
 
-  async createPairingCode(accountId: string): Promise<TelegramPairingCodeView> {
+  async createPairingCode(accountId: string, scope: TelegramPairingScope = 'private'): Promise<TelegramPairingCodeView> {
+    if (scope !== 'private' && scope !== 'group') {
+      throw new TelegramInboundError('invalid_telegram_pairing_scope', 'Ambito di associazione non valido');
+    }
     const id = validAccountId(accountId);
     const state = this.account(id);
     if (!state.enabled) throw new TelegramInboundError('telegram_inbound_disabled', 'Il canale Telegram in ingresso non è abilitato', 409);
@@ -285,6 +290,7 @@ export class TelegramBindingStore {
       salt,
       createdAt,
       expiresAt: createdAt + this.pairingTtlMs,
+      scope,
     };
     this.clearPairingFailures(id);
     const expiresAt = state.pairing.expiresAt;
@@ -303,22 +309,28 @@ export class TelegramBindingStore {
     return this.get(id);
   }
 
-  /** Completa il pairing e aggiunge l'utente alla allowlist. */
-  async pair(accountId: string, input: TelegramPairingInput): Promise<TelegramAllowedUser> {
+  /**
+   * Valida e consuma un codice di pairing senza modificare la allowlist DM.
+   *
+   * Serve al pairing dei gruppi: un codice con scope `group` autorizza il
+   * gruppo, non la chat privata dell'utente. Il chiamante deve verificare i
+   * requisiti del gruppo prima di consumare il codice.
+   */
+  async consumePairingCode(accountId: string, input: TelegramPairingInput): Promise<{ userId: string; label?: string }> {
     const id = validAccountId(accountId);
     const state = this.account(id);
     if (!state.enabled) throw new TelegramInboundError('telegram_inbound_disabled', 'Il canale Telegram in ingresso non è abilitato', 409);
 
     const userId = validUserId(input.userId);
-    const requestedLabel = input.label !== undefined && input.label !== null && input.label !== '' ? validLabel(input.label, '') : undefined;
-    const existing = state.allowedUsers.find(user => user.id === userId);
-    if (!existing && state.allowedUsers.length >= this.maxAllowedUsers) {
-      throw new TelegramInboundError('telegram_too_many_users', 'Troppi utenti Telegram autorizzati', 409);
-    }
-
+    const requestedLabel = input.label !== undefined && input.label !== null && input.label !== ''
+      ? validLabel(input.label, '')
+      : undefined;
     const code = typeof input.code === 'string' ? input.code.trim() : '';
+    const scope = input.scope ?? 'private';
     const pairing = state.pairing;
-    if (!pairing) throw new TelegramInboundError('invalid_telegram_pairing_code', 'Codice di associazione non valido');
+    if (!pairing || (pairing.scope ?? 'private') !== scope) {
+      throw new TelegramInboundError('invalid_telegram_pairing_code', 'Codice di associazione non valido');
+    }
     if (pairing.expiresAt <= this.now()) {
       state.pairing = null;
       this.clearPairingFailures(id);
@@ -338,15 +350,30 @@ export class TelegramBindingStore {
 
     state.pairing = null;
     this.clearPairingFailures(id);
+    await this.persist();
+    return { userId, ...(requestedLabel !== undefined ? { label: requestedLabel } : {}) };
+  }
+
+  /** Completa il pairing DM e aggiunge l'utente alla allowlist. */
+  async pair(accountId: string, input: TelegramPairingInput): Promise<TelegramAllowedUser> {
+    const id = validAccountId(accountId);
+    const state = this.account(id);
+    const userId = validUserId(input.userId);
+    const existing = state.allowedUsers.find(user => user.id === userId);
+    if (!existing && state.allowedUsers.length >= this.maxAllowedUsers) {
+      throw new TelegramInboundError('telegram_too_many_users', 'Troppi utenti Telegram autorizzati', 409);
+    }
+
+    const consumed = await this.consumePairingCode(id, input);
     if (existing) {
-      if (requestedLabel !== undefined) existing.label = requestedLabel;
+      if (consumed.label !== undefined) existing.label = consumed.label;
       await this.persist();
       return copyUser(existing);
     }
 
     const user: TelegramAllowedUser = {
       id: userId,
-      label: requestedLabel ?? `Telegram ${userId}`,
+      label: consumed.label ?? `Telegram ${userId}`,
       pairedAt: this.now(),
     };
     state.allowedUsers.push(user);
@@ -646,8 +673,9 @@ export class TelegramBindingStore {
       const salt = typeof value.pairing.salt === 'string' && /^[a-f0-9]{32}$/.test(value.pairing.salt) ? value.pairing.salt : null;
       const createdAt = typeof value.pairing.createdAt === 'number' && Number.isFinite(value.pairing.createdAt) ? value.pairing.createdAt : null;
       const expiresAt = typeof value.pairing.expiresAt === 'number' && Number.isFinite(value.pairing.expiresAt) ? value.pairing.expiresAt : null;
+      const scope: TelegramPairingScope = value.pairing.scope === 'group' ? 'group' : 'private';
       if (codeHash && salt && createdAt !== null && expiresAt !== null) {
-        state.pairing = { codeHash, salt, createdAt, expiresAt };
+        state.pairing = { codeHash, salt, createdAt, expiresAt, scope };
       }
     }
 

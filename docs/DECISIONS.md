@@ -2449,3 +2449,250 @@ per chat.
   the authoritative answer remains in the web UI.
 - Answers and artifacts may contain personal data and transit through Telegram,
   so the setting is opt-in and documented.
+
+---
+## ADR-070 — Telegram groups use forum topics as sessions
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+A Telegram bot has only one private chat per user, so multiple Memora sessions
+cannot be separated in a DM. Groups with forum topics provide native threads
+with names, per-topic history and direct links. They match the need for a fast
+interface where each long-running chat is a separate topic.
+
+### Decision
+
+- Require a private supergroup with Topics enabled, with only the owner and the
+  bot. The bot must be an administrator with permission to manage topics.
+- Treat the group as a project/workspace and each topic as a Memora session.
+  The General topic is the default session of the group.
+- Keep the existing private-DM binding store unchanged. Add a dedicated
+  `TelegramGroupStore` in `config/telegram-groups.json` (`0600`) for groups,
+  General session, topic bindings and per-group defaults. No message text or
+  tokens are stored.
+- Use group-scoped pairing codes: a code generated for a group cannot pair a
+  private DM, and vice versa. A group code authorizes the sender in the group
+  allowlist only; it does not grant private-DM access. The group must be a
+  forum; the bot must be an administrator with `can_manage_topics`.
+- Make the Telegram transport thread-aware (`message_thread_id` for messages,
+  documents, edits and typing) and add topic/group API methods.
+- Keep the feature opt-in and limited to private groups with a single owner in
+  the first version. Do not support arbitrary public groups or multi-user
+  permissions.
+- Plan web sharing and inbound group routing as separate milestones on top of
+  this foundation.
+
+### Consequences
+
+- Topics are the natural session list: the title, link and history of a topic
+  map to a Memora session.
+- The DM bridge and share flows remain unchanged.
+- A group member can read bot messages, so the group must be private and
+  dedicated; the bot rejects unauthorized senders but cannot hide messages from
+  group members.
+- Privacy mode must be disabled to receive normal messages in topics, or every
+  message must mention the bot. This is acceptable only in a dedicated private
+  group.
+- Bot administrator rights and topic limits are operational dependencies.
+
+---
+## ADR-071 — Inbound forum routing: General and one session per topic
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+The group foundation from ADR-070 needs deterministic routing. Telegram does
+not expose a complete topic catalog to bots: a bot learns topic names from
+service messages or from the first message carrying `message_thread_id`.
+General is special and is the default conversation of the group.
+
+### Decision
+
+- Use General as the group’s default session, created lazily on the first
+  message or command that needs it.
+- Bind each secondary topic to one Memora session. Create the session and
+  binding on `forum_topic_created` when the service message is received, or
+  lazily on the first message if the service message was missed.
+- Create a new topic and a new session only with `/new [titolo]` from General.
+  Reject `/new` inside a secondary topic.
+- Route all replies, typing, documents, edits and stop confirmations with the
+  originating `message_thread_id`.
+- Keep the group allowlist separate from the private-DM allowlist. Group
+  pairing consumes a `group` code and never grants DM access.
+- Sync a topic title only on `/rename`; manual topic edits update the registry
+  title but do not rename the session. Automatic session titles never overwrite
+  a topic title.
+- Use `/sessions` to list General and the group topics, and `/switch N` to
+  return the link to the selected topic. A topic remains a stable session
+  boundary; switching does not silently rebind it.
+- Validate at pairing time that the group is a private forum and that the bot
+  is an administrator with `can_manage_topics`; validate that privacy mode is
+  disabled. Each turn reuses the normal `TurnManager` and read state.
+
+### Consequences
+
+- A group can be rebuilt from Telegram state with lazy binding, without a
+  database of topic titles.
+- Topic renames, deletions and closed topics need separate hardening; stale
+  bindings are cleaned when a Memora session is deleted.
+- The group owner must keep the bot administrator and privacy mode disabled.
+- The web UI admin panel lists groups and topics but session contents remain in
+  the web UI/session storage, not in the group registry.
+
+---
+## ADR-072 — Project per topic with a group default
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+A Telegram forum has a flat list of topics. One group can either represent a
+single project or host sessions from several projects. The project belongs to
+the session, not to a Telegram topic hierarchy. Users who want visual separation
+can still create one group per project.
+
+### Decision
+
+- Keep the group as the default project scope. General and new topics inherit
+  `defaultProjectId` (`??` account inbound default).
+- Store the resolved `projectId` on each secondary topic, not only on the group.
+  `/new <project-id> <title>` creates a topic in another project. Manual topics
+  use the group default.
+- Treat the project of a session as immutable. Changing a group default or a
+  topic project affects only new sessions; it never moves an existing session.
+- The optional `[Project name]` topic prefix is presentation only. The source of
+  truth remains `projectId`.
+- Add a per-group `showProjectInTopicTitle` flag, enabled for newly paired
+  groups and disabled for migrated groups. It applies to new topics and
+  `/rename`; existing topics are updated only by an explicit **Sync titles and
+  icons** action.
+- General is never prefixed. Prefix length is bounded by Telegram's 128-character
+  topic limit; the base title remains stored without the prefix.
+- Manual topic title edits strip the known prefix and update the base title, but
+  do not change the project. Project renames require a title sync.
+- Multiple groups per Telegram account remain supported; each can have a
+  different default project and prefix setting.
+
+### Consequences
+
+- One group can host sessions from several projects without inventing unsupported
+  Telegram hierarchy.
+- Users who prefer strict separation can use one group per project and disable
+  the prefix.
+- The title is not authoritative; UI and commands must display the project from
+  metadata.
+- Existing topics created before this change may not have a stored project; they
+  are backfilled from the session project at startup when available, otherwise
+  they fall back to the group default.
+- Moving a session to another project requires a new session.
+
+---
+## ADR-073 — Group command menu and contextual help
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+Forum topics share a Telegram chat but have different context. Telegram's
+native bot command menu supports scopes for private chats, all groups or a
+specific chat, but has no scope for a forum topic. Users still need to discover
+commands and understand General versus topic behavior.
+
+### Decision
+
+- Register a native group command menu with `setMyCommands` and the
+  `all_group_chats` scope. It contains short descriptions for `/help`,
+  `/commands`, `/projects`, `/new`, `/sessions`, `/switch`, `/current`,
+  `/rename`, `/stop`, `/status`, `/ping` and `/start`.
+- Accept `/help` and `/commands` in General and in secondary topics. The reply is
+  sent in the originating thread and reports current topic, project, session,
+  default project and prefix state.
+- Explain in help that `/new` is available only from General and that `/switch`
+  opens a topic link; do not pretend the menu is topic-specific.
+- Do not implement inline callback menus in this milestone. They require
+  callback-query authorization, state and extra API methods without improving
+  basic discoverability.
+
+### Consequences
+
+- Every topic in a group sees the same short native menu; detailed help is
+  contextual.
+- The menu is refreshed when a Telegram account poller starts and after group
+  pairing.
+- If `setMyCommands` fails, the bot logs the failure but continues serving
+  messages; `/help` remains available.
+- A future inline keyboard can be added without changing the command semantics.
+
+---
+## ADR-074 — Default checkmark icon for forum topics
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+Telegram assigns a default forum-topic icon (the cloud shown by clients). The
+project prefix is text and cannot replace the icon. Users asked for a consistent,
+nicer icon on every secondary topic.
+
+### Decision
+
+- Query `getForumTopicIconStickers` for the account and choose a checkmark
+  custom emoji when available, caching the selected custom emoji ID per account.
+- Apply the icon when creating a bot-created topic, when binding a manually
+  created topic, on `/rename`, and on the explicit **Sync titles and icons**
+  action.
+- Set the icon only on secondary topics; General keeps its native icon.
+- Keep the existing project-title prefix and its per-group toggle unchanged.
+- If the icon list or the custom emoji is unavailable, keep the Telegram default
+  and log the condition; topic operations continue normally.
+- Store no icon metadata in the group registry. Telegram is the display source;
+  a later sync re-applies the default icon.
+
+### Consequences
+
+- Every topic managed by the bot gets the same checkmark icon unless Telegram
+  does not provide it.
+- Existing topics need one explicit sync after the change; new and renamed
+  topics receive it automatically.
+- The icon is presentation only and never changes project metadata or access.
+- A bot/account token change clears the cached icon ID.
+
+---
+## ADR-075 — Per-topic agent profile with optional /new syntax
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+The project is already selectable per topic. Agent profiles are fixed when a
+session is created, so choosing one later would not affect the running context.
+Users need a compact way to choose both without adding callback-based menus.
+
+### Decision
+
+- Store `agentProfileId` on each secondary topic, resolved from:
+  `topic override ?? group default ?? account inbound default`.
+- Use the resolved profile when creating the session. It cannot be changed after
+  the session has started; create a new topic/session instead.
+- Extend `/new` in General with optional prefixes:
+  `/new *<project-id> [agent] <title>`.
+  `*` marks the project and `[agent]` accepts an ID or a case-insensitive profile
+  name, including spaces. Both are optional; the title follows.
+- Add `/agents` to list profile IDs/names and the native group command menu.
+- Manual topics use the group defaults. Existing topics are backfilled from
+  session metadata on startup when available.
+- Invalid project/agent selections reject the command with an explanatory reply;
+  no topic or session is created.
+- Agent selection is display metadata in the group registry; the authoritative
+  profile is still applied by the AgentService at session creation.
+
+### Consequences
+
+- One topic can select project and agent independently from the group defaults.
+- The command remains readable without inline keyboards or callback state.
+- Agent and project are immutable per session, matching session semantics.
+- `/agents` and `/projects` expose the IDs needed by the syntax.
+- Manual-topic overrides require creating the topic with `/new` instead.

@@ -117,4 +117,5 @@ export interface TelegramChat {
   label: string;
   type: string;
   username?: string;
+  isForum?: boolean;
 }

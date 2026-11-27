@@ -2306,3 +2306,258 @@ telefono; la scelta deve essere esplicita per singola chat.
   la risposta autorevole resta nella web UI.
 - Risposte e artefatti possono contenere dati personali e transitano su Telegram,
   quindi l’impostazione è opt-in e documentata.
+
+---
+## ADR-070 — I gruppi Telegram usano i forum topic come sessioni
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Un bot Telegram ha una sola chat privata per utente, quindi più sessioni Memora
+non possono essere separate in una DM. I gruppi con forum topic offrono thread
+nativi con nome, cronologia separata e link diretto. Sono adatti all’esigenza di
+un’interfaccia veloce in cui ogni chat lunga è un topic distinto.
+
+### Decisione
+
+- Richiedere un supergruppo privato con Topics attivi, con solo il proprietario e
+  il bot. Il bot deve essere amministratore con permesso di gestire i topic.
+- Trattare il gruppo come progetto/workspace e ogni topic come sessione Memora.
+  Il topic General è la sessione predefinita del gruppo.
+- Lasciare invariato lo store dei binding DM. Aggiungere un
+  `TelegramGroupStore` dedicato in `config/telegram-groups.json` (`0600`) per
+  gruppi, sessione General, binding dei topic e default del gruppo. Non salvare
+  testo dei messaggi o token.
+- Usare codici di pairing con scope gruppo: un codice generato per un gruppo non
+  può associare una DM privata e viceversa. Un codice gruppo autorizza il
+  mittente solo nella allowlist del gruppo; non concede l’accesso alla DM
+  privata. Il gruppo deve essere un forum; il bot deve essere amministratore con
+  `can_manage_topics`.
+- Rendere il trasporto Telegram thread-aware (`message_thread_id` per messaggi,
+  documenti, modifiche e typing) e aggiungere i metodi per topic e gruppi.
+- Mantenere la funzione opt-in e limitata a gruppi privati con un solo
+  proprietario nella prima versione. Non supportare gruppi pubblici arbitrari o
+  permessi multi-utente.
+- Pianificare routing in ingresso e condivisione web come milestone separate
+  sopra questa base.
+
+### Conseguenze
+
+- I topic sono la lista naturale delle sessioni: titolo, link e cronologia di un
+  topic corrispondono a una sessione Memora.
+- Il bridge DM e i flussi di condivisione restano invariati.
+- Un membro del gruppo può leggere i messaggi del bot, quindi il gruppo deve
+  essere privato e dedicato; il bot rifiuta i mittenti non autorizzati ma non può
+  nascondere i messaggi agli altri membri.
+- La privacy mode va disattivata per ricevere i messaggi normali nei topic,
+  oppure ogni messaggio deve menzionare il bot. È accettabile solo in un gruppo
+  privato dedicato.
+- I permessi di amministratore del bot e i limiti dei topic sono dipendenze
+  operative.
+
+---
+## ADR-071 — Routing dei forum in ingresso: General e una sessione per topic
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Le fondamenta dei gruppi di ADR-070 richiedono un routing deterministico.
+Telegram non espone ai bot un catalogo completo dei topic: il bot apprende i
+nomi dai messaggi di servizio o dal primo messaggio con `message_thread_id`.
+General è speciale ed è la conversazione predefinita del gruppo.
+
+### Decisione
+
+- Usare General come sessione predefinita del gruppo, creata in modo lazy al
+  primo messaggio o comando che la richiede.
+- Collegare ogni topic secondario a una sola sessione Memora. Creare sessione e
+  binding su `forum_topic_created` quando arriva il messaggio di servizio,
+  oppure in modo lazy al primo messaggio se il servizio è stato perso.
+- Creare un nuovo topic e una nuova sessione solo con `/new [titolo]` da
+  General. Rifiutare `/new` dentro un topic secondario.
+- Inviare risposte, typing, documenti, modifiche e conferme di stop con il
+  `message_thread_id` di origine.
+- Mantenere la allowlist del gruppo separata da quella delle DM. Il pairing del
+  gruppo consuma un codice `group` e non concede mai l’accesso alla DM.
+- Sincronizzare il titolo di un topic solo con `/rename`; le modifiche manuali
+  del topic aggiornano il titolo nel registry ma non rinominano la sessione. I
+  titoli automatici delle sessioni non sovrascrivono mai il titolo del topic.
+- Usare `/sessions` per elencare General e i topic del gruppo, e `/switch N` per
+  restituire il link al topic selezionato. Un topic resta un confine stabile di
+  sessione; lo switch non lo ricollega silenziosamente.
+- Validare al pairing che il gruppo sia un forum privato e che il bot sia
+  amministratore con `can_manage_topics`; verificare che la privacy mode sia
+  disattivata. Ogni turno riusa il normale `TurnManager` e il read state.
+
+### Conseguenze
+
+- Un gruppo può essere ricostruito dallo stato Telegram con binding lazy, senza
+  un database dei titoli dei topic.
+- Rinomine, eliminazioni e topic chiusi richiedono hardening separato; i
+  binding obsoleti vengono puliti quando una sessione Memora viene eliminata.
+- Il proprietario del gruppo deve mantenere il bot amministratore e la privacy
+  mode disattivata.
+- Il pannello amministrativo web elenca gruppi e topic, ma il contenuto delle
+  sessioni resta nella web UI/storage delle sessioni, non nel registry.
+
+---
+## ADR-072 — Progetto per topic con default del gruppo
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Un forum Telegram ha una lista piatta di topic. Un gruppo può rappresentare un
+singolo progetto oppure ospitare sessioni di progetti diversi. Il progetto
+appartiene alla sessione, non a una gerarchia di topic Telegram. Chi vuole una
+separazione visiva può comunque creare un gruppo per progetto.
+
+### Decisione
+
+- Il gruppo resta l’ambito del progetto predefinito. General e i nuovi topic
+  ereditano `defaultProjectId` (`??` default dell’account inbound).
+- Salvare il `projectId` risolto su ogni topic secondario, non solo sul gruppo.
+  `/new <id-progetto> <titolo>` crea un topic in un altro progetto. I topic
+  manuali usano il default del gruppo.
+- Il progetto di una sessione è immutabile. Cambiare il default del gruppo o il
+  progetto di un topic vale solo per le nuove sessioni; non sposta mai una
+  sessione esistente.
+- Il prefisso opzionale `[Nome progetto]` è solo presentazione. La fonte di
+  verità resta `projectId`.
+- Aggiungere un flag per gruppo `showProjectInTopicTitle`, attivo per i gruppi
+  appena associati e disattivo per quelli migrati. Vale per i nuovi topic e per
+  `/rename`; i topic esistenti si aggiornano solo con l’azione esplicita
+  **Riallinea titoli e icone**.
+- General non ha mai il prefisso. La lunghezza rispetta il limite Telegram di 128
+  caratteri; il titolo base resta salvato senza prefisso.
+- Le modifiche manuali del titolo rimuovono il prefisso noto e aggiornano il
+  titolo base, ma non cambiano il progetto. La rinomina di un progetto richiede
+  un riallineamento dei titoli.
+- Restano supportati più gruppi per account Telegram; ognuno può avere progetto
+  predefinito e impostazione del prefisso diversi.
+
+### Conseguenze
+
+- Un gruppo può ospitare sessioni di più progetti senza inventare gerarchie
+  Telegram non supportate.
+- Chi preferisce la separazione stretta può usare un gruppo per progetto e
+  disattivare il prefisso.
+- Il titolo non è autorevole; UI e comandi devono mostrare il progetto dai
+  metadata.
+- I topic creati prima di questa modifica possono non avere un progetto salvato;
+  vengono recuperati dal progetto della sessione all’avvio quando possibile,
+  altrimenti usano il default del gruppo.
+- Spostare una sessione in un altro progetto richiede una nuova sessione.
+
+---
+## ADR-073 — Menu comandi del gruppo e aiuto contestuale
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+I forum topic condividono la stessa chat Telegram ma hanno contesti diversi. Il
+menu comandi nativo di Telegram supporta scope per chat private, tutti i gruppi o
+una chat specifica, ma non ha uno scope per un topic. Gli utenti devono comunque
+scoprire i comandi e capire la differenza tra General e topic.
+
+### Decisione
+
+- Registrare un menu comandi nativo con `setMyCommands` e scope
+  `all_group_chats`. Contiene descrizioni brevi per `/help`, `/commands`,
+  `/projects`, `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`,
+  `/status`, `/ping` e `/start`.
+- Accettare `/help` e `/commands` in General e nei topic secondari. La risposta
+  viene inviata nel thread di origine e riporta topic, progetto, sessione,
+  progetto predefinito e stato del prefisso.
+- Spiegare nell’aiuto che `/new` è disponibile solo da General e che `/switch`
+  apre il link di un topic; non fingere che il menu sia per-topic.
+- Non implementare menu inline con callback in questa milestone. Richiedono
+  autorizzazione dei callback, stato e metodi API aggiuntivi senza migliorare la
+  scoperta di base.
+
+### Conseguenze
+
+- Tutti i topic di un gruppo vedono lo stesso menu breve; l’aiuto dettagliato è
+  contestuale.
+- Il menu viene aggiornato all’avvio del poller di un account Telegram e dopo il
+  pairing del gruppo.
+- Se `setMyCommands` fallisce, il bot registra l’errore ma continua a servire i
+  messaggi; `/help` resta disponibile.
+- Una futura tastiera inline può essere aggiunta senza cambiare la semantica dei
+  comandi.
+
+---
+## ADR-074 — Icona a spunta predefinita per i topic forum
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Telegram assegna ai topic forum un’icona predefinita (la nuvola mostrata dai
+client). Il prefisso progetto è testo e non può sostituire l’icona. Gli utenti
+hanno chiesto un’icona più gradevole e coerente su tutti i topic secondari.
+
+### Decisione
+
+- Interrogare `getForumTopicIconStickers` per l’account e scegliere una spunta
+  custom emoji quando disponibile, memorizzando l’ID per account.
+- Applicare l’icona alla creazione dei topic del bot, al collegamento di un topic
+  creato manualmente, a `/rename` e all’azione esplicita **Riallinea titoli e
+  icone**.
+- Applicarla solo ai topic secondari; General mantiene l’icona nativa.
+- Lasciare invariati il prefisso progetto e il relativo toggle per gruppo.
+- Se l’elenco icone o la spunta non sono disponibili, mantenere l’icona
+  predefinita di Telegram e registrare la condizione; le operazioni sui topic
+  continuano normalmente.
+- Non salvare metadata dell’icona nel registry dei gruppi. Telegram è la fonte
+  di visualizzazione; un riallineamento successivo riapplica l’icona predefinita.
+
+### Conseguenze
+
+- Ogni topic gestito dal bot riceve la stessa icona a spunta, salvo indisponibilità
+  da parte di Telegram.
+- I topic esistenti richiedono un riallineamento esplicito dopo la modifica; i
+  topic nuovi e rinominati la ricevono automaticamente.
+- L’icona è solo presentazione e non cambia progetto o permessi.
+- Un cambio di token/account azzera l’ID icona memorizzato.
+
+---
+## ADR-075 — Profilo agente per topic e sintassi /new opzionale
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+Il progetto è già selezionabile per topic. I profili agente vengono fissati alla
+creazione della sessione, quindi sceglierli dopo non cambierebbe il contesto già
+avviato. Serve un modo compatto per scegliere entrambi senza menu callback.
+
+### Decisione
+
+- Salvare `agentProfileId` su ogni topic secondario, risolto con:
+  `override del topic ?? default del gruppo ?? default dell’account inbound`.
+- Usare il profilo risolto alla creazione della sessione. Non può essere cambiato
+  dopo l’avvio: per cambiarlo serve un nuovo topic/sessione.
+- Estendere `/new` in General con prefissi opzionali:
+  `/new *<id-progetto> [agente] <titolo>`.
+  `*` identifica il progetto; `[agente]` accetta ID o nome del profilo
+  case-insensitive, anche con spazi. Entrambi sono opzionali; segue il titolo.
+- Aggiungere `/agents` per elencare ID/nomi e includerlo nel menu comandi nativo.
+- I topic manuali usano i default del gruppo. I topic esistenti vengono recuperati
+  dai metadata della sessione all’avvio, quando possibile.
+- Progetto/agente non validi rifiutano il comando con una spiegazione; non
+  vengono creati topic o sessioni.
+- La selezione agente è metadata nel registry del gruppo; il profilo autorevole
+  resta applicato dall’AgentService alla creazione della sessione.
+
+### Conseguenze
+
+- Un topic può scegliere progetto e agente indipendentemente dai default del
+  gruppo.
+- Il comando resta leggibile senza tastiere inline o stato callback.
+- Progetto e agente sono immutabili per sessione, coerentemente con il modello.
+- `/agents` e `/projects` espongono gli ID necessari alla sintassi.
+- Per i topic manuali gli override richiedono la creazione con `/new`.

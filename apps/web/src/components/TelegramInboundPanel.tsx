@@ -3,6 +3,8 @@ import type {
   AgentProfileSummary,
   ProjectRecord,
   TelegramAccountView,
+  TelegramGroup,
+  TelegramGroupPatch,
   TelegramInboundAdminView,
   TelegramPairingCodeView,
   TelegramPollerStatus,
@@ -11,12 +13,17 @@ import type {
 import {
   addTelegramInboundUser,
   clearTelegramPairing,
+  createTelegramGroupPairing,
   createTelegramPairing,
   getTelegramInbound,
   listAgentProfiles,
+  listTelegramGroups,
   listProjects,
+  removeTelegramGroup,
   removeTelegramInboundBinding,
   removeTelegramInboundUser,
+  resyncTelegramGroupTopics,
+  updateTelegramGroup,
   updateTelegramInbound,
 } from '../lib/api';
 import { useI18n } from '../i18n';
@@ -53,6 +60,11 @@ function formatTimestamp(value?: number): string {
   return value ? new Date(value).toLocaleString() : '—';
 }
 
+function telegramGroupLink(chatId: string, threadId?: string): string {
+  const bare = chatId.startsWith('-100') ? chatId.slice(4) : chatId.replace(/^-/, '');
+  return `https://t.me/c/${bare}${threadId ? `/${threadId}` : ''}`;
+}
+
 export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelProps) {
   const { t } = useI18n();
   const [data, setData] = useState<TelegramInboundAdminView | null>(null);
@@ -60,6 +72,8 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
   const [agents, setAgents] = useState<AgentProfileSummary[]>([]);
   const [settings, setSettings] = useState<SettingsForm>({ defaultProjectId: '', defaultAgentProfileId: '', replyMode: 'final' });
   const [pairing, setPairing] = useState<TelegramPairingCodeView | null>(null);
+  const [groupPairing, setGroupPairing] = useState<TelegramPairingCodeView | null>(null);
+  const [groups, setGroups] = useState<TelegramGroup[]>([]);
   const [manualId, setManualId] = useState('');
   const [manualLabel, setManualLabel] = useState('');
   const [loading, setLoading] = useState(true);
@@ -71,9 +85,17 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     setLoading(true);
     setError(null);
     try {
-      const next = await getTelegramInbound(account.id);
+      const [next, nextGroups] = await Promise.all([
+        getTelegramInbound(account.id),
+        listTelegramGroups(account.id),
+      ]);
       setData(next);
       setSettings(settingsFrom(next));
+      setGroups(nextGroups);
+      if (!next.inbound.pairing.active) {
+        setPairing(null);
+        setGroupPairing(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -104,7 +126,10 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     setMessage(null);
     try {
       const next = await updateTelegramInbound(account.id, { enabled: !data.inbound.enabled });
-      if (!next.inbound.enabled) setPairing(null);
+      if (!next.inbound.enabled) {
+        setPairing(null);
+        setGroupPairing(null);
+      }
       apply(next, next.inbound.enabled ? t('Ingresso Telegram abilitato.') : t('Ingresso Telegram disabilitato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -121,9 +146,23 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
       const next = await updateTelegramInbound(account.id, {
         defaultProjectId: settings.defaultProjectId || null,
         defaultAgentProfileId: settings.defaultAgentProfileId || null,
-        replyMode: settings.replyMode,
       });
-      apply(next, t('Impostazioni ingresso salvate.'));
+      apply(next, t('Default account salvato.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveReplyMode = async (): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const next = await updateTelegramInbound(account.id, { replyMode: settings.replyMode });
+      setData(next);
+      setMessage(t('Modalità risposta salvata.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -138,6 +177,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     try {
       const next = await createTelegramPairing(account.id);
       setPairing(next);
+      setGroupPairing(null);
       await load();
       setMessage(t('Codice generato. Invialo al bot con /start <codice>.'));
     } catch (err) {
@@ -154,6 +194,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
     try {
       const next = await clearTelegramPairing(account.id);
       setPairing(null);
+      setGroupPairing(null);
       apply(next, t('Codice di associazione annullato.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -216,6 +257,80 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
       setSaving(false);
     }
   };
+
+  const generateGroupPairing = async (): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const next = await createTelegramGroupPairing(account.id);
+      setGroupPairing(next);
+      setPairing(null);
+      await load();
+      setMessage(t('Codice gruppo generato. Invialo nel topic General con /start <codice>.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeGroup = async (chatId: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await removeTelegramGroup(account.id, chatId);
+      setGroupPairing(null);
+      await load();
+      setMessage(t('Gruppo rimosso. Le sessioni restano nella web UI.'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateGroup = async (chatId: string, patch: TelegramGroupPatch, success: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const updated = await updateTelegramGroup(account.id, chatId, patch);
+      setGroups(current => current.map(group => group.chatId === chatId ? updated : group));
+      setMessage(success);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resyncGroup = async (chatId: string): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await resyncTelegramGroupTopics(account.id, chatId);
+      setMessage(t('Titoli riallineati: {updated}. Errori: {failed}.', { updated: result.updated, failed: result.failed }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const projectLabel = (projectId?: string | null): string => {
+    if (!projectId) return '—';
+    return projects.find(project => project.id === projectId)?.name ?? projectId;
+  };
+
+  const agentLabel = (agentId?: string | null): string => {
+    if (!agentId) return t('Memo base');
+    return agents.find(agent => agent.id === agentId)?.name ?? agentId;
+  };
+
+  const activeProjects = projects.filter(project => project.status === 'active');
 
   const status = data?.status;
   const statusLabel = status ? t(STATUS_LABELS[status.status]) : '—';
@@ -343,7 +458,122 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
           </div>
 
           <div className="telegram-inbound-block">
-            <h5>{t('Impostazioni nuove sessioni')}</h5>
+            <h5>{t('Gruppi forum')}</h5>
+            <p className="admin-field-note">
+              {t('Usa un supergruppo privato con Topics attivi, solo proprietario e bot. Il topic General è la sessione predefinita; ogni topic secondario è una sessione.')}
+            </p>
+            <p className="admin-field-note">
+              {t('Il topic usa il proprio progetto; se assente usa il progetto del gruppo; se assente il default dell’account. Il progetto di una sessione non cambia dopo la creazione.')}
+            </p>
+            {groupPairing ? (
+              <div className="telegram-pairing-code">
+                <code>{groupPairing.code}</code>
+                <small>{t('Scade alle {time}', { time: formatTimestamp(groupPairing.expiresAt) })}</small>
+                <p className="admin-field-note">{t('Invia /start <codice> nel topic General del gruppo. Il bot deve essere amministratore con Manage Topics.')}</p>
+              </div>
+            ) : data.inbound.pairing.active ? (
+              <p className="admin-field-note">{t('Codice attivo fino alle {time}. Generane uno nuovo per vederlo.', { time: formatTimestamp(data.inbound.pairing.expiresAt) })}</p>
+            ) : null}
+            <div className="admin-actions">
+              <button type="button" className="admin-primary" onClick={() => void generateGroupPairing()} disabled={saving || !data.inbound.enabled || !account.tokenConfigured}>
+                {t('Genera codice gruppo')}
+              </button>
+            </div>
+            {groups.length === 0 ? (
+              <p className="admin-field-note">{t('Nessun gruppo associato. Genera un codice e invialo in General.')}</p>
+            ) : (
+              <div className="telegram-inbound-list">
+                {groups.map(group => {
+                  const accountDefaultProjectId = data.inbound.settings.defaultProjectId;
+                  const accountDefaultAgentId = data.inbound.settings.defaultAgentProfileId;
+                  const effectiveProjectId = group.defaultProjectId ?? accountDefaultProjectId;
+                  const effectiveAgentId = group.defaultAgentProfileId ?? accountDefaultAgentId;
+                  const projectInherited = !group.defaultProjectId && Boolean(accountDefaultProjectId);
+                  const agentInherited = !group.defaultAgentProfileId && Boolean(accountDefaultAgentId);
+                  const effectiveProject = projectLabel(effectiveProjectId);
+                  const effectiveAgent = agentLabel(effectiveAgentId);
+                  const defaultProjectMissing = Boolean(group.defaultProjectId && !activeProjects.some(project => project.id === group.defaultProjectId));
+                  const defaultAgentMissing = Boolean(group.defaultAgentProfileId && !agents.some(agent => agent.id === group.defaultAgentProfileId));
+                  return (
+                    <div className="telegram-inbound-row" key={group.chatId}>
+                      <div>
+                        <strong>{group.title}</strong>
+                        <span>
+                          <code>{group.chatId}</code> · {group.isForum ? t('Forum') : t('Non forum')} · {t('Aggiornato')}: {formatTimestamp(group.updatedAt)}
+                        </span>
+                        <span>
+                          {t('General')}: {group.generalSessionId ? <a href={telegramGroupLink(group.chatId, '1')} target="_blank" rel="noopener noreferrer">{t('apri')} ↗</a> : t('non ancora avviato')} · {t('Progetto')}: {effectiveProject}
+                        </span>
+                        {Object.values(group.topics).length > 0 && (
+                          <span>
+                            {t('Topic')}: {Object.values(group.topics).map((topic, index) => (
+                              <span key={topic.threadId}>
+                                {index > 0 ? ' · ' : ''}
+                                <a href={telegramGroupLink(group.chatId, topic.threadId)} target="_blank" rel="noopener noreferrer">{topic.title}</a> ({projectLabel(topic.projectId ?? effectiveProjectId)} · {agentLabel(topic.agentProfileId ?? effectiveAgentId)})
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        <span>{t('Utenti autorizzati')}: {group.allowedUsers.join(', ')}</span>
+                        <div className="telegram-group-summary">
+                          <span>{t('Progetto effettivo')}: {effectiveProject}{projectInherited ? ` (${t('ereditato')})` : ''}</span>
+                          <span>{t('Profilo effettivo')}: {effectiveAgent}{agentInherited ? ` (${t('ereditato')})` : ''}</span>
+                          <span>{t('Prefisso progetto')}: {group.showProjectInTopicTitle ? t('attivo') : t('disattivato')}</span>
+                        </div>
+                        <details className="telegram-group-config">
+                          <summary>{t('Configura')}</summary>
+                          <div className="telegram-group-settings">
+                            <label className="admin-label">{t('Progetto del gruppo')}
+                              <select
+                                value={group.defaultProjectId ?? ''}
+                                disabled={saving}
+                                onChange={event => void updateGroup(group.chatId, { defaultProjectId: event.target.value || null }, t('Progetto del gruppo salvato.'))}
+                              >
+                                <option value="">{t('Eredita default account')}{accountDefaultProjectId ? `: ${projectLabel(accountDefaultProjectId)}` : ''}</option>
+                                {defaultProjectMissing && <option value={group.defaultProjectId ?? ''}>{group.defaultProjectId}</option>}
+                                {activeProjects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                              </select>
+                            </label>
+                            <label className="admin-label">{t('Profilo agente del gruppo')}
+                              <select
+                                value={group.defaultAgentProfileId ?? ''}
+                                disabled={saving}
+                                onChange={event => void updateGroup(group.chatId, { defaultAgentProfileId: event.target.value || null }, t('Profilo agente del gruppo salvato.'))}
+                              >
+                                <option value="">{t('Eredita default account')}: {agentLabel(accountDefaultAgentId)}</option>
+                                {defaultAgentMissing && <option value={group.defaultAgentProfileId ?? ''}>{group.defaultAgentProfileId}</option>}
+                                {agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+                              </select>
+                            </label>
+                            <p className="admin-field-note">
+                              {t('Il prefisso e l’icona valgono per i nuovi topic e /rename; Riallinea titoli e icone aggiorna quelli esistenti.')}
+                            </p>
+                            <label className="admin-toggle">
+                              <input
+                                type="checkbox"
+                                checked={group.showProjectInTopicTitle}
+                                disabled={saving}
+                                onChange={event => void updateGroup(group.chatId, { showProjectInTopicTitle: event.target.checked }, t('Impostazione prefisso aggiornata.'))}
+                              />
+                              <span>{t('Mostra il progetto nei titoli dei topic')}</span>
+                            </label>
+                            <button type="button" onClick={() => void resyncGroup(group.chatId)} disabled={saving}>
+                              {t('Riallinea titoli e icone')}
+                            </button>
+                          </div>
+                        </details>
+                      </div>
+                      <button type="button" className="is-danger" onClick={() => void removeGroup(group.chatId)} disabled={saving}>{t('Revoca')}</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="telegram-inbound-block">
+            <h5>{t('Default account')}</h5>
+            <p className="admin-field-note">{t('Valori usati dalle DM e dai gruppi senza override.')}</p>
             <div className="admin-grid-2">
               <label className="admin-label">{t('Progetto predefinito')}
                 <select value={settings.defaultProjectId} onChange={event => setSettings(current => ({ ...current, defaultProjectId: event.target.value }))}>
@@ -358,6 +588,13 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                 </select>
               </label>
             </div>
+            <div className="admin-actions">
+              <button type="button" className="admin-primary" onClick={() => void saveSettings()} disabled={saving}>{t('Salva default account')}</button>
+            </div>
+          </div>
+
+          <div className="telegram-inbound-block">
+            <h5>{t('Risposte')}</h5>
             <label className="admin-label">{t('Modalità risposta')}
               <select value={settings.replyMode} onChange={event => setSettings(current => ({ ...current, replyMode: event.target.value as TelegramReplyMode }))}>
                 <option value="final">{t('Risposta finale')}</option>
@@ -366,7 +603,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
               <small>{t('La modalità progressiva non è ancora disponibile; per ora viene usata la risposta finale.')}</small>
             </label>
             <div className="admin-actions">
-              <button type="button" className="admin-primary" onClick={() => void saveSettings()} disabled={saving}>{t('Salva impostazioni')}</button>
+              <button type="button" className="admin-primary" onClick={() => void saveReplyMode()} disabled={saving}>{t('Salva risposta')}</button>
             </div>
           </div>
         </>

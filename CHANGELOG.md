@@ -16,6 +16,12 @@ All notable changes to Memora are documented here.
 - Per-chat Telegram sharing from the web composer: answers-only or full
   conversation, optional PDF/Office artifacts, last-error visibility and shared
   read state; Telegram-originated turns are not duplicated.
+- Telegram groups with forum topics: private supergroup setup, group-scoped
+  pairing, General as the default session, one session per topic, contextual
+  commands, thread-aware replies/typing/documents/artifacts and admin group
+  listing. Groups have default project/agent profiles, per-topic project and agent
+  overrides via `/new *<project> [agent]`, and an optional `[Project]` title prefix with explicit sync, plus a native group command menu, contextual `/help`/`/commands` and a default checkmark topic icon.
+  Web sharing to topics is planned for the next milestone.
 
 ## [0.1.4] - 2026-11-25
 

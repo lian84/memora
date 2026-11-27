@@ -105,6 +105,8 @@ export interface TelegramPairingInput {
   code: string;
   userId: string | number;
   label?: string;
+  /** Un codice privato non può essere usato in un gruppo e viceversa. */
+  scope?: TelegramPairingScope;
 }
 
 /** Input per aggiungere manualmente un utente o completare un pairing. */
@@ -165,4 +167,93 @@ export interface TelegramSharePatch {
   userId?: string;
   mode?: TelegramShareMode;
   includeArtifacts?: boolean;
+}
+
+/** Ambito di un codice di associazione. */
+export type TelegramPairingScope = 'private' | 'group';
+
+/** Origine del titolo di un topic; il titolo automatico non sovrascrive quello manuale. */
+export type TelegramTopicTitleSource = 'auto' | 'manual';
+
+/** Collegamento tra un topic Telegram e una sessione Memora. */
+export interface TelegramTopicBinding {
+  threadId: string;
+  sessionId: string;
+  title: string;
+  /** Progetto della sessione; assente = nessun progetto esplicito. */
+  projectId?: string;
+  /** Profilo agente della sessione; assente = profilo predefinito. */
+  agentProfileId?: string;
+  titleSource: TelegramTopicTitleSource;
+  createdAt: number;
+  updatedAt: number;
+  pendingTurnId?: string;
+  lastTurnId?: string;
+}
+
+/** Gruppo Telegram forum configurato per Memora. */
+export interface TelegramGroup {
+  chatId: string;
+  title: string;
+  isForum: boolean;
+  pairedAt: number;
+  updatedAt: number;
+  allowedUsers: string[];
+  defaultProjectId: string | null;
+  defaultAgentProfileId: string | null;
+  /** Mostra `[Nome progetto]` davanti al titolo dei topic secondari. */
+  showProjectInTopicTitle: boolean;
+  generalSessionId?: string;
+  /** Ultimo turno avviato nel topic General. */
+  generalLastTurnId?: string;
+  /** Turno del topic General ancora in corso. */
+  generalPendingTurnId?: string;
+  topics: Record<string, TelegramTopicBinding>;
+}
+
+export interface TelegramGroupInput {
+  chatId: string;
+  title: string;
+  isForum: boolean;
+  allowedUsers: string[];
+  defaultProjectId?: string | null;
+  defaultAgentProfileId?: string | null;
+  showProjectInTopicTitle?: boolean;
+  generalSessionId?: string | null;
+}
+
+/** Modifiche alle impostazioni di un gruppo forum. */
+export interface TelegramGroupPatch {
+  defaultProjectId?: string | null;
+  defaultAgentProfileId?: string | null;
+  showProjectInTopicTitle?: boolean;
+}
+
+export interface TelegramTopicInput {
+  threadId: string;
+  sessionId: string;
+  title: string;
+  projectId?: string | null;
+  agentProfileId?: string | null;
+  titleSource?: TelegramTopicTitleSource;
+}
+
+/** Topic restituito da createForumTopic. */
+export interface TelegramForumTopic {
+  threadId: string;
+  name: string;
+}
+
+export interface TelegramChatInfo {
+  id: string;
+  type: string;
+  title?: string;
+  isForum?: boolean;
+  username?: string;
+}
+
+export interface TelegramChatMemberInfo {
+  status: string;
+  canManageTopics?: boolean;
+  isMember?: boolean;
 }

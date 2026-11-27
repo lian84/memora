@@ -52,7 +52,8 @@ verso Telegram, quindi non servono porte pubbliche, webhook o certificati TLS.
 - Il pairing usa un codice monouso con scadenza di dieci minuti e un deep link al
   bot; il codice viene salvato solo come hash.
 - L’accesso è controllato da ID utente Telegram numerici, mai dagli username.
-  Sono accettate solo chat private.
+  Sono supportate DM private e supergruppi privati con forum; gruppi pubblici e
+  gruppi base senza Topics vengono rifiutati.
 - Il poller possiede `getUpdates`; la scoperta delle chat legge la cache osservata
   quando l’ingresso è attivo.
 - I messaggi diventano turni normali nelle stesse sessioni Memora della web UI,
@@ -66,9 +67,20 @@ verso Telegram, quindi non servono porte pubbliche, webhook o certificati TLS.
   chat già associata; il default è solo risposte, la conversazione completa rende
   quella chat la sessione attiva Telegram e i turni nati da Telegram non vengono
   mai duplicati.
-- Lo stato è in `config/telegram-inbound.json` con permessi `0600`. Non contiene
-  token né testo dei messaggi; i backup cifrati lo includono, gli export leggibili
-  escludono `config/`.
+- I gruppi si associano con un codice separato `group` inviato in General. Il bot
+  deve essere amministratore con Manage Topics; il gruppo deve essere un forum
+  privato. General è la sessione predefinita, ogni topic è una sessione e `/new`
+  crea un topic solo da General; `/help` e `/commands` spiegano i comandi
+  contestuali, mentre il menu nativo Telegram mostra descrizioni brevi. Il
+  pannello del gruppo imposta progetto e
+  profilo agente predefiniti e il prefisso progetto opzionale; `/new *<id-progetto> [agente]
+  <titolo>` può usare progetto e agente diversi per topic. **Riallinea
+  titoli e icone** aggiorna i titoli esistenti e applica l’icona a spunta dopo un
+  cambio di prefisso. Il pannello
+  elenca gruppi, topic, General, i progetti e gli utenti autorizzati del gruppo.
+- Lo stato è in `config/telegram-inbound.json` e `config/telegram-groups.json`
+  con permessi `0600`. Non contengono token né testo dei messaggi; i backup
+  cifrati li includono, gli export leggibili escludono `config/`.
 - Un secondo processo che fa polling sullo stesso token riceve `409 Conflict`; il
   pannello mostra il conflitto senza cancellare webhook esistenti.
 

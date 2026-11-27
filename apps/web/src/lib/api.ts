@@ -39,6 +39,8 @@ import {
   type TelegramShareView,
   type TelegramInboundAdminView,
   type TelegramInboundPatch,
+  type TelegramGroup,
+  type TelegramGroupPatch,
   type TelegramPairingCodeView,
   type BackupRecord,
   type BackupSchedule,
@@ -1125,6 +1127,37 @@ export async function removeTelegramInboundUser(accountId: string, userId: strin
 
 export async function removeTelegramInboundBinding(accountId: string, userId: string | number): Promise<{ removed: boolean }> {
   const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/inbound/bindings/${encodeURIComponent(String(userId))}`, { method: 'DELETE' });
+  return res.json() as Promise<{ removed: boolean }>;
+}
+
+export async function listTelegramGroups(accountId: string): Promise<TelegramGroup[]> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/groups`);
+  const data = await res.json() as { groups: TelegramGroup[] };
+  return data.groups;
+}
+
+export async function updateTelegramGroup(accountId: string, chatId: string, patch: TelegramGroupPatch): Promise<TelegramGroup> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/groups/${encodeURIComponent(chatId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+  const data = await res.json() as { group: TelegramGroup };
+  return data.group;
+}
+
+export async function resyncTelegramGroupTopics(accountId: string, chatId: string): Promise<{ updated: number; failed: number }> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/groups/${encodeURIComponent(chatId)}/topics/resync`, { method: 'POST' });
+  return res.json() as Promise<{ updated: number; failed: number }>;
+}
+
+export async function createTelegramGroupPairing(accountId: string): Promise<TelegramPairingCodeView> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/groups/pairing`, { method: 'POST' });
+  const data = await res.json() as { pairing: TelegramPairingCodeView };
+  return data.pairing;
+}
+
+export async function removeTelegramGroup(accountId: string, chatId: string): Promise<{ removed: boolean }> {
+  const res = await request(`/api/admin/telegram/accounts/${encodeURIComponent(accountId)}/groups/${encodeURIComponent(chatId)}`, { method: 'DELETE' });
   return res.json() as Promise<{ removed: boolean }>;
 }
 

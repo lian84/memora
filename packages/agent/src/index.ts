@@ -1052,6 +1052,13 @@ export class AgentService {
     return (await this.readSessionMeta(sessionId)).projectId;
   }
 
+  /** Profilo agente associato alla sessione, se presente. */
+  async getSessionAgentProfileId(sessionId: SessionId): Promise<string | undefined> {
+    const entry = this.sessions.get(sessionId);
+    if (entry) return entry.agent?.id;
+    return (await this.readSessionMeta(sessionId)).agent?.id;
+  }
+
   /** Lista tutte le sessioni persistenti nella session directory.
    *
    * Per ogni sessione legge il nome (session_info nativa Pi) e lo stato di

@@ -48,8 +48,9 @@ Telegram, so no public port, webhook or TLS certificate is required.
 
 - Pairing uses a one-time code with a ten-minute expiry and a deep link to the
   bot; the code is stored only as a hash.
-- Access is controlled by numeric Telegram user IDs, never usernames. Only
-  private chats are accepted.
+- Access is controlled by numeric Telegram user IDs, never usernames. Private
+  DMs and private forum supergroups are supported; public groups and basic
+  groups without Topics are rejected.
 - The poller owns `getUpdates`; chat discovery reads the observed-chat cache
   while inbound is enabled.
 - Chat messages run as normal turns in the same Memora sessions used by the web
@@ -63,9 +64,20 @@ Telegram, so no public port, webhook or TLS certificate is required.
   an existing paired chat; answers-only is the default, full conversation makes
   that chat the active Telegram session, and Telegram-originated turns are never
   duplicated.
-- State is stored in `config/telegram-inbound.json` with mode `0600`. It contains
-  no tokens or message text; encrypted backups include it, readable exports
-  exclude `config/`.
+- Groups are paired with a separate `group` code sent in General. The bot must
+  be an administrator with Manage Topics; the group must be a private forum.
+  General is the default session, each topic is a session, and `/new` creates a
+  topic only from General; `/help` and `/commands` explain the contextual
+  commands, while the native Telegram group menu shows short descriptions. The
+  group panel sets the default project/agent profile
+  and the optional project prefix; `/new *<project-id> [agent] <title>` can override the
+  project and agent per topic. **Sync titles and icons** updates existing topic titles and applies the
+  default checkmark icon after a prefix change. The admin panel lists groups, topics, General, their projects and the
+  allowed group users.
+- State is stored in `config/telegram-inbound.json` and
+  `config/telegram-groups.json` with mode `0600`. They contain no tokens or
+  message text; encrypted backups include them, readable exports exclude
+  `config/`.
 - A second process polling the same token receives `409 Conflict`; the panel
   surfaces the conflict without deleting an existing webhook.
 
