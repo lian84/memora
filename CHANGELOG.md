@@ -8,6 +8,11 @@ All notable changes to Memora are documented here.
 
 - Production frontend now serves Vite hashed assets created after startup, so a
   new build no longer requires a service restart for new JavaScript/CSS bundles.
+- Telegram forum topics now track closed/deleted state, stop writing to invalid
+  threads, and send one General notice when a topic is deleted while keeping the
+  Memora session.
+- Telegram title/icon synchronization now reports per-topic results and errors,
+  respects a configurable rate-limit delay and skips deleted topics.
 
 ## [0.2.0] - 2026-11-27
 

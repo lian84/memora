@@ -72,7 +72,8 @@ Telegram, so no public port, webhook or TLS certificate is required.
   group panel sets the default project/agent profile
   and the optional project prefix; `/new *<project-id> [agent] <title>` can override the
   project and agent per topic. **Sync titles and icons** updates existing topic titles and applies the
-  default checkmark icon after a prefix change. The admin panel lists groups, topics, General, their projects and the
+  default checkmark icon one topic at a time, with per-topic results. Closed and
+  deleted topics are reported separately; deleted topics are not retried. The admin panel lists groups, topics, General, their projects and the
   allowed group users.
 - State is stored in `config/telegram-inbound.json` and
   `config/telegram-groups.json` with mode `0600`. They contain no tokens or

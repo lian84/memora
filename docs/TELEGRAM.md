@@ -7,7 +7,7 @@ messages run in the same Pi sessions, memory and projects used by the web UI.
 This document covers setup, commands, attachments, security and limitations.
 
 Related: [`FEATURES.md`](FEATURES.md), [`ADMINISTRATION.md`](ADMINISTRATION.md),
-[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075).
+[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075, ADR-076).
 
 ## Requirements
 
@@ -154,6 +154,13 @@ remains. Removing a group from the admin panel stops group routing but leaves
 the sessions in the web UI. A group default project can be changed in the group
 panel; it affects General only if General has not been created yet, and new
 topics. Existing topics keep their stored project.
+
+A closed topic keeps its Memora session and shows `closed` in `/sessions` and
+the admin panel. Reopening it clears the state. If Telegram reports that a thread
+no longer exists, the topic is marked `deleted`, the bot stops writing there and
+sends one notice in General; the Memora session remains and you can create a new
+topic with `/new`. Titles and icons are synchronized one topic at a time with a
+rate-limit pause and a per-topic result.
 
 Everyone in the Telegram group can read the bot messages and topic titles. Use a
 dedicated private group with only the owner and the bot.
@@ -308,8 +315,8 @@ still delivered outbound.
 - Project and agent selection are fixed when the session is created; they cannot
   be moved to another project/profile. The title prefix is presentation only and
   can be resynced.
-- A closed or deleted Telegram topic keeps its registry entry until the session is
-  deleted or the group is removed; stale-topic recovery is limited.
+- Closed topics remain in the registry and keep their session; deleted topics
+  are marked and require a new topic for new Telegram messages.
 - No Telegram albums coalescing; each album item is a separate message.
 - Photos require a model that accepts image input.
 - No voice transcription.

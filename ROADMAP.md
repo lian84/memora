@@ -138,8 +138,7 @@
 
 ## Rimandato
 
-- Condivisione web verso i topic Telegram, recupero avanzato dei topic chiusi/eliminati
-  e streaming progressivo.
+- Condivisione web verso i topic Telegram e streaming progressivo.
 - Calendar e Gmail.
 - Docker/Compose come percorso di installazione principale.
 - Multi-utente e permessi granulari.

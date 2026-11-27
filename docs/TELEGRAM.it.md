@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075, ADR-076).
 
 ## Requisiti
 
@@ -152,6 +152,13 @@ routing del gruppo ma lascia le sessioni nella web UI. Il progetto predefinito
 del gruppo si può cambiare dal pannello; vale per General solo se non è ancora
 stata creata e per i nuovi topic. I topic esistenti mantengono il progetto
 salvato.
+
+Un topic chiuso mantiene la sessione Memora e mostra `chiuso` in `/sessions` e nel
+pannello amministrativo. La riapertura azzera lo stato. Se Telegram segnala che il
+thread non esiste più, il topic viene marcato `eliminato`, il bot smette di
+scrivere lì e invia un solo avviso in General; la sessione Memora resta e puoi
+creare un nuovo topic con `/new`. Titoli e icone vengono riallineati un topic alla
+volta con una pausa per rate limit e un risultato per singolo topic.
 
 Tutti i membri del gruppo Telegram possono leggere i messaggi del bot e i titoli
 dei topic. Usa un gruppo privato dedicato, con solo proprietario e bot.
@@ -308,9 +315,8 @@ PDF/Office vengono comunque consegnati in uscita.
 - Progetto e agente vengono fissati alla creazione della sessione e non possono
   essere spostati. Il prefisso nel titolo è solo presentazione e si può
   riallineare.
-- Un topic chiuso o eliminato mantiene il suo binding nel registry finché la
-  sessione non viene eliminata o il gruppo non viene revocato; il recupero dei
-  topic obsoleti è limitato.
+- Un topic chiuso resta nel registry e mantiene la sessione; un topic eliminato
+  viene marcato e richiede un nuovo topic per i nuovi messaggi Telegram.
 - Nessun raggruppamento degli album Telegram; ogni elemento è un messaggio
   separato.
 - Le foto richiedono un modello che accetti input immagine.

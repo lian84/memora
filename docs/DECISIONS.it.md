@@ -2561,3 +2561,45 @@ avviato. Serve un modo compatto per scegliere entrambi senza menu callback.
 - Progetto e agente sono immutabili per sessione, coerentemente con il modello.
 - `/agents` e `/projects` espongono gli ID necessari alla sintassi.
 - Per i topic manuali gli override richiedono la creazione con `/new`.
+
+---
+## ADR-076 — Disponibilità dei topic e sync titoli/icone limitato
+**Data:** 2026-11-27
+**Stato:** accepted
+
+### Contesto
+
+Un topic forum Telegram può essere chiuso, riaperto o eliminato. Un topic chiuso
+di solito è leggibile ma non scrivibile; un thread eliminato può far fallire
+invii e modifiche successivi. Un riallineamento massivo di titoli/icone può anche
+incontrare i rate limit di Telegram e non deve nascondere quale topic ha fallito.
+
+### Decisione
+
+- Salvare uno stato opzionale del topic (`open`, `closed`, `deleted`) nel registry
+  del gruppo. Stato assente = aperto per i topic esistenti.
+- Gestire i messaggi di servizio `forum_topic_closed` e `forum_topic_reopened` e
+  aggiornare lo stato senza eliminare la sessione Memora.
+- Rilevare gli errori `TOPIC_CLOSED` e `message thread not found` durante invio,
+  modifica e sync. Marcare il topic chiuso/eliminato e non considerarlo più
+  scrivibile.
+- Alla transizione a eliminato, inviare un solo avviso in General: la sessione
+  resta nella web UI e l’utente può creare un nuovo topic con `/new`.
+- Restituire un risultato di sync per topic con `updated`, `failed`, `closed`,
+  `deleted` ed errori per singolo elemento. I topic eliminati vengono saltati,
+  non ritentati.
+- Aggiungere una pausa configurabile (250 ms di default) tra le richieste di
+  modifica; il client Telegram ritenta già le risposte `429`.
+- Mostrare lo stato chiuso/eliminato nella lista topic amministrativa e in
+  `/sessions` Telegram.
+- Non ricreare automaticamente un topic eliminato; l’utente mantiene il controllo
+  del nuovo titolo e della posizione.
+
+### Conseguenze
+
+- Chiudere e riaprire un topic mantiene la stessa sessione Memora.
+- Un topic eliminato non genera una serie infinita di invii falliti.
+- Il sync massivo è più lento ma sicuro; la UI riporta esattamente i topic
+  falliti.
+- La ricreazione è esplicita e perde il vecchio thread Telegram, mentre la
+  sessione Memora resta intatta.

@@ -2696,3 +2696,42 @@ Users need a compact way to choose both without adding callback-based menus.
 - Agent and project are immutable per session, matching session semantics.
 - `/agents` and `/projects` expose the IDs needed by the syntax.
 - Manual-topic overrides require creating the topic with `/new` instead.
+
+---
+## ADR-076 — Topic availability and bounded title/icon sync
+**Date:** 2026-11-27
+**Status:** accepted
+
+### Context
+
+A Telegram forum topic can be closed, reopened or deleted. A closed topic can
+usually be read but not written; a deleted thread can make later sends and edits
+fail. A bulk title/icon sync can also hit Telegram rate limits and should not
+hide which topic failed.
+
+### Decision
+
+- Store an optional topic state (`open`, `closed`, `deleted`) in the group
+  registry. Missing state means open for existing topics.
+- Handle `forum_topic_closed` and `forum_topic_reopened` service messages and
+  update the state without deleting the Memora session.
+- Detect `TOPIC_CLOSED` and `message thread not found` errors when sending,
+  editing or syncing. Mark the topic closed/deleted and stop treating the thread
+  as writable.
+- On the transition to deleted, send one notice in General: the session remains
+  in the web UI and the user can create a new topic with `/new`.
+- Return a per-topic sync result with `updated`, `failed`, `closed`, `deleted`
+  and item-level errors. Deleted topics are skipped rather than retried.
+- Add a configurable delay (250 ms by default) between edit requests; the
+  Telegram client already retries `429` responses.
+- Show closed/deleted state in the admin topic list and Telegram `/sessions`.
+- Do not automatically recreate a deleted topic; the user keeps control of the
+  new topic title and placement.
+
+### Consequences
+
+- Closing and reopening a topic keeps the same Memora session.
+- A deleted topic does not create an endless stream of failed sends.
+- Bulk sync is slower but safer; the UI reports exactly which topics failed.
+- Recreating a topic is explicit and loses the old Telegram thread, while the
+  Memora session remains intact.
