@@ -4,6 +4,8 @@ All notable changes to Memora are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-27
+
 ### Added
 
 - Bidirectional Telegram: long polling inbound channel with one-time pairing,
@@ -19,9 +21,27 @@ All notable changes to Memora are documented here.
 - Telegram groups with forum topics: private supergroup setup, group-scoped
   pairing, General as the default session, one session per topic, contextual
   commands, thread-aware replies/typing/documents/artifacts and admin group
-  listing. Groups have default project/agent profiles, per-topic project and agent
-  overrides via `/new *<project> [agent]`, and an optional `[Project]` title prefix with explicit sync, plus a native group command menu, contextual `/help`/`/commands` and a default checkmark topic icon.
-  Web sharing to topics is planned for the next milestone.
+  listing.
+- Per-topic project and agent selection with
+  `/new *<project> [agent] <title>`, group defaults, `/projects`, `/agents`,
+  automatic metadata backfill and project/agent status in sessions and commands.
+- Optional `[Project]` title prefix per group with explicit **Sync titles and
+  icons**, a default checkmark topic icon, and a native Telegram group command
+  menu with contextual `/help` / `/commands`.
+- Telegram group administration panel with default project/agent, inherited
+  effective values, topic project/agent labels, prefix toggle and group revoke.
+
+### Changed
+
+- Telegram group settings now separate account defaults from group overrides,
+  show effective inherited values, collapse configuration and keep reply mode in
+  its own section.
+
+### Documentation
+
+- Added Telegram forum-topic, project/agent, icon and command-menu documentation
+  in Italian and English.
+- Added release notes and the release checklist under `docs/`.
 
 ## [0.1.4] - 2026-11-25
 
@@ -80,3 +100,5 @@ All notable changes to Memora are documented here.
 [0.1.3]: https://github.com/lian84/memora/releases/tag/v0.1.3
 
 [0.1.4]: https://github.com/lian84/memora/releases/tag/v0.1.4
+
+[0.2.0]: https://github.com/lian84/memora/releases/tag/v0.2.0

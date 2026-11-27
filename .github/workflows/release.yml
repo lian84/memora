@@ -57,10 +57,19 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Prepare release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test -f "docs/RELEASE-${version}.md"
+          cp "docs/RELEASE-${version}.md" release-notes.md
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
           name: Memora ${{ github.ref_name }}
           draft: false
           prerelease: false

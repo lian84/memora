@@ -22,16 +22,19 @@ notification.
 1. checks that `package.json` version matches the tag;
 2. typechecks, lints, tests and builds;
 3. runs the production smoke test;
-4. publishes a GitHub Release with generated release notes.
+4. publishes a GitHub Release using `docs/RELEASE-<version>.md` as the body.
 
 Pushing to `main` runs CI only. It does not publish a release and does not create
 an update notification.
+
+Release notes live in `docs/RELEASE-<version>.md`; the step-by-step process is
+in [Releasing Memora](RELEASING.md).
 
 ## Configuration
 
 ```bash
 MEMORA_UPDATE_REPO=lian84/memora
-MEMORA_VERSION=0.1.4
+MEMORA_VERSION=0.2.0
 # Optional for a private repository or a proxy:
 MEMORA_UPDATE_CHECK_URL=https://api.github.com/repos/lian84/memora/releases/latest
 MEMORA_UPDATE_CHECK_TOKEN=github_read_only_token

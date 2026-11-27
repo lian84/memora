@@ -22,16 +22,19 @@ aggiornamento.
 1. verifica che la versione in `package.json` corrisponda al tag;
 2. esegue typecheck, lint, test e build;
 3. esegue lo smoke test production;
-4. pubblica una GitHub Release con note generate.
+4. pubblica una GitHub Release usando `docs/RELEASE-<versione>.md` come corpo.
 
 Un push su `main` esegue solo la CI: non pubblica release e non crea notifiche
 di aggiornamento.
+
+Le note di release sono in `docs/RELEASE-<versione>.md`; il processo passo-passo
+è in [Rilasciare Memora](RELEASING.it.md).
 
 ## Configurazione
 
 ```bash
 MEMORA_UPDATE_REPO=lian84/memora
-MEMORA_VERSION=0.1.4
+MEMORA_VERSION=0.2.0
 # Opzionali per repository privata o proxy:
 MEMORA_UPDATE_CHECK_URL=https://api.github.com/repos/lian84/memora/releases/latest
 MEMORA_UPDATE_CHECK_TOKEN=github_read_only_token
