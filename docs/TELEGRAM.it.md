@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073).
 
 ## Requisiti
 
@@ -121,7 +121,14 @@ Comandi nel gruppo:
 | `/rename Titolo` | Rinomina la sessione e il topic corrente |
 | `/stop` | Interrompe il turno del topic corrente |
 | `/status` | Stato di gruppo, topic e sessione |
-| `/ping`, `/help` | Verifica e elenco comandi |
+| `/help`, `/commands` | Aiuto contestuale per General o il topic corrente |
+| `/ping` | Verifica il bot |
+
+Il bot registra un **menu comandi nativo Telegram** tramite `setMyCommands` con
+scope `all_group_chats`. I menu Telegram sono per chat, non per topic: tutti i
+topic di un gruppo vedono la stessa lista breve. `/help` e `/commands` sono
+contestuali: riportano topic, progetto e sessione correnti e ricordano che
+`/new` è disponibile solo da General.
 
 Un topic creato manualmente da Telegram viene collegato a una nuova sessione
 quando il bot riceve `forum_topic_created`, usando il progetto predefinito del

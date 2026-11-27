@@ -2588,3 +2588,40 @@ can still create one group per project.
   are backfilled from the session project at startup when available, otherwise
   they fall back to the group default.
 - Moving a session to another project requires a new session.
+
+---
+## ADR-073 — Group command menu and contextual help
+**Date:** 2026-11-26
+**Status:** accepted
+
+### Context
+
+Forum topics share a Telegram chat but have different context. Telegram's
+native bot command menu supports scopes for private chats, all groups or a
+specific chat, but has no scope for a forum topic. Users still need to discover
+commands and understand General versus topic behavior.
+
+### Decision
+
+- Register a native group command menu with `setMyCommands` and the
+  `all_group_chats` scope. It contains short descriptions for `/help`,
+  `/commands`, `/projects`, `/new`, `/sessions`, `/switch`, `/current`,
+  `/rename`, `/stop`, `/status`, `/ping` and `/start`.
+- Accept `/help` and `/commands` in General and in secondary topics. The reply is
+  sent in the originating thread and reports current topic, project, session,
+  default project and prefix state.
+- Explain in help that `/new` is available only from General and that `/switch`
+  opens a topic link; do not pretend the menu is topic-specific.
+- Do not implement inline callback menus in this milestone. They require
+  callback-query authorization, state and extra API methods without improving
+  basic discoverability.
+
+### Consequences
+
+- Every topic in a group sees the same short native menu; detailed help is
+  contextual.
+- The menu is refreshed when a Telegram account poller starts and after group
+  pairing.
+- If `setMyCommands` fails, the bot logs the failure but continues serving
+  messages; `/help` remains available.
+- A future inline keyboard can be added without changing the command semantics.

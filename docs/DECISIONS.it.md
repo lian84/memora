@@ -2450,3 +2450,41 @@ separazione visiva può comunque creare un gruppo per progetto.
   vengono recuperati dal progetto della sessione all’avvio quando possibile,
   altrimenti usano il default del gruppo.
 - Spostare una sessione in un altro progetto richiede una nuova sessione.
+
+---
+## ADR-073 — Menu comandi del gruppo e aiuto contestuale
+**Data:** 2026-11-26
+**Stato:** accepted
+
+### Contesto
+
+I forum topic condividono la stessa chat Telegram ma hanno contesti diversi. Il
+menu comandi nativo di Telegram supporta scope per chat private, tutti i gruppi o
+una chat specifica, ma non ha uno scope per un topic. Gli utenti devono comunque
+scoprire i comandi e capire la differenza tra General e topic.
+
+### Decisione
+
+- Registrare un menu comandi nativo con `setMyCommands` e scope
+  `all_group_chats`. Contiene descrizioni brevi per `/help`, `/commands`,
+  `/projects`, `/new`, `/sessions`, `/switch`, `/current`, `/rename`, `/stop`,
+  `/status`, `/ping` e `/start`.
+- Accettare `/help` e `/commands` in General e nei topic secondari. La risposta
+  viene inviata nel thread di origine e riporta topic, progetto, sessione,
+  progetto predefinito e stato del prefisso.
+- Spiegare nell’aiuto che `/new` è disponibile solo da General e che `/switch`
+  apre il link di un topic; non fingere che il menu sia per-topic.
+- Non implementare menu inline con callback in questa milestone. Richiedono
+  autorizzazione dei callback, stato e metodi API aggiuntivi senza migliorare la
+  scoperta di base.
+
+### Conseguenze
+
+- Tutti i topic di un gruppo vedono lo stesso menu breve; l’aiuto dettagliato è
+  contestuale.
+- Il menu viene aggiornato all’avvio del poller di un account Telegram e dopo il
+  pairing del gruppo.
+- Se `setMyCommands` fallisce, il bot registra l’errore ma continua a servire i
+  messaggi; `/help` resta disponibile.
+- Una futura tastiera inline può essere aggiunta senza cambiare la semantica dei
+  comandi.

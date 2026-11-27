@@ -67,7 +67,9 @@ Telegram, so no public port, webhook or TLS certificate is required.
 - Groups are paired with a separate `group` code sent in General. The bot must
   be an administrator with Manage Topics; the group must be a private forum.
   General is the default session, each topic is a session, and `/new` creates a
-  topic only from General. The group panel sets the default project/agent profile
+  topic only from General; `/help` and `/commands` explain the contextual
+  commands, while the native Telegram group menu shows short descriptions. The
+  group panel sets the default project/agent profile
   and the optional project prefix; `/new <project-id> <title>` can override the
   project per topic. **Sync titles** updates existing topic titles after a prefix
   change. The admin panel lists groups, topics, General, their projects and the

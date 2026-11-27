@@ -70,7 +70,9 @@ verso Telegram, quindi non servono porte pubbliche, webhook o certificati TLS.
 - I gruppi si associano con un codice separato `group` inviato in General. Il bot
   deve essere amministratore con Manage Topics; il gruppo deve essere un forum
   privato. General è la sessione predefinita, ogni topic è una sessione e `/new`
-  crea un topic solo da General. Il pannello del gruppo imposta progetto e
+  crea un topic solo da General; `/help` e `/commands` spiegano i comandi
+  contestuali, mentre il menu nativo Telegram mostra descrizioni brevi. Il
+  pannello del gruppo imposta progetto e
   profilo agente predefiniti e il prefisso progetto opzionale; `/new
   <id-progetto> <titolo>` può usare un progetto diverso per topic. **Riallinea
   titoli** aggiorna i titoli esistenti dopo un cambio di prefisso. Il pannello

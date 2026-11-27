@@ -7,7 +7,7 @@ messages run in the same Pi sessions, memory and projects used by the web UI.
 This document covers setup, commands, attachments, security and limitations.
 
 Related: [`FEATURES.md`](FEATURES.md), [`ADMINISTRATION.md`](ADMINISTRATION.md),
-[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072).
+[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073).
 
 ## Requirements
 
@@ -115,7 +115,14 @@ Group commands:
 | `/rename Title` | Rename the session and the current topic |
 | `/stop` | Abort the current topic's turn |
 | `/status` | Group, topic and session status |
-| `/ping`, `/help` | Health check and command list |
+| `/help`, `/commands` | Contextual help for General or the current topic |
+| `/ping` | Health check |
+
+The bot registers a **native Telegram group command menu** through
+`setMyCommands` with the `all_group_chats` scope. Telegram menus are per chat,
+not per topic: every topic in a group sees the same short command list.
+`/help` and `/commands` are contextual: they report the current topic, project
+and session, and remind that `/new` is available only from General.
 
 A topic created manually from Telegram is bound to a new session when the bot
 receives `forum_topic_created`, using the group default project; if the service
