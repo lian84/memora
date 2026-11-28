@@ -9,6 +9,8 @@ All notable changes to Memora are documented here.
 - Settings navigation now uses compact buttons and the agent editor receives
   more horizontal space on wide screens; agent panels stack automatically when
   the content area is narrow.
+- The automations workspace has a clearer header, compact cards, status and
+  next-run details, an accessible enable switch and grouped actions.
 
 ## [0.2.1] - 2026-11-28
 

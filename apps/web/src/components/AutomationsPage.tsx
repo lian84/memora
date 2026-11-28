@@ -117,6 +117,28 @@ function runStatusLabel(status: AutomationRun['status']): string {
   return 'In esecuzione';
 }
 
+type AutomationIconName = 'play' | 'history' | 'edit' | 'trash' | 'plus' | 'clock';
+
+function AutomationIcon({ name, size = 13 }: { name: AutomationIconName; size?: number }) {
+  const content = {
+    play: <path d="m8 5 11 7-11 7Z" />,
+    history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></>,
+    edit: <><path d="m4 20 4-1 11-11a2.8 2.8 0 0 0-4-4L4 15l-1 5Z" /><path d="m13 6 4 4" /></>,
+    trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>,
+    plus: <path d="M12 5v14M5 12h14" />,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+  }[name];
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {content}
+    </svg>
+  );
+}
+
+function formatAutomationDate(timestamp: number, timezone: string): string {
+  return new Date(timestamp).toLocaleString(undefined, { timeZone: timezone });
+}
+
 interface AutomationsPageProps {
   /** Progetto preselezionato quando si crea una nuova automazione. */
   defaultProjectId?: string | null;
@@ -330,193 +352,227 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
   return (
     <div className="automations-admin">
       <div className="automation-page-header">
-        <div>
-          <span className="admin-eyebrow">{t('Attività pianificate')}</span>
-          <h2>{t('Automazioni')}</h2>
+        <div className="automation-page-copy">
+          <div className="automation-page-title-row">
+            <h2>{t('Le tue automazioni')}</h2>
+            {!loading && <span className="automation-count" title={t('Automazioni')}>{jobs.length}</span>}
+          </div>
           <p>{t('Crea automazioni dentro un progetto o fuori dai progetti. Girano sul server anche a browser chiuso.')}</p>
         </div>
-        {onClose && <button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button>}
+        <div className="automation-page-actions">
+          {onClose && <button type="button" className="admin-close" onClick={onClose}>{t('Torna alla chat')}</button>}
+          <button type="button" className="automation-create-button" onClick={startNew}>
+            <AutomationIcon name="plus" />
+            {t('Nuova automazione')}
+          </button>
+        </div>
       </div>
       {error && <div role="alert" className="admin-alert is-error">{error}</div>}
       {message && <div className="admin-alert is-success">{message}</div>}
 
-      <section className="admin-card">
-        <div className="admin-card-heading">
-          <div>
-            <h3>{t('Attività pianificate')}</h3>
-            <p className="admin-card-description">{t('Lo scheduler gira nel servizio Memora: non richiede il browser aperto. Ogni esecuzione crea una sessione dedicata e salva il risultato nella cronologia.')}</p>
-          </div>
-          <button type="button" className="admin-primary" onClick={startNew}>{t('Nuova automazione')}</button>
+      {loading && <div className="automation-loading-note">{t('Caricamento…')}</div>}
+      {!loading && jobs.length === 0 && (
+        <div className="automation-empty">
+          <span className="automation-empty-icon"><AutomationIcon name="clock" size={22} /></span>
+          <strong>{t('Nessuna automazione configurata.')}</strong>
+          <p>{t('Crea un’automazione per ricevere riepiloghi, report o promemoria senza tenere il browser aperto.')}</p>
+          <button type="button" className="automation-create-button" onClick={startNew}>
+            <AutomationIcon name="plus" />
+            {t('Nuova automazione')}
+          </button>
         </div>
-
-        {loading && <div className="admin-field-note">{t('Caricamento…')}</div>}
-        {!loading && jobs.length === 0 && <div className="second-brain-empty">{t('Nessuna automazione configurata.')}</div>}
-        {!loading && jobs.length > 0 && (
-          <div className="automation-list">
-            {jobs.map(job => (
-              <div className={`automation-row${job.enabled ? '' : ' is-disabled'}`} key={job.id}>
-                <div className="automation-row-main">
-                  <div className="automation-row-head">
-                    <strong>{job.name}</strong>
-                    <span className={`automation-status status-${job.lastRunStatus ?? 'never'}`}>{job.lastRunStatus ? t(runStatusLabel(job.lastRunStatus)) : t('Mai eseguita')}</span>
-                    {runningIds.includes(job.id) && <span className="automation-status status-running">{t('In esecuzione')}</span>}
+      )}
+      {!loading && jobs.length > 0 && (
+        <div className="automation-list">
+          {jobs.map(job => {
+            const isRunning = runningIds.includes(job.id) || job.lastRunStatus === 'running';
+            const status = isRunning ? 'running' : job.lastRunStatus ?? 'never';
+            const telegramTarget = job.telegramAccountId ? telegramAccountName.get(job.telegramAccountId) ?? job.telegramAccountId : defaultTelegramAccount?.label ?? t('account predefinito');
+            return (
+              <article className={`automation-card status-${status}${job.enabled ? '' : ' is-disabled'}`} key={job.id}>
+                <div className="automation-card-head">
+                  <div className="automation-card-title">
+                    <h4>{job.name}</h4>
+                    {isRunning
+                      ? <span className="automation-status status-running">{t('In esecuzione')}</span>
+                      : <span className={`automation-status status-${job.lastRunStatus ?? 'never'}`}>{job.lastRunStatus ? t(runStatusLabel(job.lastRunStatus)) : t('Mai eseguita')}</span>}
                   </div>
-                  <div className="automation-row-meta">
-                    <span><code>{job.cron}</code> · {job.timezone}</span>
-                    <span>{job.nextRunAt ? `${t('Prossima')}: ${new Date(job.nextRunAt).toLocaleString(undefined, { timeZone: job.timezone })}` : t('Disattivata')}</span>
-                    {job.projectId && <span>{t('Progetto')}: {projectName.get(job.projectId) ?? job.projectId}</span>}
-                    {job.agentProfileId && <span>{t('Agente')}: {profileName.get(job.agentProfileId) ?? job.agentProfileId}</span>}
-                    <span>{t('Modello')}: {job.provider ? `${PROVIDER_LABELS[job.provider]}${job.modelId ? ` · ${job.modelId}` : ''}` : t('default del progetto')}{job.reasoningLevel ? ` · ${job.reasoningLevel}` : ''}</span>
-                    {job.webEnabled && <span>{t('Ricerca web')}</span>}
-                    {job.notifyTelegram && <span>Telegram: {job.telegramAccountId ? telegramAccountName.get(job.telegramAccountId) ?? job.telegramAccountId : defaultTelegramAccount?.label ?? t('account predefinito')}</span>}
-                    {job.mcp.enabled.length > 0 && <span>MCP: {job.mcp.enabled.join(', ')}{job.mcp.allowWrites ? ` · ${t('scritture')}` : ''}</span>}
-                  </div>
-                  {job.lastRunAt && <span className="automation-last-run">{t('Ultima esecuzione')}: {new Date(job.lastRunAt).toLocaleString(undefined, { timeZone: job.timezone })}</span>}
-                </div>
-                <div className="automation-row-actions">
-                  <label className="admin-toggle automation-toggle">
-                    <input type="checkbox" checked={job.enabled} onChange={() => void toggleEnabled(job)} />
-                    <span>{t('Attiva')}</span>
+                  <label className="automation-switch">
+                    <input type="checkbox" checked={job.enabled} onChange={() => void toggleEnabled(job)} aria-label={t('Attiva')} />
+                    <span className="automation-switch-track" aria-hidden="true"><span /></span>
+                    <span className="automation-switch-label">{job.enabled ? t('Attiva') : t('Disattivata')}</span>
                   </label>
-                  <button type="button" onClick={() => void runNow(job)} disabled={runningIds.includes(job.id)}>{t('Esegui ora')}</button>
-                  <button type="button" onClick={() => void showRuns(job.id)}>{t('Cronologia')}</button>
-                  <button type="button" onClick={() => startEdit(job)}>{t('Modifica')}</button>
-                  <button type="button" className="is-danger" onClick={() => setDeleteTarget(job)}>{t('Elimina')}</button>
                 </div>
-              </div>
+                <div className="automation-card-timing">
+                  <span className="automation-cron"><code>{job.cron}</code><span>{job.timezone}</span></span>
+                  <span className="automation-next">
+                    <small>{t('Prossima')}</small>
+                    <strong>{job.nextRunAt ? formatAutomationDate(job.nextRunAt, job.timezone) : t('Disattivata')}</strong>
+                  </span>
+                </div>
+                <div className="automation-card-meta">
+                  {job.projectId && <span className="automation-chip"><span className="automation-chip-label">{t('Progetto')}</span><span className="automation-chip-value">{projectName.get(job.projectId) ?? job.projectId}</span></span>}
+                  {job.agentProfileId && <span className="automation-chip"><span className="automation-chip-label">{t('Agente')}</span><span className="automation-chip-value">{profileName.get(job.agentProfileId) ?? job.agentProfileId}</span></span>}
+                  <span className="automation-chip"><span className="automation-chip-label">{t('Modello')}</span><span className="automation-chip-value">{job.provider ? `${PROVIDER_LABELS[job.provider]}${job.modelId ? ` · ${job.modelId}` : ''}` : t('default del progetto')}{job.reasoningLevel ? ` · ${job.reasoningLevel}` : ''}</span></span>
+                  {job.webEnabled && <span className="automation-chip is-feature"><span className="automation-chip-label">Web</span><span className="automation-chip-value">{t('Ricerca web')}</span></span>}
+                  {job.notifyTelegram && <span className="automation-chip"><span className="automation-chip-label">Telegram</span><span className="automation-chip-value">{telegramTarget}</span></span>}
+                  {job.mcp.enabled.length > 0 && <span className="automation-chip"><span className="automation-chip-label">MCP</span><span className="automation-chip-value">{job.mcp.enabled.join(', ')}{job.mcp.allowWrites ? ` · ${t('scritture')}` : ''}</span></span>}
+                </div>
+                <div className="automation-card-footer">
+                  {job.lastRunAt && <span className="automation-last-run">{t('Ultima esecuzione')}: {formatAutomationDate(job.lastRunAt, job.timezone)}</span>}
+                  <div className="automation-card-actions">
+                    <button type="button" className="automation-run-button" onClick={() => void runNow(job)} disabled={isRunning}>
+                      <AutomationIcon name="play" />
+                      {t('Esegui ora')}
+                    </button>
+                    <button type="button" onClick={() => void showRuns(job.id)}>
+                      <AutomationIcon name="history" />
+                      {t('Cronologia')}
+                    </button>
+                    <button type="button" onClick={() => startEdit(job)}>
+                      <AutomationIcon name="edit" />
+                      {t('Modifica')}
+                    </button>
+                    <button type="button" className="is-danger" onClick={() => setDeleteTarget(job)}>
+                      <AutomationIcon name="trash" />
+                      {t('Elimina')}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {form && (
+        <div className="automation-editor">
+          <h3>{editingId ? t('Modifica automazione') : t('Nuova automazione')}</h3>
+          <div className="admin-grid-2">
+            <label className="admin-label">{t('Nome')}
+              <input value={form.name} onChange={event => setForm(current => current ? { ...current, name: event.target.value } : current)} maxLength={120} placeholder={t('Riepilogo del lunedì')} />
+            </label>
+            <label className="admin-label">{t('Timeout (minuti)')}
+              <input type="number" min={1} max={120} value={form.timeoutMinutes} onChange={event => setForm(current => current ? { ...current, timeoutMinutes: Number(event.target.value) } : current)} />
+            </label>
+          </div>
+          <label className="admin-label">{t('Prompt')}
+            <textarea value={form.prompt} onChange={event => setForm(current => current ? { ...current, prompt: event.target.value } : current)} rows={5} maxLength={20000} placeholder={t('Prepara il riepilogo settimanale e invialo su Telegram.')} />
+            <small>{t('Il prompt viene eseguito come un messaggio normale, con memoria, progetto e profilo agente selezionati.')}</small>
+          </label>
+          <div className="admin-grid-2">
+            <label className="admin-label">{t('Progetto')}
+              <select value={form.projectId} onChange={event => setForm(current => current ? { ...current, projectId: event.target.value } : current)}>
+                <option value="">{t('Nessun progetto')}</option>
+                {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+              </select>
+            </label>
+            <label className="admin-label">{t('Profilo agente')}
+              <select value={form.agentProfileId} onChange={event => setForm(current => current ? { ...current, agentProfileId: event.target.value } : current)}>
+                <option value="">{t('Memo (base)')}</option>
+                {profiles.map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="admin-grid-2">
+            <label className="admin-label">{t('Provider LLM')}
+              <select value={form.provider} onChange={event => setForm(current => current ? { ...current, provider: event.target.value as ProviderId | '', modelId: '' } : current)}>
+                <option value="">{t('Default del progetto/chat')}</option>
+                {(Object.keys(PROVIDER_LABELS) as ProviderId[]).map(provider => <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>)}
+              </select>
+            </label>
+            <label className="admin-label">{t('Livello reasoning')}
+              <select value={form.reasoningLevel} onChange={event => setForm(current => current ? { ...current, reasoningLevel: event.target.value as ReasoningLevel | '' } : current)}>
+                <option value="">{t('Default del progetto/chat')}</option>
+                {REASONING_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
+              </select>
+            </label>
+          </div>
+          {form.provider ? (
+            <div className="admin-label">
+              <span>{t('Modello LLM')}</span>
+              <ModelCombobox
+                models={availableModels as unknown as ProviderModel[]}
+                provider={form.provider}
+                value={form.modelId}
+                onChange={modelId => setForm(current => current ? { ...current, modelId } : current)}
+                loading={modelsLoading}
+              />
+              {modelsError && <small className="model-error">{modelsError}</small>}
+            </div>
+          ) : (
+            <div className="admin-field-note">{t('Se non scegli provider e modello, l’automazione eredita il default del progetto o della chat.')}</div>
+          )}
+          <div className="admin-grid-2">
+            <label className="admin-label">{t('Espressione cron')}
+              <input value={form.cron} onChange={event => setForm(current => current ? { ...current, cron: event.target.value } : current)} placeholder="0 9 * * *" spellCheck={false} />
+              <small>{t('Campi: minuto ora giorno mese giorno-settimana. Esempio: 0 9 * * 1–5 = feriali alle 09:00.')}</small>
+            </label>
+            <label className="admin-label">{t('Fuso orario')}
+              <input value={form.timezone} onChange={event => setForm(current => current ? { ...current, timezone: event.target.value } : current)} placeholder="Europe/Rome" spellCheck={false} />
+            </label>
+          </div>
+          <div className="automation-presets">
+            {CRON_PRESETS.map(preset => (
+              <button type="button" key={preset.cron} onClick={() => setForm(current => current ? { ...current, cron: preset.cron } : current)}>{t(preset.label)} <code>{preset.cron}</code></button>
             ))}
           </div>
-        )}
-
-        {form && (
-          <div className="automation-editor">
-            <h4>{editingId ? t('Modifica automazione') : t('Nuova automazione')}</h4>
-            <div className="admin-grid-2">
-              <label className="admin-label">{t('Nome')}
-                <input value={form.name} onChange={event => setForm(current => current ? { ...current, name: event.target.value } : current)} maxLength={120} placeholder={t('Riepilogo del lunedì')} />
-              </label>
-              <label className="admin-label">{t('Timeout (minuti)')}
-                <input type="number" min={1} max={120} value={form.timeoutMinutes} onChange={event => setForm(current => current ? { ...current, timeoutMinutes: Number(event.target.value) } : current)} />
-              </label>
-            </div>
-            <label className="admin-label">{t('Prompt')}
-              <textarea value={form.prompt} onChange={event => setForm(current => current ? { ...current, prompt: event.target.value } : current)} rows={5} maxLength={20000} placeholder={t('Prepara il riepilogo settimanale e invialo su Telegram.')} />
-              <small>{t('Il prompt viene eseguito come un messaggio normale, con memoria, progetto e profilo agente selezionati.')}</small>
-            </label>
-            <div className="admin-grid-2">
-              <label className="admin-label">{t('Progetto')}
-                <select value={form.projectId} onChange={event => setForm(current => current ? { ...current, projectId: event.target.value } : current)}>
-                  <option value="">{t('Nessun progetto')}</option>
-                  {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
-                </select>
-              </label>
-              <label className="admin-label">{t('Profilo agente')}
-                <select value={form.agentProfileId} onChange={event => setForm(current => current ? { ...current, agentProfileId: event.target.value } : current)}>
-                  <option value="">{t('Memo (base)')}</option>
-                  {profiles.map(profile => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="admin-grid-2">
-              <label className="admin-label">{t('Provider LLM')}
-                <select value={form.provider} onChange={event => setForm(current => current ? { ...current, provider: event.target.value as ProviderId | '', modelId: '' } : current)}>
-                  <option value="">{t('Default del progetto/chat')}</option>
-                  {(Object.keys(PROVIDER_LABELS) as ProviderId[]).map(provider => <option key={provider} value={provider}>{PROVIDER_LABELS[provider]}</option>)}
-                </select>
-              </label>
-              <label className="admin-label">{t('Livello reasoning')}
-                <select value={form.reasoningLevel} onChange={event => setForm(current => current ? { ...current, reasoningLevel: event.target.value as ReasoningLevel | '' } : current)}>
-                  <option value="">{t('Default del progetto/chat')}</option>
-                  {REASONING_LEVELS.map(level => <option key={level} value={level}>{level}</option>)}
-                </select>
-              </label>
-            </div>
-            {form.provider ? (
-              <div className="admin-label">
-                <span>{t('Modello LLM')}</span>
-                <ModelCombobox
-                  models={availableModels as unknown as ProviderModel[]}
-                  provider={form.provider}
-                  value={form.modelId}
-                  onChange={modelId => setForm(current => current ? { ...current, modelId } : current)}
-                  loading={modelsLoading}
+          <div className="automation-mcp-editor">
+            <strong>{t('Server MCP')}</strong>
+            <small>{t('Disattivati di default. Le scritture richiedono un’abilitazione esplicita. Gli account vengono risolti dal progetto o dall’account globale.')} {accountsCount > 0 ? `(${accountsCount} ${t('account configurati')})` : ''}</small>
+            {MCP_SERVER_DEFINITIONS.map(server => (
+              <label className="admin-toggle" key={server.id}>
+                <input
+                  type="checkbox"
+                  checked={form.mcpEnabled.includes(server.id)}
+                  onChange={event => setForm(current => {
+                    if (!current) return current;
+                    const enabled = event.target.checked ? [...current.mcpEnabled, server.id] : current.mcpEnabled.filter(id => id !== server.id);
+                    return { ...current, mcpEnabled: enabled };
+                  })}
                 />
-                {modelsError && <small className="model-error">{modelsError}</small>}
-              </div>
-            ) : (
-              <div className="admin-field-note">{t('Se non scegli provider e modello, l’automazione eredita il default del progetto o della chat.')}</div>
-            )}
-            <div className="admin-grid-2">
-              <label className="admin-label">{t('Espressione cron')}
-                <input value={form.cron} onChange={event => setForm(current => current ? { ...current, cron: event.target.value } : current)} placeholder="0 9 * * *" spellCheck={false} />
-                <small>{t('Campi: minuto ora giorno mese giorno-settimana. Esempio: 0 9 * * 1–5 = feriali alle 09:00.')}</small>
+                <span>{server.label}</span>
               </label>
-              <label className="admin-label">{t('Fuso orario')}
-                <input value={form.timezone} onChange={event => setForm(current => current ? { ...current, timezone: event.target.value } : current)} placeholder="Europe/Rome" spellCheck={false} />
-              </label>
-            </div>
-            <div className="automation-presets">
-              {CRON_PRESETS.map(preset => (
-                <button type="button" key={preset.cron} onClick={() => setForm(current => current ? { ...current, cron: preset.cron } : current)}>{t(preset.label)} <code>{preset.cron}</code></button>
-              ))}
-            </div>
-            <div className="automation-mcp-editor">
-              <strong>{t('Server MCP')}</strong>
-              <small>{t('Disattivati di default. Le scritture richiedono un’abilitazione esplicita. Gli account vengono risolti dal progetto o dall’account globale.')} {accountsCount > 0 ? `(${accountsCount} ${t('account configurati')})` : ''}</small>
-              {MCP_SERVER_DEFINITIONS.map(server => (
-                <label className="admin-toggle" key={server.id}>
-                  <input
-                    type="checkbox"
-                    checked={form.mcpEnabled.includes(server.id)}
-                    onChange={event => setForm(current => {
-                      if (!current) return current;
-                      const enabled = event.target.checked ? [...current.mcpEnabled, server.id] : current.mcpEnabled.filter(id => id !== server.id);
-                      return { ...current, mcpEnabled: enabled };
-                    })}
-                  />
-                  <span>{server.label}</span>
-                </label>
-              ))}
-              {form.mcpEnabled.length > 0 && (
-                <label className="admin-toggle automation-writes-toggle">
-                  <input type="checkbox" checked={form.allowWrites} onChange={event => setForm(current => current ? { ...current, allowWrites: event.target.checked } : current)} />
-                  <span>{t('Consenti scritture MCP')}</span>
-                </label>
-              )}
-              {form.allowWrites && <div className="admin-inline-warning">{t('Le scritture possono modificare dati reali. Abilita solo se il prompt è progettato per farlo.')}</div>}
-            </div>
-            <div className="admin-grid-2">
-              <label className="admin-toggle">
-                <input type="checkbox" checked={form.enabled} onChange={event => setForm(current => current ? { ...current, enabled: event.target.checked } : current)} />
-                <span>{t('Automazione attiva')}</span>
-              </label>
-              <label className="admin-toggle">
-                <input type="checkbox" checked={form.notifyTelegram} onChange={event => setForm(current => current ? { ...current, notifyTelegram: event.target.checked } : current)} />
-                <span>{t('Invia risultato su Telegram')}</span>
-              </label>
-              <label className="admin-toggle">
-                <input type="checkbox" checked={form.webEnabled} onChange={event => setForm(current => current ? { ...current, webEnabled: event.target.checked } : current)} />
-                <span>{t('Abilita ricerca web')}</span>
-              </label>
-            </div>
-            {form.webEnabled && webStatus && !webStatus.configured && <div className="admin-inline-warning">{t('La ricerca web non è configurata. Configurala in Amministrazione → Web prima di eseguire l’automazione.')}</div>}
-            {form.notifyTelegram && (
-              <label className="admin-label">{t('Account Telegram')}
-                <select value={form.telegramAccountId} onChange={event => setForm(current => current ? { ...current, telegramAccountId: event.target.value } : current)}>
-                  <option value="">{t('Account predefinito')}{defaultTelegramAccount ? ` · ${defaultTelegramAccount.label}` : ''}</option>
-                  {telegramAccounts.filter(account => account.enabled).map(account => <option key={account.id} value={account.id}>{account.label}{account.chatId ? ` · ${account.chatId}` : ''}</option>)}
-                </select>
-                <small>{t('Gli account Telegram si creano in Amministrazione → Telegram e possono essere usati da più automazioni.')}</small>
+            ))}
+            {form.mcpEnabled.length > 0 && (
+              <label className="admin-toggle automation-writes-toggle">
+                <input type="checkbox" checked={form.allowWrites} onChange={event => setForm(current => current ? { ...current, allowWrites: event.target.checked } : current)} />
+                <span>{t('Consenti scritture MCP')}</span>
               </label>
             )}
-            {form.notifyTelegram && telegramAccounts.length === 0 && <div className="admin-inline-warning">{t('Nessun account Telegram configurato. Il risultato resterà nella cronologia, ma non verrà inviato.')}</div>}
-            <div className="admin-actions">
-              <button type="button" className="admin-primary" onClick={() => void save()} disabled={saving}>{saving ? t('Salvo…') : t('Salva automazione')}</button>
-              <button type="button" onClick={() => { setForm(null); setEditingId(null); }} disabled={saving}>{t('Annulla')}</button>
-            </div>
+            {form.allowWrites && <div className="admin-inline-warning">{t('Le scritture possono modificare dati reali. Abilita solo se il prompt è progettato per farlo.')}</div>}
           </div>
-        )}
-      </section>
+          <div className="admin-grid-2">
+            <label className="admin-toggle">
+              <input type="checkbox" checked={form.enabled} onChange={event => setForm(current => current ? { ...current, enabled: event.target.checked } : current)} />
+              <span>{t('Automazione attiva')}</span>
+            </label>
+            <label className="admin-toggle">
+              <input type="checkbox" checked={form.notifyTelegram} onChange={event => setForm(current => current ? { ...current, notifyTelegram: event.target.checked } : current)} />
+              <span>{t('Invia risultato su Telegram')}</span>
+            </label>
+            <label className="admin-toggle">
+              <input type="checkbox" checked={form.webEnabled} onChange={event => setForm(current => current ? { ...current, webEnabled: event.target.checked } : current)} />
+              <span>{t('Abilita ricerca web')}</span>
+            </label>
+          </div>
+          {form.webEnabled && webStatus && !webStatus.configured && <div className="admin-inline-warning">{t('La ricerca web non è configurata. Configurala in Amministrazione → Web prima di eseguire l’automazione.')}</div>}
+          {form.notifyTelegram && (
+            <label className="admin-label">{t('Account Telegram')}
+              <select value={form.telegramAccountId} onChange={event => setForm(current => current ? { ...current, telegramAccountId: event.target.value } : current)}>
+                <option value="">{t('Account predefinito')}{defaultTelegramAccount ? ` · ${defaultTelegramAccount.label}` : ''}</option>
+                {telegramAccounts.filter(account => account.enabled).map(account => <option key={account.id} value={account.id}>{account.label}{account.chatId ? ` · ${account.chatId}` : ''}</option>)}
+              </select>
+              <small>{t('Gli account Telegram si creano in Amministrazione → Telegram e possono essere usati da più automazioni.')}</small>
+            </label>
+          )}
+          {form.notifyTelegram && telegramAccounts.length === 0 && <div className="admin-inline-warning">{t('Nessun account Telegram configurato. Il risultato resterà nella cronologia, ma non verrà inviato.')}</div>}
+          <div className="admin-actions">
+            <button type="button" className="admin-primary" onClick={() => void save()} disabled={saving}>{saving ? t('Salvo…') : t('Salva automazione')}</button>
+            <button type="button" onClick={() => { setForm(null); setEditingId(null); }} disabled={saving}>{t('Annulla')}</button>
+          </div>
+        </div>
+      )}
 
       {runsJobId && (
         <section className="admin-card">
@@ -525,7 +581,10 @@ export function AutomationsPage({ defaultProjectId = null, focusJobId = null, st
               <h3>{t('Cronologia esecuzioni')} · {jobs.find(job => job.id === runsJobId)?.name ?? runsJobId}</h3>
               <p className="admin-card-description">{t('Ogni esecuzione viene salvata anche se il browser è chiuso.')}</p>
             </div>
-            <button type="button" onClick={() => void showRuns(runsJobId)} disabled={runsLoading}>{t('Aggiorna')}</button>
+            <div className="automation-history-actions">
+              <button type="button" onClick={() => void showRuns(runsJobId)} disabled={runsLoading}>{t('Aggiorna')}</button>
+              <button type="button" onClick={() => { setRunsJobId(null); setRuns([]); }}>{t('Chiudi')}</button>
+            </div>
           </div>
           {runsLoading && <div className="admin-field-note">{t('Caricamento…')}</div>}
           {!runsLoading && runs.length === 0 && <div className="second-brain-empty">{t('Nessuna esecuzione registrata.')}</div>}

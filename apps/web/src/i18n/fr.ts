@@ -592,6 +592,8 @@ export const fr: Record<string, string> = {
   'Invia test': 'Envoyer un test',
   'Attività pianificate': 'Activités planifiées',
   'Lo scheduler gira nel servizio Memora: non richiede il browser aperto. Ogni esecuzione crea una sessione dedicata e salva il risultato nella cronologia.': 'Le planificateur tourne dans le service Memora : aucun navigateur ouvert n’est nécessaire. Chaque exécution crée une session dédiée et enregistre le résultat dans l’historique.',
+  'Le tue automazioni': 'Vos automatisations',
+  'Crea un’automazione per ricevere riepiloghi, report o promemoria senza tenere il browser aperto.': 'Créez une automatisation pour recevoir des résumés, des rapports ou des rappels sans garder le navigateur ouvert.',
   'Nuova automazione': 'Nouvelle automatisation',
   'Nessuna automazione configurata.': 'Aucune automatisation configurée.',
   'Mai eseguita': 'Jamais exécutée',
