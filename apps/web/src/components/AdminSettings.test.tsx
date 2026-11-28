@@ -148,6 +148,7 @@ describe('AdminSettings UI', () => {
     expect(markup).toContain('admin-page-system');
     expect(markup).toContain('Osservabilità');
     expect(markup).toContain('admin-side-nav');
+    expect(markup).toContain('data-page="general"');
     expect(markup).toContain('Modelli');
     expect(markup).toContain('Integrazioni');
   });

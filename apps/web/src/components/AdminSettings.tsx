@@ -465,7 +465,11 @@ export function AdminSettingsView({
   ] as const;
 
   return (
-    <section className="admin-settings" aria-label={t('Impostazioni amministrazione')}>
+    <section
+      className={`admin-settings${activePage === 'agents' ? ' is-agents-page' : ''}`}
+      data-page={activePage}
+      aria-label={t('Impostazioni amministrazione')}
+    >
       <div className="admin-settings-header">
         <div>
           <h2>{t('Impostazioni')}</h2>
