@@ -8,10 +8,10 @@ ma non creano release.
 
 ## Checklist
 
-1. Aggiorna `package.json` alla versione della release (ad esempio `0.2.0`).
+1. Aggiorna `package.json` alla versione della release (ad esempio `0.2.1`).
 2. Sposta la sezione `Unreleased` di `CHANGELOG.md` sotto una sezione datata
-   `## [0.2.0] - YYYY-MM-DD` e aggiungi il link della release.
-3. Aggiungi `docs/RELEASE-0.2.0.md` e `.it.md` con novità, note di
+   `## [0.2.1] - YYYY-MM-DD` e aggiungi il link della release.
+3. Aggiungi `docs/RELEASE-0.2.1.md` e `.it.md` con novità, note di
    aggiornamento, link alla documentazione e limiti noti.
 4. Aggiorna i riferimenti di versione in `README.md`, `README.it.md`,
    `ROADMAP.md`, `docs/UPDATES.md`, `docs/UPDATES.it.md` e `.env.example`.
@@ -34,8 +34,8 @@ ma non creano release.
 7. Crea e pusha un tag annotato:
 
    ```bash
-   git tag -a v0.2.0 -m "Memora v0.2.0"
-   git push origin v0.2.0
+   git tag -a v0.2.1 -m "Memora v0.2.1"
+   git push origin v0.2.1
    ```
 
 8. Il workflow di release verifica che `package.json` corrisponda al tag, esegue
@@ -45,7 +45,7 @@ ma non creano release.
 9. Verifica la release dall’API pubblica:
 
    ```bash
-   curl -s https://api.github.com/repos/lian84/memora/releases/tags/v0.2.0
+   curl -s https://api.github.com/repos/lian84/memora/releases/tags/v0.2.1
    ```
 
 10. Verifica installer e aggiornamento su una VM pulita o usa-e-getta prima di

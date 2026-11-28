@@ -22,7 +22,7 @@
 
 <p align="center">
   <a href="https://github.com/lian84/memora/actions/workflows/ci.yml"><img src="https://github.com/lian84/memora/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/status-v0.2.0-blue" alt="v0.2.0">
+  <img src="https://img.shields.io/badge/status-v0.2.1-blue" alt="v0.2.1">
   <img src="https://img.shields.io/badge/node-24-5FA04E" alt="Node.js 24">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg" alt="Licenza: AGPL-3.0-only"></a>
 </p>
@@ -34,7 +34,7 @@
 ---
 
 > [!WARNING]
-> Memora **v0.2.0** è la release pubblica corrente. Il nucleo è utilizzabile e
+> Memora **v0.2.1** è la release pubblica corrente. Il nucleo è utilizzabile e
 > testato; la verifica di restore/update/rollback è ancora in corso. Non esporre
 > il servizio su Internet senza HTTPS, reverse proxy e una revisione della
 > configurazione.
@@ -85,11 +85,11 @@ Il registro completo delle funzionalità, con stato e limiti noti, è in
 
 ## Stato
 
-v0.2.0: le funzionalità sono utilizzabili e testate. L’installazione è stata
-verificata su una VM Debian 13; restano da verificare restore, aggiornamento e
-rollback. Vedi
+v0.2.1: patch di affidabilità sopra il set di funzionalità testato della 0.2.0.
+L’installazione è stata verificata su una VM Debian 13 per la 0.2.0; restano da
+verificare restore, aggiornamento e rollback. Vedi
 [`docs/FEATURES.it.md`](docs/FEATURES.it.md) per lo stato aggiornato e i limiti
-noti. Note di release: [v0.2.0](docs/RELEASE-0.2.0.it.md).
+noti. Note di release: [v0.2.1](docs/RELEASE-0.2.1.it.md).
 
 ## Funzionalità principali
 
@@ -152,7 +152,7 @@ Vedi [Installazione, ripristino e aggiornamento](docs/INSTALL.it.md).
 - [Backup](docs/BACKUP.it.md)
 - [Esportazione dati](docs/EXPORT.it.md)
 - [Aggiornamenti](docs/UPDATES.it.md)
-- [Note di release v0.2.0](docs/RELEASE-0.2.0.it.md)
+- [Note di release v0.2.1](docs/RELEASE-0.2.1.it.md)
 - [Rilasciare Memora](docs/RELEASING.it.md)
 - [Monitoraggio](docs/MONITORING.it.md)
 - [Ricerca web](docs/WEB-SEARCH.it.md)

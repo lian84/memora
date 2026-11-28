@@ -8,10 +8,10 @@ CI but do not create a release.
 
 ## Checklist
 
-1. Update `package.json` to the release version (for example `0.2.0`).
+1. Update `package.json` to the release version (for example `0.2.1`).
 2. Move the `Unreleased` section of `CHANGELOG.md` under a dated
-   `## [0.2.0] - YYYY-MM-DD` section and add the release link.
-3. Add `docs/RELEASE-0.2.0.md` and `.it.md` with highlights, upgrade notes,
+   `## [0.2.1] - YYYY-MM-DD` section and add the release link.
+3. Add `docs/RELEASE-0.2.1.md` and `.it.md` with highlights, upgrade notes,
    documentation links and known limitations.
 4. Update version references in `README.md`, `README.it.md`, `ROADMAP.md`,
    `docs/UPDATES.md`, `docs/UPDATES.it.md` and `.env.example`.
@@ -34,8 +34,8 @@ CI but do not create a release.
 7. Create and push an annotated tag:
 
    ```bash
-   git tag -a v0.2.0 -m "Memora v0.2.0"
-   git push origin v0.2.0
+   git tag -a v0.2.1 -m "Memora v0.2.1"
+   git push origin v0.2.1
    ```
 
 8. The release workflow checks that `package.json` matches the tag, runs all
@@ -44,7 +44,7 @@ CI but do not create a release.
 9. Verify the release from the public API:
 
    ```bash
-   curl -s https://api.github.com/repos/lian84/memora/releases/tags/v0.2.0
+   curl -s https://api.github.com/repos/lian84/memora/releases/tags/v0.2.1
    ```
 
 10. Verify the installer/update path on a clean or disposable VM before

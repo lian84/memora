@@ -2,7 +2,7 @@
   "name": "memora",
   "private": true,
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Memora — centro personale self-hosted costruito sopra Pi",
   "packageManager": "pnpm@12.21.0",
   "workspaces": [

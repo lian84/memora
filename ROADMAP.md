@@ -1,6 +1,6 @@
 # Roadmap
 
-> Release pubblica corrente: **v0.2.0** — 27 novembre 2026.
+> Release pubblica corrente: **v0.2.1** — 28 novembre 2026.
 > Le fasi 0–7 descrivono il percorso del nucleo; le caselle indicano ciò che è
 > effettivamente completo. Le sezioni successive raccolgono integrazioni,
 > hardening e stabilizzazione. Non sono promesse di date.
@@ -128,9 +128,9 @@
 
 ## Prossime priorità
 
-1. Provare l’aggiornamento da v0.1.4 a v0.2.0 con il pulsante.
+1. Provare l’aggiornamento da v0.2.0 a v0.2.1 con il pulsante.
 2. Provare restore, rollback e import/export su una VM usa-e-getta.
-3. Rifare l'installazione pulita con v0.2.0 e aggiornare la checklist.
+3. Rifare l'installazione pulita con v0.2.1 e aggiornare la checklist.
 4. Audit licenze e dipendenze.
 5. Documentare il gate di approvazione per le scritture MCP distruttive.
 6. Riprendere le feature rimandate: Calendar/Gmail, installer SearXNG nativo e

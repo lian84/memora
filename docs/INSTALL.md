@@ -243,7 +243,7 @@ sudo ./update.sh
 A specific tag can be selected with:
 
 ```bash
-MEMORA_UPDATE_TAG=v0.2.0 sudo -E ./update.sh
+MEMORA_UPDATE_TAG=v0.2.1 sudo -E ./update.sh
 ```
 
 An update available banner is shown in **Administration → System → Updates**.

@@ -243,7 +243,7 @@ sudo ./update.sh
 Per scegliere un tag specifico:
 
 ```bash
-MEMORA_UPDATE_TAG=v0.2.0 sudo -E ./update.sh
+MEMORA_UPDATE_TAG=v0.2.1 sudo -E ./update.sh
 ```
 
 L’avviso di aggiornamento è in **Amministrazione → Sistema → Aggiornamenti**.

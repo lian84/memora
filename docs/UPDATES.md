@@ -11,7 +11,7 @@ notification.
 - `currentVersion` comes from `MEMORA_VERSION` (set by the installer/release
   environment), falling back to the application version.
 - `latestVersion` comes from the latest GitHub release tag, for example
-  `v0.2.0`.
+  `v0.2.1`.
 - An update is available only when the release tag is newer than the installed
   version.
 
@@ -34,7 +34,7 @@ in [Releasing Memora](RELEASING.md).
 
 ```bash
 MEMORA_UPDATE_REPO=lian84/memora
-MEMORA_VERSION=0.2.0
+MEMORA_VERSION=0.2.1
 # Optional for a private repository or a proxy:
 MEMORA_UPDATE_CHECK_URL=https://api.github.com/repos/lian84/memora/releases/latest
 MEMORA_UPDATE_CHECK_TOKEN=github_read_only_token

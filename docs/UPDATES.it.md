@@ -11,7 +11,7 @@ aggiornamento.
 - `currentVersion` viene da `MEMORA_VERSION` (impostata da installer/release),
   con fallback alla versione applicativa.
 - `latestVersion` viene dal tag dell’ultima release GitHub, ad esempio
-  `v0.2.0`.
+  `v0.2.1`.
 - Un aggiornamento è disponibile solo se il tag è più recente della versione
   installata.
 
@@ -34,7 +34,7 @@ Le note di release sono in `docs/RELEASE-<versione>.md`; il processo passo-passo
 
 ```bash
 MEMORA_UPDATE_REPO=lian84/memora
-MEMORA_VERSION=0.2.0
+MEMORA_VERSION=0.2.1
 # Opzionali per repository privata o proxy:
 MEMORA_UPDATE_CHECK_URL=https://api.github.com/repos/lian84/memora/releases/latest
 MEMORA_UPDATE_CHECK_TOKEN=github_read_only_token
