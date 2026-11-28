@@ -2724,7 +2724,8 @@ hide which topic failed.
   and item-level errors. Deleted topics are skipped rather than retried.
 - Add a configurable delay (250 ms by default) between edit requests; the
   Telegram client already retries `429` responses.
-- Show closed/deleted state in the admin topic list and Telegram `/sessions`.
+- Show closed/deleted state in the admin topic list; `/sessions` shows closed
+  topics and excludes deleted ones.
 - Do not automatically recreate a deleted topic; the user keeps control of the
   new topic title and placement.
 
@@ -2735,3 +2736,38 @@ hide which topic failed.
 - Bulk sync is slower but safer; the UI reports exactly which topics failed.
 - Recreating a topic is explicit and loses the old Telegram thread, while the
   Memora session remains intact.
+
+---
+## ADR-077 — Archived sessions block Telegram turns instead of auto-replacing
+**Date:** 2026-11-27
+**Status:** accepted
+
+### Context
+
+Telegram used to replace an archived or missing bound session with a new session
+automatically. From the user's point of view, archiving a chat in the web UI did
+not stop the Telegram topic or DM from accepting new messages.
+
+### Decision
+
+- When the bound session is archived or no longer exists, do not create a
+  replacement session implicitly.
+- Reply with an explicit instruction:
+  - DM: use `/new` or restore the session from the web UI;
+  - group topic: create a new topic with `/new` from General or restore the
+    session;
+  - General: restore the session; a new topic can still be created from General.
+- Keep the existing binding so the user can restore the same session in the web
+  UI and continue in the same Telegram destination.
+- `/new` remains the explicit way to create a new DM session or group topic.
+- Deleted Telegram topics are a separate case: they are detected and removed from
+  `/sessions`; the Memora session remains available in the web UI.
+
+### Consequences
+
+- Archiving a web chat now has an immediate, understandable effect on Telegram.
+- No hidden sessions are created after archive/delete.
+- Users must explicitly create a new session/topic after an archive, or restore
+  the archived session from the web UI.
+- A missing session binding can be repaired by restoring the session or by
+  creating a new topic/session.

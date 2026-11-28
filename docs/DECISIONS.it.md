@@ -2590,8 +2590,8 @@ incontrare i rate limit di Telegram e non deve nascondere quale topic ha fallito
   non ritentati.
 - Aggiungere una pausa configurabile (250 ms di default) tra le richieste di
   modifica; il client Telegram ritenta già le risposte `429`.
-- Mostrare lo stato chiuso/eliminato nella lista topic amministrativa e in
-  `/sessions` Telegram.
+- Mostrare lo stato chiuso/eliminato nella lista topic amministrativa; `/sessions`
+  mostra i topic chiusi ed esclude quelli eliminati.
 - Non ricreare automaticamente un topic eliminato; l’utente mantiene il controllo
   del nuovo titolo e della posizione.
 
@@ -2603,3 +2603,40 @@ incontrare i rate limit di Telegram e non deve nascondere quale topic ha fallito
   falliti.
 - La ricreazione è esplicita e perde il vecchio thread Telegram, mentre la
   sessione Memora resta intatta.
+
+---
+## ADR-077 — Le sessioni archiviate bloccano i turni Telegram invece di essere sostituite
+**Data:** 2026-11-27
+**Stato:** accepted
+
+### Contesto
+
+Telegram sostituiva automaticamente una sessione associata archiviata o mancante
+con una nuova sessione. Dal punto di vista dell’utente, archiviare una chat nella
+web UI non impediva alla DM o al topic Telegram di accettare nuovi messaggi.
+
+### Decisione
+
+- Quando la sessione associata è archiviata o non esiste più, non creare una
+  sessione sostitutiva in modo implicito.
+- Rispondere con un’istruzione esplicita:
+  - DM: usa `/new` o ripristina la sessione dalla web UI;
+  - topic del gruppo: crea un nuovo topic con `/new` da General o ripristina la
+    sessione;
+  - General: ripristina la sessione; da General è comunque possibile creare un
+    nuovo topic.
+- Mantenere il binding esistente, così l’utente può ripristinare la stessa
+  sessione dalla web UI e continuare nella stessa destinazione Telegram.
+- `/new` resta il modo esplicito per creare una nuova sessione DM o un nuovo
+  topic di gruppo.
+- I topic Telegram eliminati sono un caso separato: vengono rilevati e rimossi da
+  `/sessions`; la sessione Memora resta disponibile nella web UI.
+
+### Conseguenze
+
+- Archiviare una chat web ha ora un effetto immediato e comprensibile su Telegram.
+- Non vengono create sessioni nascoste dopo archivio/eliminazione.
+- L’utente deve creare esplicitamente una nuova sessione/topic dopo un archivio,
+  oppure ripristinare la sessione dalla web UI.
+- Un binding con sessione mancante si ripara ripristinando la sessione o creando
+  un nuovo topic/sessione.

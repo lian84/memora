@@ -13,6 +13,9 @@ All notable changes to Memora are documented here.
   Memora session.
 - Telegram title/icon synchronization now reports per-topic results and errors,
   respects a configurable rate-limit delay and skips deleted topics.
+- Archived or missing bound sessions no longer create hidden replacement sessions
+  from Telegram: the bot asks for `/new` or a web UI restore. `/sessions` probes
+  topic availability and excludes deleted topics.
 
 ## [0.2.0] - 2026-11-27
 

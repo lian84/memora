@@ -9,7 +9,7 @@ limiti.
 
 Riferimenti: [`FEATURES.it.md`](FEATURES.it.md),
 [`ADMINISTRATION.it.md`](ADMINISTRATION.it.md),
-[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075, ADR-076).
+[`DECISIONS.it.md`](DECISIONS.it.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075, ADR-076, ADR-077).
 
 ## Requisiti
 
@@ -188,8 +188,10 @@ se `/switch` chiede un numero valido.
 - I turni usano lo stesso `TurnManager` della web UI: un turno attivo per
   sessione, coda, stato SSE e read state condiviso.
 - I turni nati da Telegram compaiono nella cronologia e nella sidebar web.
-- Una sessione archiviata, cancellata o mancante viene sostituita da una nuova
-  sessione con un breve avviso.
+- Una sessione archiviata, cancellata o mancante non viene sostituita in
+  silenzio. Il bot spiega che la sessione non è disponibile e chiede `/new` o un
+  ripristino dalla web UI. In un topic del gruppo significa creare un nuovo topic
+  da General; General stessa va ripristinata se la sua sessione è archiviata.
 - `/stop` interrompe il turno corrente, anche se avviato dalla web UI sulla stessa
   sessione.
 - Il bot mostra il typing durante il turno, poi invia la risposta finale. Il
@@ -202,6 +204,9 @@ se `/switch` chiede un numero valido.
   un falso non letto.
 - Dopo un riavvio, un turno rimasto in sospeso e marcato interrotto riceve un solo
   avviso nella chat Telegram.
+- `/sessions` verifica i topic aperti con una chat action transitoria; i topic
+  eliminati vengono marcati e rimossi dall’elenco Telegram, mentre la sessione
+  Memora resta nella web UI.
 
 ## Condivisione di una chat web con Telegram
 

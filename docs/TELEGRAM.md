@@ -7,7 +7,7 @@ messages run in the same Pi sessions, memory and projects used by the web UI.
 This document covers setup, commands, attachments, security and limitations.
 
 Related: [`FEATURES.md`](FEATURES.md), [`ADMINISTRATION.md`](ADMINISTRATION.md),
-[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075, ADR-076).
+[`DECISIONS.md`](DECISIONS.md) (ADR-068, ADR-070, ADR-071, ADR-072, ADR-073, ADR-074, ADR-075, ADR-076, ADR-077).
 
 ## Requirements
 
@@ -190,8 +190,10 @@ The `/sessions` selection expires after ten minutes; run `/sessions` again if
 - Turns use the same `TurnManager` as the web UI: one active turn per session,
   queueing, SSE state and shared read state.
 - Telegram-originated turns appear in the web session history and sidebar.
-- A session archived, deleted or missing from disk is replaced by a new session
-  with a short notice.
+- A session archived, deleted or missing from disk is not silently replaced. The
+  bot explains that the session is unavailable and asks for `/new` or a restore
+  from the web UI. In a group topic this means creating a new topic from General;
+  General itself must be restored if its session is archived.
 - `/stop` interrupts the current turn, including a turn started by the web UI on
   the same session.
 - The bot shows a typing indicator while the turn runs, then sends the final
@@ -204,6 +206,9 @@ The `/sessions` selection expires after ten minutes; run `/sessions` again if
   show a false unread response.
 - After a restart, a pending turn marked as interrupted receives one notice in
   the Telegram chat.
+- `/sessions` probes open topics with a transient chat action; deleted topics
+  are marked and removed from the Telegram list, while their Memora session stays
+  in the web UI.
 
 ## Sharing a web chat with Telegram
 
