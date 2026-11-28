@@ -160,6 +160,12 @@ scrivere lì e invia un solo avviso in General; la sessione Memora resta e puoi
 creare un nuovo topic con `/new`. Titoli e icone vengono riallineati un topic alla
 volta con una pausa per rate limit e un risultato per singolo topic.
 
+Eliminando una sessione dalla web UI, i topic/General Telegram collegati vengono
+marcati come non disponibili invece di creare una nuova sessione in silenzio. Il
+topic Telegram può restare visibile, ma i nuovi messaggi vengono rifiutati; crea
+un nuovo topic con `/new` o ripristina una sessione quando possibile. `/sessions`
+rimuove i topic eliminati dall’elenco Telegram.
+
 Tutti i membri del gruppo Telegram possono leggere i messaggi del bot e i titoli
 dei topic. Usa un gruppo privato dedicato, con solo proprietario e bot.
 

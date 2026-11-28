@@ -2760,6 +2760,8 @@ not stop the Telegram topic or DM from accepting new messages.
 - Keep the existing binding so the user can restore the same session in the web
   UI and continue in the same Telegram destination.
 - `/new` remains the explicit way to create a new DM session or group topic.
+- Deleting a session in the web UI marks its bound topics and General as
+  unavailable instead of clearing the binding and allowing a hidden replacement.
 - Deleted Telegram topics are a separate case: they are detected and removed from
   `/sessions`; the Memora session remains available in the web UI.
 

@@ -162,6 +162,12 @@ sends one notice in General; the Memora session remains and you can create a new
 topic with `/new`. Titles and icons are synchronized one topic at a time with a
 rate-limit pause and a per-topic result.
 
+Deleting a session from the web UI marks its bound Telegram topics/General as
+unavailable instead of silently creating a new session. The Telegram topic may
+remain visible, but new messages are refused; create a new topic with `/new` or
+restore a session when possible. `/sessions` removes deleted topics from the
+Telegram list.
+
 Everyone in the Telegram group can read the bot messages and topic titles. Use a
 dedicated private group with only the owner and the bot.
 

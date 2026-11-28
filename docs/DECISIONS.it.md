@@ -2629,6 +2629,9 @@ web UI non impediva alla DM o al topic Telegram di accettare nuovi messaggi.
   sessione dalla web UI e continuare nella stessa destinazione Telegram.
 - `/new` resta il modo esplicito per creare una nuova sessione DM o un nuovo
   topic di gruppo.
+- Eliminando una sessione dalla web UI, i topic e General collegati vengono marcati
+  non disponibili invece di rimuovere il binding e permettere una sostituzione
+  nascosta.
 - I topic Telegram eliminati sono un caso separato: vengono rilevati e rimossi da
   `/sessions`; la sessione Memora resta disponibile nella web UI.
 
