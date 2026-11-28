@@ -577,7 +577,7 @@ describe('Telegram conversation bridge', () => {
     await ctx.service.stop();
   });
 
-  it('sostituisce una sessione archiviata con una nuova', async () => {
+  it('blocca una sessione archiviata senza crearne una nuova', async () => {
     const ctx = await setupConversation();
     ctx.sessions.addSession({ sessionId: 'sess_archived', name: 'Archiviata' });
     ctx.sessions.archived.add('sess_archived');
@@ -585,11 +585,10 @@ describe('Telegram conversation bridge', () => {
 
     ctx.transport.updates.push(messageUpdate('Continuiamo'));
     await ctx.service.start();
-    await vi.waitFor(() => expect(ctx.sessions.created).toHaveLength(1));
     await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('archiviata'))).toBe(true));
-    const binding = ctx.bindings.getBinding(ctx.account.id, 42);
-    expect(binding?.sessionId).not.toBe('sess_archived');
-    expect(ctx.turns.started[0]?.sessionId).toBe(binding?.sessionId);
+    expect(ctx.sessions.created).toHaveLength(0);
+    expect(ctx.turns.started).toHaveLength(0);
+    expect(ctx.bindings.getBinding(ctx.account.id, 42)?.sessionId).toBe('sess_archived');
     await ctx.service.stop();
   });
 

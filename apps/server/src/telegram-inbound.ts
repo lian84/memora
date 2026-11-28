@@ -216,6 +216,16 @@ interface TurnBridge {
   unsubscribe?: () => void;
 }
 
+class TelegramSessionUnavailableError extends Error {
+  constructor(
+    public readonly reason: 'missing' | 'archived',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'TelegramSessionUnavailableError';
+  }
+}
+
 interface SessionChoice {
   at: number;
   entries: Array<{ sessionId: string; title: string; projectId?: string }>;
@@ -1317,6 +1327,10 @@ export class TelegramInboundService {
     try {
       active = await this.ensureGroupSession(context);
     } catch (error) {
+      if (error instanceof TelegramSessionUnavailableError) {
+        await this.safeReply(context.accountId, context.chatId, error.message, context.threadId);
+        return;
+      }
       this.log('telegram_turn_start_failed', { accountId: context.accountId, code: errorCode(error) ?? 'internal' });
       await this.safeReply(context.accountId, context.chatId, '⚠️ Non è stato possibile avviare la risposta. Riprova tra poco.', context.threadId);
       return;
@@ -1377,29 +1391,17 @@ export class TelegramInboundService {
           });
         }
         if (!(await this.sessions.hasSession(topic.sessionId))) {
-          const created = await this.createGroupSession(group, context.accountId, projectId, agentProfileId);
-          await this.groups.putTopic(context.accountId, context.chatId, {
-            threadId: context.threadId,
-            sessionId: created,
-            title: topic.title,
-            ...(projectId ? { projectId } : {}),
-            ...(agentProfileId ? { agentProfileId } : {}),
-            titleSource: topic.titleSource,
-          });
-          return { sessionId: created, notice: 'ℹ️ La sessione precedente non esiste più; ne ho aperta una nuova in questo topic.' };
+          throw new TelegramSessionUnavailableError(
+            'missing',
+            'La sessione collegata a questo topic non esiste più. Crea un nuovo topic con `/new` da General.',
+          );
         }
         const archived = this.sessions.getSessionArchived ? await this.sessions.getSessionArchived(topic.sessionId) : false;
         if (archived) {
-          const created = await this.createGroupSession(group, context.accountId, projectId, agentProfileId);
-          await this.groups.putTopic(context.accountId, context.chatId, {
-            threadId: context.threadId,
-            sessionId: created,
-            title: topic.title,
-            ...(projectId ? { projectId } : {}),
-            ...(agentProfileId ? { agentProfileId } : {}),
-            titleSource: topic.titleSource,
-          });
-          return { sessionId: created, notice: 'ℹ️ La sessione precedente era archiviata; ne ho aperta una nuova in questo topic.' };
+          throw new TelegramSessionUnavailableError(
+            'archived',
+            'La sessione collegata a questo topic è archiviata. Crea un nuovo topic con `/new` da General oppure ripristinala dalla web UI.',
+          );
         }
         await this.sessions.resumeSession(topic.sessionId);
         return { sessionId: topic.sessionId };
@@ -1424,15 +1426,17 @@ export class TelegramInboundService {
 
     if (group.generalSessionId) {
       if (!(await this.sessions.hasSession(group.generalSessionId))) {
-        const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId), this.defaultAgentProfileId(group, context.accountId));
-        await this.groups.setGeneralSession(context.accountId, context.chatId, created);
-        return { sessionId: created, notice: 'ℹ️ La sessione General non esiste più; ne ho aperta una nuova.' };
+        throw new TelegramSessionUnavailableError(
+          'missing',
+          'La sessione General non esiste più. Crea un nuovo topic con `/new` oppure ripristinala dalla web UI.',
+        );
       }
       const archived = this.sessions.getSessionArchived ? await this.sessions.getSessionArchived(group.generalSessionId) : false;
       if (archived) {
-        const created = await this.createGroupSession(group, context.accountId, this.defaultProjectId(group, context.accountId), this.defaultAgentProfileId(group, context.accountId));
-        await this.groups.setGeneralSession(context.accountId, context.chatId, created);
-        return { sessionId: created, notice: 'ℹ️ La sessione General era archiviata; ne ho aperta una nuova.' };
+        throw new TelegramSessionUnavailableError(
+          'archived',
+          'La sessione General è archiviata. Crea un nuovo topic con `/new` oppure ripristinala dalla web UI.',
+        );
       }
       await this.sessions.resumeSession(group.generalSessionId);
       return { sessionId: group.generalSessionId };
@@ -1942,10 +1946,30 @@ export class TelegramInboundService {
     );
   }
 
+  private async refreshGroupTopicStates(accountId: string, chatId: string, group: TelegramGroup): Promise<void> {
+    const sendAction = this.telegram.sendChatAction;
+    if (!sendAction || !this.groups) return;
+    const topics = Object.values(group.topics).filter(topic => topic.state !== 'deleted');
+    for (const [index, topic] of topics.entries()) {
+      try {
+        await sendAction.call(this.telegram, chatId, 'typing', accountId, { messageThreadId: Number(topic.threadId) });
+      } catch (error) {
+        const state = topicFailureState(error);
+        if (state) {
+          await this.groups.updateTopicState(accountId, chatId, topic.threadId, state).catch(() => undefined);
+          this.log('telegram_topic_unavailable', { accountId, threadId: topic.threadId, state });
+        }
+      }
+      if (index < topics.length - 1 && this.topicSyncDelayMs > 0) await this.delay(Math.min(100, this.topicSyncDelayMs));
+    }
+  }
+
   private async groupShowSessions(context: GroupContext): Promise<void> {
     if (!this.groups) return;
-    const group = this.groups.get(context.accountId, context.chatId);
+    let group = this.groups.get(context.accountId, context.chatId);
     if (!group) return;
+    await this.refreshGroupTopicStates(context.accountId, context.chatId, group);
+    group = this.groups.get(context.accountId, context.chatId) ?? group;
     const projects = await this.allProjects();
     const agents = await this.availableAgents();
     const projectName = (id?: string): string | undefined => id
@@ -1967,6 +1991,7 @@ export class TelegramInboundService {
       });
     }
     for (const topic of Object.values(group.topics).sort((a, b) => a.createdAt - b.createdAt)) {
+      if (topic.state === 'deleted') continue;
       const projectId = topic.projectId ?? defaultProjectId;
       const agentProfileId = topic.agentProfileId ?? defaultAgentId;
       entries.push({
@@ -2236,6 +2261,10 @@ export class TelegramInboundService {
     try {
       active = await this.ensureSession(accountId, chatId, userId);
     } catch (error) {
+      if (error instanceof TelegramSessionUnavailableError) {
+        await this.safeReply(accountId, chatId, error.message);
+        return;
+      }
       this.log('telegram_turn_start_failed', { accountId, code: errorCode(error) ?? 'internal' });
       await this.safeReply(accountId, chatId, '⚠️ Non è stato possibile avviare la risposta. Riprova tra poco.');
       return;
@@ -2339,15 +2368,19 @@ export class TelegramInboundService {
     if (!binding) return this.createBoundSession(accountId, chatId, userId);
 
     if (!(await this.sessions.hasSession(binding.sessionId))) {
-      const created = await this.createBoundSession(accountId, chatId, userId);
-      return { ...created, notice: 'ℹ️ La sessione precedente non esiste più; ne ho aperta una nuova.' };
+      throw new TelegramSessionUnavailableError(
+        'missing',
+        'La sessione collegata non esiste più. Usa `/new` per crearne una nuova.',
+      );
     }
     const archived = this.sessions.getSessionArchived
       ? await this.sessions.getSessionArchived(binding.sessionId)
       : false;
     if (archived) {
-      const created = await this.createBoundSession(accountId, chatId, userId);
-      return { ...created, notice: 'ℹ️ La sessione precedente era archiviata; ne ho aperta una nuova.' };
+      throw new TelegramSessionUnavailableError(
+        'archived',
+        'La sessione collegata è archiviata. Usa `/new` per crearne una nuova oppure ripristinala dalla web UI.',
+      );
     }
     await this.sessions.resumeSession(binding.sessionId);
     return { sessionId: binding.sessionId };

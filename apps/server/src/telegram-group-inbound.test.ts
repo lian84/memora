@@ -47,6 +47,7 @@ class FakeTransport implements TelegramInboundTransport {
   editedTopics: Array<{ chatId: string; threadId: number; name: string }> = [];
   failEditThread?: number;
   failSendThread?: number;
+  failChatActionThread?: number;
   appliedIcons: Array<{ chatId: string; threadId: number; icon: string }> = [];
   setMyCommands = vi.fn(async (
     _commands: Array<{ command: string; description: string }>,
@@ -102,6 +103,9 @@ class FakeTransport implements TelegramInboundTransport {
     this.documents.push({ chatId, filename: document.filename, accountId, ...(options?.messageThreadId ? { threadId: options.messageThreadId } : {}) });
   });
   sendChatAction = vi.fn(async (chatId: string, _action: string, accountId?: string, options?: { messageThreadId?: number }) => {
+    if (this.failChatActionThread !== undefined && options?.messageThreadId === this.failChatActionThread) {
+      throw new TelegramError('telegram_api_error', 'Telegram: Bad Request: message thread not found', 502);
+    }
     this.typing.push({ chatId, accountId, ...(options?.messageThreadId ? { threadId: options.messageThreadId } : {}) });
   });
 }
@@ -591,6 +595,25 @@ describe('Telegram group and forum topics', () => {
     await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Preventivo pronto') && item.threadId === 55)).toBe(true));
     expect(ctx.transport.sent.some(item => item.text.includes('Preventivo pronto') && item.threadId === undefined)).toBe(false);
     await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.pendingTurnId).toBeUndefined());
+    await ctx.service.stop();
+  });
+
+  it('rimuove dai risultati /sessions un topic eliminato da Telegram', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+    });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', { threadId: '55', sessionId: 'sess_topic', title: 'Topic eliminato', titleSource: 'manual' });
+    ctx.sessions.addSession({ sessionId: 'sess_topic', name: 'Topic eliminato' });
+    ctx.transport.failChatActionThread = 55;
+    ctx.transport.updates.push(groupMessage({ text: '/sessions' }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')?.state).toBe('deleted'));
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Nessuna sessione nel gruppo'))).toBe(true));
+    expect(ctx.transport.sent.some(item => item.text.includes('Topic eliminato'))).toBe(false);
     await ctx.service.stop();
   });
 
@@ -1100,7 +1123,7 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.stop();
   });
 
-  it('mantiene il progetto del topic quando la sessione viene sostituita', async () => {
+  it('blocca un topic con sessione archiviata', async () => {
     const ctx = await setupGroup();
     ctx.sessions.addSession({ sessionId: 'sess_archived', name: 'Archiviata' });
     ctx.sessions.archived.add('sess_archived');
@@ -1120,9 +1143,10 @@ describe('Telegram group and forum topics', () => {
     });
     ctx.transport.updates.push(groupMessage({ text: 'Continuiamo', threadId: 55 }));
     await ctx.service.start();
-    const turn = await waitForTurn(ctx);
-    expect(ctx.sessions.created[0]).toMatchObject({ projectId: 'casa' });
-    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')).toMatchObject({ sessionId: turn.sessionId, projectId: 'casa' });
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('archiviata') && item.threadId === 55)).toBe(true));
+    expect(ctx.sessions.created).toHaveLength(0);
+    expect(ctx.turns.started).toHaveLength(0);
+    expect(ctx.groups.getTopic(ctx.account.id, '-100123', '55')).toMatchObject({ sessionId: 'sess_archived', projectId: 'casa' });
     await ctx.service.stop();
   });
 
