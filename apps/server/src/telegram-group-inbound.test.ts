@@ -674,6 +674,24 @@ describe('Telegram group and forum topics', () => {
     await ctx.service.stop();
   });
 
+  it('blocca un topic la cui sessione è stata eliminata dalla web UI', async () => {
+    const ctx = await setupGroup();
+    await ctx.groups.upsert(ctx.account.id, {
+      chatId: '-100123',
+      title: 'Memora',
+      isForum: true,
+      allowedUsers: ['42'],
+    });
+    await ctx.groups.putTopic(ctx.account.id, '-100123', { threadId: '55', sessionId: 'sess_deleted', title: 'Topic eliminato', titleSource: 'manual' });
+    await ctx.groups.markTopicsForSessionDeleted('sess_deleted');
+    ctx.transport.updates.push(groupMessage({ text: 'Ancora?', threadId: 55 }));
+    await ctx.service.start();
+    await vi.waitFor(() => expect(ctx.transport.sent.some(item => item.text.includes('Questo topic è stato eliminato'))).toBe(true));
+    expect(ctx.sessions.created).toHaveLength(0);
+    expect(ctx.turns.started).toHaveLength(0);
+    await ctx.service.stop();
+  });
+
   it('crea un nuovo topic e una sessione con /new da General', async () => {
     const ctx = await setupGroup();
     await ctx.groups.upsert(ctx.account.id, {

@@ -217,6 +217,7 @@ export class TelegramGroupStore {
         : validOptionalSlug(input.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido'),
       showProjectInTopicTitle: input.showProjectInTopicTitle ?? existing?.showProjectInTopicTitle ?? false,
       ...(generalSessionId ? { generalSessionId } : {}),
+      ...(generalSessionId && existing?.generalSessionId === generalSessionId && existing.generalDeleted ? { generalDeleted: true } : {}),
       ...(generalSessionId && existing?.generalSessionId === generalSessionId && existing.generalLastTurnId
         ? { generalLastTurnId: existing.generalLastTurnId }
         : {}),
@@ -279,8 +280,12 @@ export class TelegramGroupStore {
       delete group.generalLastTurnId;
       delete group.generalPendingTurnId;
     }
-    if (next === undefined) delete group.generalSessionId;
-    else group.generalSessionId = next;
+    if (next === undefined) {
+      delete group.generalSessionId;
+    } else {
+      group.generalSessionId = next;
+      delete group.generalDeleted;
+    }
     group.updatedAt = this.now();
     await this.persist();
     return copyGroup(group);
@@ -306,6 +311,35 @@ export class TelegramGroupStore {
     group.updatedAt = this.now();
     await this.persist();
     return copyGroup(group);
+  }
+
+  /** Marca come eliminati General e i topic collegati a una sessione rimossa. */
+  async markTopicsForSessionDeleted(sessionId: string): Promise<number> {
+    const id = validSessionId(sessionId);
+    let changed = 0;
+    const now = this.now();
+    for (const groups of this.accounts.values()) {
+      for (const group of groups.values()) {
+        let groupChanged = false;
+        if (group.generalSessionId === id && group.generalDeleted !== true) {
+          group.generalDeleted = true;
+          delete group.generalPendingTurnId;
+          groupChanged = true;
+          changed += 1;
+        }
+        for (const topic of Object.values(group.topics)) {
+          if (topic.sessionId !== id || topic.state === 'deleted') continue;
+          topic.state = 'deleted';
+          delete topic.pendingTurnId;
+          topic.updatedAt = now;
+          groupChanged = true;
+          changed += 1;
+        }
+        if (groupChanged) group.updatedAt = now;
+      }
+    }
+    if (changed > 0) await this.persist();
+    return changed;
   }
 
   getTopic(accountId: string, chatId: string, threadId: string): TelegramTopicBinding | undefined {
@@ -428,6 +462,7 @@ export class TelegramGroupStore {
         let changed = false;
         if (group.generalSessionId === id) {
           delete group.generalSessionId;
+          delete group.generalDeleted;
           delete group.generalLastTurnId;
           delete group.generalPendingTurnId;
           changed = true;
@@ -527,6 +562,7 @@ export class TelegramGroupStore {
         defaultAgentProfileId: validOptionalSlug(value.defaultAgentProfileId, 'invalid_telegram_agent_profile_id', 'Profilo agente Telegram non valido'),
         showProjectInTopicTitle: value.showProjectInTopicTitle === true,
         ...(generalSessionId ? { generalSessionId } : {}),
+        ...(value.generalDeleted === true ? { generalDeleted: true } : {}),
         ...(typeof value.generalLastTurnId === 'string' && TURN_ID_PATTERN.test(value.generalLastTurnId) ? { generalLastTurnId: value.generalLastTurnId } : {}),
         ...(typeof value.generalPendingTurnId === 'string' && TURN_ID_PATTERN.test(value.generalPendingTurnId) ? { generalPendingTurnId: value.generalPendingTurnId } : {}),
         topics,

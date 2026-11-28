@@ -726,6 +726,7 @@ export const en: Record<string, string> = {
   'Eredita default account': 'Inherit account default',
   'Il topic usa il proprio progetto; se assente usa il progetto del gruppo; se assente il default dell’account. Il progetto di una sessione non cambia dopo la creazione.': 'The topic uses its own project; if missing, the group project; if missing, the account default. A session project cannot be changed after creation.',
   'Il prefisso vale per i nuovi topic e /rename; Riallinea titoli aggiorna quelli esistenti.': 'The prefix applies to new topics and /rename; Sync titles updates existing ones.',
+  'eliminata': 'deleted',
   'chiuso': 'closed',
   'eliminato': 'deleted',
   'fallito': 'failed',

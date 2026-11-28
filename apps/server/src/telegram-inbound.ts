@@ -1378,6 +1378,12 @@ export class TelegramInboundService {
     if (context.threadId) {
       const topic = this.groups.getTopic(context.accountId, context.chatId, context.threadId);
       if (topic) {
+        if (topic.state === 'deleted') {
+          throw new TelegramSessionUnavailableError(
+            'missing',
+            'Questo topic è stato eliminato. Crea un nuovo topic con `/new` da General; la sessione resta nella web UI.',
+          );
+        }
         const projectId = topic.projectId ?? this.defaultProjectId(group, context.accountId);
         const agentProfileId = topic.agentProfileId ?? this.defaultAgentProfileId(group, context.accountId);
         if ((!topic.projectId && projectId) || (!topic.agentProfileId && agentProfileId)) {
@@ -1425,6 +1431,12 @@ export class TelegramInboundService {
     }
 
     if (group.generalSessionId) {
+      if (group.generalDeleted) {
+        throw new TelegramSessionUnavailableError(
+          'missing',
+          'La sessione General è stata eliminata. Crea un nuovo topic con `/new` oppure ripristina la sessione dalla web UI.',
+        );
+      }
       if (!(await this.sessions.hasSession(group.generalSessionId))) {
         throw new TelegramSessionUnavailableError(
           'missing',
@@ -1784,7 +1796,7 @@ export class TelegramInboundService {
       `Canale: ${status.enabled ? 'abilitato' : 'disabilitato'} (${escapeTelegramHtml(status.status)})`,
       `Utenti autorizzati: ${group.allowedUsers.length}`,
       `Topic collegati: ${topicCount}`,
-      `General: ${group.generalSessionId ? 'attivo' : 'non ancora avviato'}`,
+      `General: ${group.generalDeleted ? 'eliminata' : group.generalSessionId ? 'attivo' : 'non ancora avviato'}`,
       `Progetto predefinito: ${defaultProject ? escapeTelegramHtml(defaultProject) : 'nessuno'}`,
       `Agente predefinito: ${defaultAgent ? escapeTelegramHtml(defaultAgent) : 'Memo base'}`,
       `Prefisso progetto nei topic: ${group.showProjectInTopicTitle ? 'sì' : 'no'}`,
@@ -1981,7 +1993,7 @@ export class TelegramInboundService {
     const defaultProjectId = this.defaultProjectId(group, context.accountId);
     const defaultAgentId = this.defaultAgentProfileId(group, context.accountId);
     const entries: Array<{ sessionId: string; title: string; threadId?: string; general: boolean; projectId?: string; agentProfileId?: string; state?: TelegramTopicState }> = [];
-    if (group.generalSessionId) {
+    if (group.generalSessionId && !group.generalDeleted) {
       entries.push({
         sessionId: group.generalSessionId,
         title: 'General',

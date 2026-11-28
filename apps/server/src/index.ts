@@ -569,7 +569,7 @@ app.delete<{ Params: { id: string } }>('/api/sessions/:id', async (req, reply) =
     await telegramShares.remove(req.params.id).catch(error => {
       app.log.warn({ error: error instanceof Error ? error.message : String(error) }, 'telegram share cleanup failed');
     });
-    await telegramGroups.removeTopicsForSession(req.params.id).catch(error => {
+    await telegramGroups.markTopicsForSessionDeleted(req.params.id).catch(error => {
       app.log.warn({ error: error instanceof Error ? error.message : String(error) }, 'telegram group cleanup failed');
     });
     return reply.send({ ...result, deleted: true });

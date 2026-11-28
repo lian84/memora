@@ -506,7 +506,7 @@ export function TelegramInboundPanel({ account, onClose }: TelegramInboundPanelP
                           <code>{group.chatId}</code> · {group.isForum ? t('Forum') : t('Non forum')} · {t('Aggiornato')}: {formatTimestamp(group.updatedAt)}
                         </span>
                         <span>
-                          {t('General')}: {group.generalSessionId ? <a href={telegramGroupLink(group.chatId, '1')} target="_blank" rel="noopener noreferrer">{t('apri')} ↗</a> : t('non ancora avviato')} · {t('Progetto')}: {effectiveProject}
+                          {t('General')}: {group.generalDeleted ? t('eliminata') : group.generalSessionId ? <a href={telegramGroupLink(group.chatId, '1')} target="_blank" rel="noopener noreferrer">{t('apri')} ↗</a> : t('non ancora avviato')} · {t('Progetto')}: {effectiveProject}
                         </span>
                         {Object.values(group.topics).length > 0 && (
                           <span>

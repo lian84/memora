@@ -225,6 +225,8 @@ export interface TelegramGroup {
   /** Mostra `[Nome progetto]` davanti al titolo dei topic secondari. */
   showProjectInTopicTitle: boolean;
   generalSessionId?: string;
+  /** La sessione General è stata eliminata dalla web UI. */
+  generalDeleted?: boolean;
   /** Ultimo turno avviato nel topic General. */
   generalLastTurnId?: string;
   /** Turno del topic General ancora in corso. */
